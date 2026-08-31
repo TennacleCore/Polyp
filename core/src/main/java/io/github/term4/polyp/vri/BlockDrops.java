@@ -8,6 +8,7 @@ import net.minestom.server.component.DataComponents;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.GameMode;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
@@ -70,7 +71,9 @@ public final class BlockDrops {
     private BlockDrops() {}
 
     public static void install(EventNode<@NotNull Event> node, Vri vri) {
-        node.addListener(PlayerBlockBreakEvent.class, e -> {
+        // end-of-tick: a reactor reads the FINAL cancelled state, whatever order the listeners ran in
+        node.addListener(PlayerBlockBreakEvent.class, e ->
+                MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
             if (e.isCancelled()) return;
             GameMode mode = e.getPlayer().getGameMode();
             if (mode == GameMode.CREATIVE || mode == GameMode.SPECTATOR) return;
@@ -96,6 +99,6 @@ public final class BlockDrops {
                         new Vec(rnd.nextDouble() * 0.2 - 0.1, 0.2, rnd.nextDouble() * 0.2 - 0.1),
                         stack, cfg.itemPhysics, PICKUP_DELAY_TICKS, ItemSpawnEvent.Cause.BLOCK_DROP, e.getPlayer());
             }
-        });
+        }));
     }
 }

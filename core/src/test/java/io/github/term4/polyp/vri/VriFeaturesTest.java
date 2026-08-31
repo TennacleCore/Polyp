@@ -49,6 +49,11 @@ class VriFeaturesTest extends HeadlessServerTest {
         return new PlayerBlockBreakEvent(miner.player, instance, block, Block.AIR, BLOCK, BlockFace.TOP);
     }
 
+    // drop reactors fire at end of tick (they read the event's final cancelled state)
+    private static void tickEnd() {
+        MinecraftServer.getSchedulerManager().processTickEnd();
+    }
+
     private static ItemEntity dropOf(Material material) {
         return instance.getEntities().stream()
                 .filter(e -> e instanceof ItemEntity i && i.getItemStack().material() == material)
@@ -59,6 +64,7 @@ class VriFeaturesTest extends HeadlessServerTest {
     void dropSpawnsWithVanillaShape() {
         long before = instance.getEntities().stream().filter(e -> e instanceof ItemEntity).count();
         EventDispatcher.call(breakEvent(Block.DIRT)); // no tool required
+        tickEnd();
         var items = instance.getEntities().stream().filter(e -> e instanceof ItemEntity).map(e -> (ItemEntity) e).toList();
         assertEquals(before + 1, items.size());
         ItemEntity drop = items.getLast();
@@ -103,6 +109,7 @@ class VriFeaturesTest extends HeadlessServerTest {
     @Test
     void qDropSpawnsThrownItemAtEye() {
         EventDispatcher.call(new ItemDropEvent(miner.player, ItemStack.of(Material.OAK_PLANKS)));
+        tickEnd();
         var drop = dropOf(Material.OAK_PLANKS);
         // vanilla: spawned at eye - 0.3, 40t pickup delay, thrown roughly along the look
         assertEquals(miner.player.getPosition().y() + miner.player.getEyeHeight() - 0.3, drop.getPosition().y(), 1e-6);
@@ -191,6 +198,7 @@ class VriFeaturesTest extends HeadlessServerTest {
     void cursorItemDropsOnInventoryClose() {
         miner.player.getInventory().setCursorItem(ItemStack.of(Material.GOLD_INGOT, 3));
         miner.player.closeInventory();
+        tickEnd();
         assertTrue(miner.player.getInventory().getCursorItem().isAir(), "cursor cleared on close");
         var drop = dropOf(Material.GOLD_INGOT);
         assertEquals(3, drop.getItemStack().amount(), "the whole dragged stack drops");
@@ -203,6 +211,7 @@ class VriFeaturesTest extends HeadlessServerTest {
         miner.player.openInventory(chest);
         miner.player.getInventory().setCursorItem(ItemStack.of(Material.IRON_INGOT, 4));
         miner.player.closeInventory();
+        tickEnd();
         var drop = dropOf(Material.IRON_INGOT);
         assertEquals(4, drop.getItemStack().amount(), "chest close drops the dragged stack");
         assertTrue(miner.player.getInventory().getCursorItem().isAir());
@@ -218,6 +227,7 @@ class VriFeaturesTest extends HeadlessServerTest {
         try {
             miner.player.getInventory().setCursorItem(ItemStack.of(Material.EMERALD, 2));
             miner.player.closeInventory();
+        tickEnd();
             assertEquals(Material.EMERALD, miner.player.getInventory().getCursorItem().material(),
                     "cancel restores the cursor for the GUI to reclaim");
             assertTrue(instance.getEntities().stream()

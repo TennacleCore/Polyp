@@ -3,6 +3,7 @@ package io.github.term4.polyp.vri;
 import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
 import io.github.term4.polyp.entity.DroppedItemEntity;
 import net.minestom.server.coordinate.Vec;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventDispatcher;
@@ -38,9 +39,13 @@ public final class ItemDrop {
             inventory.setCursorItem(ItemStack.AIR);
             ItemDropEvent drop = new ItemDropEvent(e.getPlayer(), cursor);
             EventDispatcher.call(drop); // spawned by the listener below
-            if (drop.isCancelled()) inventory.setCursorItem(cursor);
+            MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
+                if (drop.isCancelled()) inventory.setCursorItem(cursor);
+            });
         });
-        node.addListener(ItemDropEvent.class, e -> {
+        // end-of-tick: a reactor reads the FINAL cancelled state, whatever order the listeners ran in
+        node.addListener(ItemDropEvent.class, e ->
+                MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
             if (e.isCancelled()) return;
             Player player = e.getPlayer();
             Instance instance = player.getInstance();
@@ -62,6 +67,6 @@ public final class ItemDrop {
                     player.getPosition().add(0, player.getEyeHeight() - 0.30000001192092896, 0),
                     new Vec(vx, vy, vz), e.getItemStack(), cfg.itemPhysics,
                     PICKUP_DELAY_TICKS, ItemSpawnEvent.Cause.PLAYER_DROP, player);
-        });
+        }));
     }
 }
