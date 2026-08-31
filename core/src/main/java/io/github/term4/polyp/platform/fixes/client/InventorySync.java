@@ -212,10 +212,14 @@ public final class InventorySync {
                 if (slot >= 0 && hotbar >= 0) { ItemStack t = believed[slot]; believed[slot] = believed[hotbar]; believed[hotbar] = t; }
             }
             case THROW -> {
-                // never predicted for a legacy client: ViaBackwards replays 1.8 hotbar drops as throw-clicks the client
-                // never made, so the echo must pass to repaint the count (a real 1.8 GUI throw costs one redundant echo)
-                if (legacyClient) return;
                 final int slot = slot(wireSlot);
+                if (legacyClient) {
+                    // unmodellable: ViaBackwards replays 1.8 hotbar drops as throw-clicks the client never made,
+                    // and a CANCELLED GUI throw leaves truth == mirror while the client predicted the removal -
+                    // the correction would match the mirror and be eaten (vanilla 1.8 always resends after a click)
+                    if (slot >= 0) unverifiedSlot = slot;
+                    return;
+                }
                 if (slot < 0 || believed[slot].isAir()) return;
                 believed[slot] = button == 1 ? ItemStack.AIR : decrement(believed[slot]); // ctrl-Q drops the whole stack
             }

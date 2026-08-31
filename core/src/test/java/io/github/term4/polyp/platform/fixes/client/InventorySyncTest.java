@@ -133,6 +133,18 @@ class InventorySyncTest extends HeadlessServerTest {
     }
 
     @Test
+    void cancelledLegacyThrowStillGetsItsRepaint() {
+        InventorySync sync = new InventorySync();
+        List<ItemStack> items = windowWithApples();
+        assertNotNull(sync.filter(new WindowItemsPacket(0, 0, items, ItemStack.AIR)), "baseline");
+        // 1.8 Q in the GUI, click CANCELLED server-side: truth == mirror, but the client predicted the toss -
+        // the identical full update is the only thing that can un-predict it (vanilla 1.8 always resends)
+        sync.onClick(click(ClickType.THROW, 9, 0), true, null);
+        assertNotNull(sync.filter(new WindowItemsPacket(0, 0, items, ItemStack.AIR)),
+                "a repaint matching the mirror must still reach the client after a throw");
+    }
+
+    @Test
     void windowItemsReBaselines() {
         InventorySync sync = new InventorySync();
         List<ItemStack> items = windowWithApples();
