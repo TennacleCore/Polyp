@@ -40,7 +40,16 @@ public final class ItemDrop {
             ItemDropEvent drop = new ItemDropEvent(e.getPlayer(), cursor);
             EventDispatcher.call(drop); // spawned by the listener below
             MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
-                if (drop.isCancelled()) inventory.setCursorItem(cursor);
+                if (!drop.isCancelled()) return;
+                inventory.setCursorItem(cursor); // the reclaim window for no-take GUIs
+                MinecraftServer.getSchedulerManager().scheduleNextTick(() -> {
+                    // unclaimed on a closed screen is invisible limbo - back into the slots
+                    if (e.getPlayer().getOpenInventory() == null && inventory.getCursorItem().equals(cursor)) {
+                        inventory.setCursorItem(ItemStack.AIR);
+                        inventory.addItemStack(cursor);
+                        inventory.update();
+                    }
+                });
             });
         });
         // end-of-tick: a reactor reads the FINAL cancelled state, whatever order the listeners ran in
