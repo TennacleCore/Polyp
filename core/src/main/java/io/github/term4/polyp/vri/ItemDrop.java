@@ -33,10 +33,16 @@ public final class ItemDrop {
         node.addListener(InventoryCloseEvent.class, e -> {
             // containers drop the cursor natively (removeViewer); only the player's own screen leaks it
             var inventory = e.getPlayer().getInventory();
-            if (e.getInventory() != inventory || !vri.configFor(e.getPlayer()).itemDrop) return;
+            if (e.getInventory() != inventory) return;
             ItemStack cursor = inventory.getCursorItem();
             if (cursor.isAir()) return;
             inventory.setCursorItem(ItemStack.AIR);
+            if (!vri.configFor(e.getPlayer()).itemDrop) {
+                // tossing is off, but the close may not strand the stack in the invisible cursor
+                inventory.addItemStack(cursor);
+                inventory.update();
+                return;
+            }
             ItemDropEvent drop = new ItemDropEvent(e.getPlayer(), cursor);
             EventDispatcher.call(drop); // spawned by the listener below
             MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {

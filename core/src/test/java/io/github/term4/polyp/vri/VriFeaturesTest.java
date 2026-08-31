@@ -307,6 +307,28 @@ class VriFeaturesTest extends HeadlessServerTest {
         return n;
     }
 
+    @Test
+    void noTossScopeReclaimsTheCloseCursorIntoTheSlots() {
+        var noToss = flatInstance(MechanicsProfile.builder()
+                .set(MechanicsKeys.VRI, VriConfig.builder().blockDrops(BlockDrops.VANILLA)
+                        .itemPickup(true).blockBreakProgress(true).build()) // itemDrop stays off
+                .build());
+        FakePlayer closer = FakePlayer.connect(noToss, new Pos(3.5, 43, 3.5), "NoTossWorld");
+        try {
+            closer.player.getInventory().setCursorItem(ItemStack.of(Material.GOLD_INGOT, 7));
+            closer.player.closeInventory();
+            tickEnd();
+            assertTrue(closer.player.getInventory().getCursorItem().isAir(), "no invisible cursor limbo");
+            int ingots = 0;
+            for (ItemStack st : closer.player.getInventory().getItemStacks())
+                if (st.material() == Material.GOLD_INGOT) ingots += st.amount();
+            assertEquals(7, ingots, "the stack went back into the slots, not the void");
+            assertTrue(noToss.getEntities().stream().noneMatch(ItemEntity.class::isInstance), "and never spawned");
+        } finally {
+            closer.player.remove();
+        }
+    }
+
     /** The point of the scoped config: one world runs a VRI behavior the install config left on, another doesn't. */
     @Test
     void aScopeOverridesTheInstallConfig() {
