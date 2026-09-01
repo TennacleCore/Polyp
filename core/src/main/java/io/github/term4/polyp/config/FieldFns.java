@@ -31,18 +31,42 @@ public final class FieldFns {
         @NotNull T create(@NotNull Args args);
     }
 
-    private static final Map<Class<?>, Map<String, Factory<?>>> BY_TYPE = new ConcurrentHashMap<>();
+    /** One registered way to build a value: what it is called, what it takes, and what it does. */
+    public record Entry<T>(@NotNull String name, @NotNull String signature, @NotNull String doc, @NotNull Factory<T> factory) {}
 
-    /** Registers {@code name(args...)} as a way to build a {@code type}. */
-    public static <T> void register(@NotNull Class<T> type, @NotNull String name, @NotNull Factory<T> factory) {
-        BY_TYPE.computeIfAbsent(type, t -> new ConcurrentHashMap<>()).put(name, factory);
+    private static final Map<Class<?>, Map<String, Entry<?>>> BY_TYPE = new ConcurrentHashMap<>();
+
+    /**
+     * Registers {@code signature} as a way to build a {@code type}. The signature is the call shape a user
+     * types ({@code within(blocks, audience)}); {@code doc} is one line explaining it. Both surface in errors
+     * and in {@link #vocabulary}, which is the only reason anyone can discover this without reading the source.
+     */
+    public static <T> void register(@NotNull Class<T> type, @NotNull String signature, @NotNull String doc,
+                                    @NotNull Factory<T> factory) {
+        int paren = signature.indexOf('(');
+        String name = (paren < 0 ? signature : signature.substring(0, paren)).trim();
+        BY_TYPE.computeIfAbsent(type, t -> new ConcurrentHashMap<>())
+                .put(name, new Entry<>(name, signature.trim(), doc, factory));
     }
 
     /** The factory names {@code type} offers, for errors and pickers. */
     public static @NotNull Set<String> names(@NotNull Class<?> type) {
-        Map<String, Factory<?>> named = BY_TYPE.get(type);
+        Map<String, Entry<?>> named = BY_TYPE.get(type);
         return named != null ? Set.copyOf(named.keySet()) : Set.of();
     }
+
+    /** Every way to build a {@code type}, signature first, sorted - what a help command prints. */
+    public static @NotNull List<String> vocabulary(@NotNull Class<?> type) {
+        Map<String, Entry<?>> named = BY_TYPE.get(type);
+        if (named == null) return List.of();
+        return named.values().stream()
+                .sorted(java.util.Comparator.comparing(Entry::name))
+                .map(e -> e.signature() + " - " + e.doc())
+                .toList();
+    }
+
+    /** The types with a registered vocabulary. */
+    public static @NotNull Set<Class<?>> types() { return Set.copyOf(BY_TYPE.keySet()); }
 
     public static boolean supports(@NotNull Class<?> type) {
         return BY_TYPE.containsKey(type);
@@ -54,7 +78,7 @@ public final class FieldFns {
      */
     @SuppressWarnings("unchecked")
     public static <T> @NotNull T parse(@NotNull Class<T> type, @NotNull String spec, @NotNull String where) {
-        Map<String, Factory<?>> named = BY_TYPE.get(type);
+        Map<String, Entry<?>> named = BY_TYPE.get(type);
         if (named == null) {
             throw new IllegalArgumentException(type.getSimpleName() + " has no registered factories: " + where);
         }
@@ -65,21 +89,21 @@ public final class FieldFns {
             throw new IllegalArgumentException("unbalanced '(' in '" + spec + "': " + where);
         }
         List<String> raw = open < 0 ? List.of() : split(trimmed.substring(open + 1, trimmed.length() - 1));
-        Factory<?> factory = named.get(name);
-        if (factory == null) {
+        Entry<?> entry = named.get(name);
+        if (entry == null) {
             throw new IllegalArgumentException("no " + type.getSimpleName() + " named '" + name + "' (known: "
                     + new java.util.TreeSet<>(named.keySet()) + "): " + where);
         }
-        return (T) factory.create(new Args(name, raw, where));
+        return (T) entry.factory().create(new Args(entry.signature(), raw, where));
     }
 
     /** Applies an already-registered factory to {@code args} - lets one type's vocabulary reuse another's. */
     @SuppressWarnings("unchecked")
     public static <T> @NotNull T build(@NotNull Class<T> type, @NotNull String name, @NotNull Args args) {
-        Map<String, Factory<?>> named = BY_TYPE.get(type);
-        Factory<?> factory = named != null ? named.get(name) : null;
-        if (factory == null) throw new IllegalArgumentException("no " + type.getSimpleName() + " named '" + name + "'");
-        return (T) factory.create(args);
+        Map<String, Entry<?>> named = BY_TYPE.get(type);
+        Entry<?> entry = named != null ? named.get(name) : null;
+        if (entry == null) throw new IllegalArgumentException("no " + type.getSimpleName() + " named '" + name + "'");
+        return (T) entry.factory().create(args);
     }
 
     /** Splits on top-level commas so a nested call can be an argument later. */

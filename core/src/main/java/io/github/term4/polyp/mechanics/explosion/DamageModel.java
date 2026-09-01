@@ -29,7 +29,8 @@ public interface DamageModel {
 
     /** Names these for data paths ({@code explosion/damageModel = flat(2.0)}); a server registers its own too. */
     static void registerFactories() {
-        FieldFns.register(DamageModel.class, "curve", args -> CURVE);
-        FieldFns.register(DamageModel.class, "flat", args -> flat(args.arity(1).dbl(0)));
+        FieldFns.register(DamageModel.class, "curve", "vanilla distance + exposure falloff", args -> CURVE);
+        FieldFns.register(DamageModel.class, "flat(amount)", "the same damage to everything in range",
+                args -> flat(args.arity(1).dbl(0)));
     }
 }

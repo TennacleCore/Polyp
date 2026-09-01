@@ -132,7 +132,7 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
         MechanicsProfile hypixelish = MechanicsProfile.builder().set(MechanicsKeys.FX, Hypixel.fx()).build();
         MechanicsProfile.Builder b = MechanicsProfile.builder();
         PathEdits.apply(b, hypixelish, "fx/polyp:pearl_teleport",
-                "to(everywhere, sound(entity.player.teleport, player, 1, 1))");
+                "to(at-listener(watchers), sound(entity.player.teleport, player, 1, 1))");
 
         FxRegistry fx = b.build().get(MechanicsKeys.FX);
         assertNotNull(fx.get(Fx.PEARL_TELEPORT));
@@ -148,15 +148,13 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
     void everyAudienceComposesWithEveryEffect() {
         for (String audience : java.util.List.of(
                 // primitives
-                "members", "watchers", "instance", "viewers", "source", "nobody",
+                "members", "watchers", "instance", "viewers", "source", "nobody", "predicted",
                 // compositions - none of these is a registered case
-                "except(instance, shard)", "both(members, viewers)", "only(instance, members)",
-                "tree(members)", "at-listener(tree(watchers))", "within(20, except(shard, source))",
-                "legacy(members)",
-                // the three aliases, which ARE compositions
-                "shard", "everywhere", "predicted")) {
-            for (String effect : java.util.List.of(
-                    "sound(entity.player.teleport, player, 1, 1)", "particle(crit, 8, 0.5, 0)")) {
+                "except(instance, watchers)", "both(members, viewers)", "only(instance, members)",
+                "tree(members)", "at-listener(tree(watchers))", "within(20, except(watchers, source))",
+                "protocol-below(48, members)", "at-listener(watchers)")) {
+            for (String effect : java.util.List.of("sound(entity.player.teleport, player, 1, 1)",
+                    "particle(crit, 8, 0.5, 0)", "animation(SWING_MAIN_ARM)")) {
                 String spec = "to(" + audience + ", " + effect + ")";
                 MechanicsProfile.Builder b = MechanicsProfile.builder();
                 PathEdits.apply(b, null, "fx/polyp:pearl_teleport", spec);

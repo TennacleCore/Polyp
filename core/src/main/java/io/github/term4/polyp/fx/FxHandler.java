@@ -30,14 +30,14 @@ public interface FxHandler {
         };
     }
 
-    /** A positional sound at the context position, to the shard audience ({@link FxAudience#SHARD}). */
+    /** A positional sound at the context position, to everyone rendering the world ({@link FxAudience#WATCHERS}). */
     static @NotNull FxHandler sound(@NotNull SoundEvent sound, @NotNull Sound.Source source, float volume, float pitch) {
-        return of(FxAudience.SHARD, FxEffect.sound(sound, source, volume, pitch));
+        return of(FxAudience.WATCHERS, FxEffect.sound(sound, source, volume, pitch));
     }
 
-    /** A symmetric particle burst at the context position, to the shard audience. */
+    /** A symmetric particle burst at the context position, to everyone rendering the world. */
     static @NotNull FxHandler particle(@NotNull Particle particle, int count, double spread, float speed) {
-        return of(FxAudience.SHARD, FxEffect.particle(particle, count, spread, speed));
+        return of(FxAudience.WATCHERS, FxEffect.particle(particle, count, spread, speed));
     }
 
     /** An entity animation on the context source, to its viewers + itself. */

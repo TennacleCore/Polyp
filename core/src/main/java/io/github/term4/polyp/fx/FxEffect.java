@@ -57,17 +57,22 @@ public interface FxEffect {
      */
     static void registerFactories() {
         FxAudience.registerFactories();
-        FieldFns.register(FxEffect.class, "sound", args -> sound(
+        FieldFns.register(FxEffect.class, "sound(id, source, volume, pitch)", "a sound", args -> sound(
                 soundOf(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
-        FieldFns.register(FxEffect.class, "particle", args -> particle(
+        FieldFns.register(FxEffect.class, "particle(id, count, spread, speed)", "a particle burst", args -> particle(
                 particleOf(args.arity(4), 0), args.integer(1), args.dbl(2), args.flt(3)));
+        FieldFns.register(FxEffect.class, "animation(name)", "an animation on the source entity",
+                args -> animation(args.arity(1).enumOf(0, EntityAnimationPacket.Animation.class)));
+        FieldFns.register(FxEffect.class, "target-animation(name)", "an animation on the target entity",
+                args -> targetAnimation(args.arity(1).enumOf(0, EntityAnimationPacket.Animation.class)));
 
-        FieldFns.register(FxHandler.class, "none", args -> FxHandler.NONE);
-        FieldFns.register(FxHandler.class, "to", args -> FxHandler.of(
-                args.arity(2).of(0, FxAudience.class), args.of(1, FxEffect.class)));
-        for (String effect : new String[]{"sound", "particle"}) {
-            FieldFns.register(FxHandler.class, effect, args -> FxHandler.of(FxAudience.SHARD,
-                    FieldFns.build(FxEffect.class, effect, args)));
+        FieldFns.register(FxHandler.class, "none", "plays nothing - silences this key", args -> FxHandler.NONE);
+        FieldFns.register(FxHandler.class, "to(audience, effect)", "an effect delivered to an audience",
+                args -> FxHandler.of(args.arity(2).of(0, FxAudience.class), args.of(1, FxEffect.class)));
+        // a bare effect is the default audience, so the common case stays short
+        for (String effect : FieldFns.names(FxEffect.class)) {
+            FieldFns.register(FxHandler.class, effect, "shorthand for to(watchers, " + effect + "(...))",
+                    args -> FxHandler.of(FxAudience.WATCHERS, FieldFns.build(FxEffect.class, effect, args)));
         }
     }
 

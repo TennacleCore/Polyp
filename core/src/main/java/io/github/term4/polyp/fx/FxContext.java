@@ -80,19 +80,22 @@ public final class FxContext {
         return type.isInstance(detail) ? type.cast(detail) : null;
     }
 
-    /** A positional sound at {@link #position()} to the shard audience. */
+    /** Delivers {@code effect} to {@code audience} from this context - the one route every helper below takes. */
+    public void emit(@NotNull FxAudience audience, @NotNull FxEffect effect) {
+        FxHandler.of(audience, effect).play(this);
+    }
+
+    /** A positional sound at {@link #position()} to everyone rendering the world. */
     public void sound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
-        world.playSound(Sound.sound(sound.key(), src, volume, pitch), position);
+        emit(FxAudience.WATCHERS, FxEffect.sound(sound, src, volume, pitch));
     }
 
     /**
-     * A positional sound at {@link #position()} to the {@code source}'s viewers but NOT the source itself - the sound
-     * analogue of {@link #hitAnimation}: the eater's own client predicts the chew locally, so echoing it would double it.
-     * No-op without a source.
+     * A positional sound to the {@code source}'s viewers but NOT the source itself - the sound analogue of
+     * {@link #hitAnimation}: the doer's own client predicts it, so echoing it would double it.
      */
     public void viewerSound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
-        if (source != null) source.sendPacketToViewers(
-                new SoundEffectPacket(sound, src, position, volume, pitch, ThreadLocalRandom.current().nextLong()));
+        emit(FxAudience.VIEWERS, FxEffect.sound(sound, src, volume, pitch));
     }
 
     /**
@@ -100,30 +103,20 @@ public final class FxContext {
      * their own world sounds locally; 1.8's local sound sinks are empty stubs, so the doer needs the packet.
      */
     public void predictedSound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
-        viewerSound(sound, src, volume, pitch);
-        var polyp = io.github.term4.polyp.Polyp.getInstance();
-        if (source instanceof Player p && polyp.clientInfo() != null && polyp.clientInfo().isLegacy(p)) {
-            p.sendPacket(new SoundEffectPacket(sound, src, position, volume, pitch,
-                    ThreadLocalRandom.current().nextLong()));
-        }
+        emit(FxAudience.PREDICTED, FxEffect.sound(sound, src, volume, pitch));
+    }
+
+    /** A sound to the {@code source} entity ONLY, anchored on it, if it's a player (the arrow hit-marker "ding"). */
+    public void sourceSound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
+        emit(FxAudience.SOURCE, FxEffect.sound(sound, src, volume, pitch));
     }
 
     /**
-     * A sound to the {@code source} entity ONLY, if it's a player (the arrow hit-marker "ding" to the shooter).
-     * Positional at the source, so that one player hears it at full volume.
+     * The sound to everyone rendering the world, anchored on each LISTENER so distance never attenuates it.
+     * One shared seed, so variant-picking sounds pick the same variant for everyone.
      */
-    public void sourceSound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
-        if (source instanceof Player p)
-            p.sendPacket(new SoundEffectPacket(sound, src, source.getPosition(), volume, pitch, ThreadLocalRandom.current().nextLong()));
-    }
-
-    /** The sound to every player in the world, positioned at each LISTENER so distance never attenuates it.
-     *  One shared seed: variant-picking sounds pick the same variant for everyone. */
     public void globalSound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
-        long seed = ThreadLocalRandom.current().nextLong();
-        for (Player p : world.players()) {
-            p.sendPacket(new SoundEffectPacket(sound, src, p.getPosition(), volume, pitch, seed));
-        }
+        emit(FxAudience.atListener(FxAudience.WATCHERS), FxEffect.sound(sound, src, volume, pitch));
     }
 
     /** A particle burst at {@link #position()} to the shard audience. */

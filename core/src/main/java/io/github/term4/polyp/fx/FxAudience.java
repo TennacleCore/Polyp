@@ -7,7 +7,8 @@ import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashSet;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
@@ -16,12 +17,15 @@ import java.util.function.BiConsumer;
  * Keeping them apart is what stops the vocabulary from being a grid: a new audience works with every effect and a
  * new effect with every audience, instead of one factory per pairing.
  *
- * <p>The scopes below are not a menu of cases: there are four PRIMITIVE sets ({@link #MEMBERS}, {@link #WATCHERS},
- * {@link #INSTANCE}, {@link #VIEWERS}, {@link #SOURCE}) and combinators that close over them - {@link #both union},
- * {@link #except difference}, {@link #only intersection}, {@link #tree} across a layered world family,
- * {@link #within}, {@link #legacy}, and {@link #atListener} for the anchor. Anything nameable is a composition:
- * "on the instance but not in this shard" is {@code except(instance, shard)}, not another constant. The named
- * conveniences at the bottom are spelled out as the compositions they equal.
+ * <p>These are not a menu of cases. Five primitive sets ({@link #MEMBERS}, {@link #WATCHERS}, {@link #INSTANCE},
+ * {@link #VIEWERS}, {@link #SOURCE}) are closed under {@link #both union}, {@link #except difference},
+ * {@link #only intersection}, {@link #tree}, {@link #within}, {@link #protocolBelow}, and {@link #atListener}
+ * for the anchor. Anything nameable is a composition: "on the instance but not in this shard" is
+ * {@code except(instance, watchers)}. Only {@link #PREDICTED} keeps a name, and it is spelled out as the
+ * composition it equals.
+ *
+ * <p>Scope: a world is ONE shard. {@link #MEMBERS} / {@link #WATCHERS} stop there, {@link #tree} spans a layered
+ * family, {@link #INSTANCE} spans every world sharing the Minestom instance plus anyone unsharded.
  */
 @FunctionalInterface
 public interface FxAudience {
@@ -36,7 +40,7 @@ public interface FxAudience {
         for (Player p : ctx.world().players()) to.accept(p, ctx.position());
     };
 
-    /** Everyone RENDERING the world: its members plus observers (spectators, all-seeing staff). */
+    /** Everyone RENDERING the world: its members plus observers (spectators, all-seeing staff). The default. */
     FxAudience WATCHERS = (ctx, to) -> {
         for (Player p : ctx.world().watchers()) to.accept(p, ctx.position());
     };
@@ -58,15 +62,15 @@ public interface FxAudience {
         if (ctx.source() instanceof Player p) to.accept(p, p.getPosition());
     };
 
-    /** Nobody. The identity for {@link #both}, and a way to silence one branch of a composition. */
-    FxAudience NONE = (ctx, to) -> {};
+    /** Nobody: the identity for {@link #both}, and a branch that contributes nothing. */
+    FxAudience NOBODY = (ctx, to) -> {};
 
     // ---------------------------------------------------------------- combinators
 
     /** Union, each recipient once even when both sides reach them (the left side's anchor wins). */
     static @NotNull FxAudience both(@NotNull FxAudience a, @NotNull FxAudience b) {
         return (ctx, to) -> {
-            Set<Player> seen = new HashSet<>();
+            Set<Player> seen = identitySet();
             a.each(ctx, (p, at) -> { if (seen.add(p)) to.accept(p, at); });
             b.each(ctx, (p, at) -> { if (seen.add(p)) to.accept(p, at); });
         };
@@ -75,7 +79,7 @@ public interface FxAudience {
     /** {@code a} minus everyone {@code b} reaches - "on the instance but not in this shard". */
     static @NotNull FxAudience except(@NotNull FxAudience a, @NotNull FxAudience b) {
         return (ctx, to) -> {
-            Set<Player> excluded = new HashSet<>();
+            Set<Player> excluded = identitySet();
             b.each(ctx, (p, at) -> excluded.add(p));
             a.each(ctx, (p, at) -> { if (!excluded.contains(p)) to.accept(p, at); });
         };
@@ -84,7 +88,7 @@ public interface FxAudience {
     /** Intersection - only those both sides reach. */
     static @NotNull FxAudience only(@NotNull FxAudience a, @NotNull FxAudience b) {
         return (ctx, to) -> {
-            Set<Player> allowed = new HashSet<>();
+            Set<Player> allowed = identitySet();
             b.each(ctx, (p, at) -> allowed.add(p));
             a.each(ctx, (p, at) -> { if (allowed.contains(p)) to.accept(p, at); });
         };
@@ -93,7 +97,7 @@ public interface FxAudience {
     /** {@code base} evaluated on every world of the layered {@link MechanicsWorld#family() family}, deduplicated. */
     static @NotNull FxAudience tree(@NotNull FxAudience base) {
         return (ctx, to) -> {
-            Set<Player> seen = new HashSet<>();
+            Set<Player> seen = identitySet();
             for (MechanicsWorld world : ctx.world().family()) {
                 base.each(ctx.withWorld(world), (p, at) -> { if (seen.add(p)) to.accept(p, at); });
             }
@@ -108,13 +112,16 @@ public interface FxAudience {
         });
     }
 
-    /** {@code base} narrowed to LEGACY clients - fx a 1.8 client needs and a modern one predicts itself. */
-    static @NotNull FxAudience legacy(@NotNull FxAudience base) {
+    /**
+     * {@code base} narrowed to clients older than {@code protocol} - fx a legacy client needs because it does
+     * not predict them locally. 1.8 is 47, so {@code protocolBelow(48, ...)} is "1.8 and older".
+     */
+    static @NotNull FxAudience protocolBelow(int protocol, @NotNull FxAudience base) {
         return (ctx, to) -> {
             var polyp = io.github.term4.polyp.Polyp.getInstance();
             var info = polyp.isInitialized() ? polyp.clientInfo() : null;
             if (info == null) return;
-            base.each(ctx, (player, at) -> { if (info.isLegacy(player)) to.accept(player, at); });
+            base.each(ctx, (player, at) -> { if (info.getProtocol(player) < protocol) to.accept(player, at); });
         };
     }
 
@@ -123,42 +130,39 @@ public interface FxAudience {
         return (ctx, to) -> base.each(ctx, (player, at) -> to.accept(player, player.getPosition()));
     }
 
-    // ---------------------------------------------------------------- named compositions (sugar, not capability)
+    /** The one surviving alias: {@code both(VIEWERS, protocolBelow(48, SOURCE))} - 1.8's local sound sinks are stubs. */
+    FxAudience PREDICTED = both(VIEWERS, protocolBelow(48, SOURCE));
 
-    /** {@link #WATCHERS} - the default, and what {@code world.playSound} has always meant. */
-    FxAudience SHARD = WATCHERS;
-    /** {@code atListener(MEMBERS)}: full volume wherever a member stands (BedWars' pearl landing). */
-    FxAudience EVERYWHERE = atListener(MEMBERS);
-    /** {@code both(VIEWERS, legacy(SOURCE))}: 1.8's local sound sinks are stubs, so its doer needs the packet. */
-    FxAudience PREDICTED = both(VIEWERS, legacy(SOURCE));
+    private static Set<Player> identitySet() {
+        return Collections.newSetFromMap(new IdentityHashMap<>());
+    }
 
     /**
-     * Names the vocabulary for data paths. Primitives, combinators, and the three aliases - a scope that is not
-     * listed is a composition, not a missing feature: {@code except(instance, shard)}, {@code tree(members)},
-     * {@code at-listener(tree(watchers))}, {@code within(20, except(shard, source))}.
+     * Names the vocabulary for data paths. A scope that is not listed is a composition, not a missing feature:
+     * {@code except(instance, watchers)}, {@code tree(members)}, {@code at-listener(tree(watchers))}.
      */
     static void registerFactories() {
-        FieldFns.register(FxAudience.class, "members", args -> MEMBERS);
-        FieldFns.register(FxAudience.class, "watchers", args -> WATCHERS);
-        FieldFns.register(FxAudience.class, "instance", args -> INSTANCE);
-        FieldFns.register(FxAudience.class, "viewers", args -> VIEWERS);
-        FieldFns.register(FxAudience.class, "source", args -> SOURCE);
-        FieldFns.register(FxAudience.class, "nobody", args -> NONE);
+        FieldFns.register(FxAudience.class, "members", "the world's players; spectators excluded", args -> MEMBERS);
+        FieldFns.register(FxAudience.class, "watchers", "everyone rendering the world, spectators included", args -> WATCHERS);
+        FieldFns.register(FxAudience.class, "instance", "every player on the Minestom instance, all worlds", args -> INSTANCE);
+        FieldFns.register(FxAudience.class, "viewers", "the source's viewers, not the source itself", args -> VIEWERS);
+        FieldFns.register(FxAudience.class, "source", "the source player alone", args -> SOURCE);
+        FieldFns.register(FxAudience.class, "nobody", "no one - the identity for both()", args -> NOBODY);
+        FieldFns.register(FxAudience.class, "predicted", "viewers + a pre-1.9 source, which cannot predict it", args -> PREDICTED);
 
-        FieldFns.register(FxAudience.class, "both",
+        FieldFns.register(FxAudience.class, "both(a, b)", "everyone either side reaches",
                 args -> both(args.arity(2).of(0, FxAudience.class), args.of(1, FxAudience.class)));
-        FieldFns.register(FxAudience.class, "except",
+        FieldFns.register(FxAudience.class, "except(a, b)", "everyone in a that b does not reach",
                 args -> except(args.arity(2).of(0, FxAudience.class), args.of(1, FxAudience.class)));
-        FieldFns.register(FxAudience.class, "only",
+        FieldFns.register(FxAudience.class, "only(a, b)", "everyone both sides reach",
                 args -> only(args.arity(2).of(0, FxAudience.class), args.of(1, FxAudience.class)));
-        FieldFns.register(FxAudience.class, "tree", args -> tree(args.arity(1).of(0, FxAudience.class)));
-        FieldFns.register(FxAudience.class, "legacy", args -> legacy(args.arity(1).of(0, FxAudience.class)));
-        FieldFns.register(FxAudience.class, "at-listener", args -> atListener(args.arity(1).of(0, FxAudience.class)));
-        FieldFns.register(FxAudience.class, "within",
-                args -> within(args.dbl(0), args.size() > 1 ? args.of(1, FxAudience.class) : WATCHERS));
-
-        FieldFns.register(FxAudience.class, "shard", args -> SHARD);
-        FieldFns.register(FxAudience.class, "everywhere", args -> EVERYWHERE);
-        FieldFns.register(FxAudience.class, "predicted", args -> PREDICTED);
+        FieldFns.register(FxAudience.class, "tree(audience)", "the audience across the whole layered world family",
+                args -> tree(args.arity(1).of(0, FxAudience.class)));
+        FieldFns.register(FxAudience.class, "within(blocks, audience)", "the audience, limited to that radius",
+                args -> within(args.arity(2).dbl(0), args.of(1, FxAudience.class)));
+        FieldFns.register(FxAudience.class, "protocol-below(version, audience)", "the audience, older clients only (1.8 = 47)",
+                args -> protocolBelow(args.arity(2).integer(0), args.of(1, FxAudience.class)));
+        FieldFns.register(FxAudience.class, "at-listener(audience)", "same recipients, anchored on each so distance never fades it",
+                args -> atListener(args.arity(1).of(0, FxAudience.class)));
     }
 }

@@ -265,10 +265,12 @@ public interface MechanicsWorld extends Block.Getter, ForwardingAudience, Taggab
         MechanicsWorld root = this;
         for (MechanicsWorld up = parent(); up != null; up = up.parent()) root = up;
         java.util.List<MechanicsWorld> out = new java.util.ArrayList<>();
+        // worlds are compared by IDENTITY here (TickContext.owns does too); the set also stops a malformed link looping
+        java.util.Set<MechanicsWorld> seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         java.util.ArrayDeque<MechanicsWorld> queue = new java.util.ArrayDeque<>(java.util.List.of(root));
         while (!queue.isEmpty()) {
             MechanicsWorld world = queue.poll();
-            if (out.contains(world)) continue; // identity: a malformed link must not loop forever
+            if (!seen.add(world)) continue;
             out.add(world);
             queue.addAll(world.children());
         }
