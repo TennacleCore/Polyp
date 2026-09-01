@@ -1,6 +1,7 @@
 package io.github.term4.polyp.platform.player;
 
 import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.MechanicsProfiles;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.platform.SharedTeam;
@@ -53,9 +54,8 @@ public final class PlayerConfigApplier {
         // Reads two members of the same player's profile - resolve its scope chain once.
         MechanicsProfiles.Resolved profile = polyp.profiles().resolved(player);
         PlayerConfig cfg = profile.get(MechanicsKeys.PLAYER);
-        if (cfg != null && cfg.positionBroadcastInterval != null) {
-            op.setPositionBroadcastInterval(Math.max(1, cfg.positionBroadcastInterval));
-        }
+        Integer interval = cfg != null ? FieldValue.resolve(cfg.positionBroadcastInterval, new PlayerConfig.PlayerContext(player)) : null;
+        if (interval != null) op.setPositionBroadcastInterval(Math.max(1, interval));
         // one pass from the resolved config (all-off when no scope sets it), so a profile swap is a clean mode SWITCH -
         // the previous mode's state never sticks
         CompatConfig compat = profile.get(MechanicsKeys.COMPAT);

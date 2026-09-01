@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.blocking;
 
 import io.github.term4.polyp.codegen.CheckResolveOrder;
+import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.config.Config;
 import io.github.term4.polyp.config.FieldValue;
@@ -33,7 +34,9 @@ public final class BlockingConfigResolver {
      * domain's own resolution.
      */
     public record BlockingContext(Player defender, ItemStack item, PlayerHand hand, DamageContext damage,
-                                  @Nullable Services services) {
+                                  @Nullable Services services) implements SubjectContext {
+        @Override public @Nullable Entity subject() { return defender(); }
+
 
         public DamageType type() { return damage.snap().type(); }
 

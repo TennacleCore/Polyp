@@ -1,6 +1,8 @@
 package io.github.term4.polyp.mechanics.damage;
 
 import io.github.term4.polyp.codegen.CheckResolveOrder;
+import net.minestom.server.entity.Entity;
+import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.mechanics.damage.types.DamageTypeConfig;
@@ -15,7 +17,9 @@ public final class DamageConfigResolver {
 
     private DamageConfigResolver() {}
 
-    public record DamageContext(DamageSnapshot snap, Services services) {
+    public record DamageContext(DamageSnapshot snap, Services services) implements SubjectContext {
+        @Override public @Nullable Entity subject() { return snap().target(); }
+
         public static DamageContext of(DamageSnapshot snap, Services services) {
             return new DamageContext(snap, services);
         }

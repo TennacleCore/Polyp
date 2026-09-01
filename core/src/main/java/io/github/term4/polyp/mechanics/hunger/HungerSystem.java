@@ -1,6 +1,8 @@
 package io.github.term4.polyp.mechanics.hunger;
 
 import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.mechanics.hunger.HungerConfig.HungerContext;
+import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.ScopedSystem;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.mechanics.damage.DamageSnapshot;
@@ -85,7 +87,7 @@ public final class HungerSystem extends ScopedSystem<HungerConfig> {
 
     /** Active by default; only an explicit {@code enabled(false)} disables. */
     public boolean enabled(@Nullable Entity subject) {
-        return !Boolean.FALSE.equals(configFor(subject).enabled());
+        return !Boolean.FALSE.equals(FieldValue.resolve(configFor(subject).enabled, new HungerContext(subject)));
     }
 
     /**
@@ -111,7 +113,7 @@ public final class HungerSystem extends ScopedSystem<HungerConfig> {
         // vanilla applyExhaustion / causeFoodExhaustion: invulnerable abilities (creative, spectator) never charge
         if (player.getGameMode().invulnerable()) return;
         ExhaustionCost rule = cfg.exhaustionCost(source);
-        float global = cfg.exhaustionScale() != null ? cfg.exhaustionScale() : 1f;
+        float global = FieldValue.resolve(cfg.exhaustionScale, new HungerContext(player), 1f);
         float cost = (rule != null ? rule.cost(quantity) : quantity) * global;
         if (!(cost > 0)) return; // negated form: a NaN cost (bad rule/scale) must not poison the accumulator
         player.setTag(EXHAUSTION, exhaustion(player) + cost);
@@ -151,8 +153,9 @@ public final class HungerSystem extends ScopedSystem<HungerConfig> {
     private void foodTick(Player p, HungerConfig cfg) {
         float max = (float) p.getAttributeValue(Attribute.MAX_HEALTH);
         boolean hurt = p.getHealth() < max;
-        boolean regen = !Boolean.FALSE.equals(cfg.naturalRegen());
-        if (regen && Boolean.TRUE.equals(cfg.saturationRegen()) && p.getFoodSaturation() > 0 && hurt && p.getFood() >= 20) {
+        HungerContext ctx = new HungerContext(p);
+        boolean regen = !Boolean.FALSE.equals(FieldValue.resolve(cfg.naturalRegen, ctx));
+        if (regen && Boolean.TRUE.equals(FieldValue.resolve(cfg.saturationRegen, ctx)) && p.getFoodSaturation() > 0 && hurt && p.getFood() >= 20) {
             int t = timer(p) + 1;
             if (t >= scaled(p, SATURATION_REGEN_INTERVAL)) {
                 float spent = Math.min(p.getFoodSaturation(), SATURATION_REGEN_CAP);
@@ -161,9 +164,9 @@ public final class HungerSystem extends ScopedSystem<HungerConfig> {
                 t = 0;
             }
             p.setTag(FOOD_TIMER, t);
-        } else if (regen && hurt && p.getFood() >= (cfg.regenFoodThreshold() != null ? cfg.regenFoodThreshold() : 18)) {
+        } else if (regen && hurt && p.getFood() >= FieldValue.resolve(cfg.regenFoodThreshold, ctx, 18)) {
             int t = timer(p) + 1;
-            if (t >= scaled(p, interval(cfg))) {
+            if (t >= scaled(p, interval(cfg, p))) {
                 p.setHealth(Math.min(p.getHealth() + 1.0f, max));
                 exhaust(p, cfg, REGEN_COST, 1.0f);
                 t = 0;
@@ -171,7 +174,7 @@ public final class HungerSystem extends ScopedSystem<HungerConfig> {
             p.setTag(FOOD_TIMER, t);
         } else if (p.getFood() <= 0) {
             int t = timer(p) + 1;
-            if (t >= scaled(p, interval(cfg))) { // vanilla starves on the same cadence + timer as regen
+            if (t >= scaled(p, interval(cfg, p))) { // vanilla starves on the same cadence + timer as regen
                 starve(p);
                 t = 0;
             }
@@ -181,8 +184,8 @@ public final class HungerSystem extends ScopedSystem<HungerConfig> {
         }
     }
 
-    private static int interval(HungerConfig cfg) {
-        return cfg.regenInterval() != null ? cfg.regenInterval() : 80;
+    private static int interval(HungerConfig cfg, Player p) {
+        return FieldValue.resolve(cfg.regenInterval, new HungerContext(p), 80);
     }
 
     private int scaled(Player p, int ticks) {

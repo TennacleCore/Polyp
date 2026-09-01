@@ -181,9 +181,9 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
         assertTrue(audience.contains("no Recipients named"), audience);
     }
 
-    /** A @GenerateKnobs config: plain values, no FieldValue, and an edit keeps every other field. */
+    /** The members that were once plain values: one table kind, and an edit keeps every other field. */
     @Test
-    void plainValueConfigsArePathAddressableToo() {
+    void hungerAndVriArePathAddressable() {
         MechanicsProfile base = MechanicsProfile.builder()
                 .set(MechanicsKeys.VRI, io.github.term4.polyp.vri.VriConfig.all())
                 .set(MechanicsKeys.HUNGER, io.github.term4.polyp.mechanics.hunger.HungerConfig.builder()
@@ -197,14 +197,14 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
         MechanicsProfile out = b.build();
 
         var vri = out.get(MechanicsKeys.VRI);
-        assertFalse(vri.itemDrop, "the edited knob");
-        assertTrue(vri.itemPickup, "everything else survives the edit");
-        assertTrue(vri.blockBreakProgress);
+        assertEquals(Boolean.FALSE, vri.itemDrop.constantOrNull(), "the edited knob");
+        assertEquals(Boolean.TRUE, vri.itemPickup.constantOrNull(), "everything else survives the edit");
+        assertEquals(Boolean.TRUE, vri.blockBreakProgress.constantOrNull());
 
         var hunger = out.get(MechanicsKeys.HUNGER);
-        assertEquals(Boolean.FALSE, hunger.enabled());
-        assertEquals(Boolean.FALSE, hunger.naturalRegen());
-        assertEquals(80, hunger.regenInterval(), "an untouched knob keeps the base value");
+        assertEquals(Boolean.FALSE, hunger.enabled.constantOrNull());
+        assertEquals(Boolean.FALSE, hunger.naturalRegen.constantOrNull());
+        assertEquals(80, hunger.regenInterval.constantOrNull(), "an untouched knob keeps the base value");
     }
 
     /** "only melee and arrows hurt here" as a selection over the catalog, not eleven enabled=false lines. */

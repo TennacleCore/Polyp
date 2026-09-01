@@ -72,7 +72,7 @@ public record FieldValue<CTX, T>(Function<CTX, T> fn, @Nullable T constant) {
     }
 
     /**
-     * {@code value} when the context's {@link Subjects subject} is a player {@code who} accepts, else
+     * {@code value} when the context's {@link SubjectContext#subject() subject} is a player {@code who} accepts, else
      * {@code fallback} - the knob's inherited value. This is how a ruleset entry scoped to a team or a seat
      * lands in the ONE world profile a game owns, instead of a per-player scope that has to be pushed,
      * ordered and cleared. Inspectable: {@link #fn()} is a {@link Targeted}.
@@ -87,7 +87,7 @@ public record FieldValue<CTX, T>(Function<CTX, T> fn, @Nullable T constant) {
                                    @Nullable FieldValue<CTX, T> fallback) implements Function<CTX, T> {
         @Override
         public T apply(CTX ctx) {
-            if (Subjects.of(ctx) instanceof Player p && who.test(p)) return value.resolve(ctx);
+            if (ctx instanceof SubjectContext sc && sc.subject() instanceof Player p && who.test(p)) return value.resolve(ctx);
             return fallback != null ? fallback.resolve(ctx) : null;
         }
     }

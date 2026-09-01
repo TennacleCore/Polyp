@@ -86,7 +86,6 @@ public final class PathEdits {
         MEMBERS.put("death", new Member(MechanicsKeys.DEATH, io.github.term4.polyp.mechanics.damage.DeathConfig.class, null));
         MEMBERS.put("knockback", new Member(MechanicsKeys.KNOCKBACK, io.github.term4.polyp.mechanics.knockback.KnockbackConfig.class, null));
         MEMBERS.put("attributes", new Member(MechanicsKeys.ATTRIBUTES, io.github.term4.polyp.mechanics.attribute.AttributeConfig.class, null));
-        // plain-value configs: addressable through their @GenerateKnobs tables, runtime shape untouched
         MEMBERS.put("hunger", new Member(MechanicsKeys.HUNGER, io.github.term4.polyp.mechanics.hunger.HungerConfig.class, null));
         MEMBERS.put("vri", new Member(MechanicsKeys.VRI, io.github.term4.polyp.vri.VriConfig.class, null));
         MEMBERS.put("player", new Member(MechanicsKeys.PLAYER, io.github.term4.polyp.platform.player.PlayerConfig.class, null));
@@ -129,7 +128,7 @@ public final class PathEdits {
     /**
      * {@link #apply} for the players {@code who} accepts only: the knob becomes {@link FieldValue#targeted},
      * with what it held before as the fallback for everyone else. A later edit to the same knob replaces it,
-     * so fold targeted entries after the untargeted ones. Plain-value knobs cannot vary per player.
+     * so fold targeted entries after the untargeted ones.
      */
     public static void apply(MechanicsProfile.Builder b, @Nullable MechanicsProfile fallback, String path,
                              String rawValue, @Nullable Predicate<Player> who) {
@@ -193,16 +192,13 @@ public final class PathEdits {
     }
 
     /**
-     * The value a knob's setter wants: a constant FieldValue or the plain decoded value - or, targeted, a
-     * FieldValue that answers {@code decoded} for {@code who} and the base's own value for everyone else.
+     * The value a knob's setter wants: a constant - or, targeted, a FieldValue that answers {@code decoded}
+     * for {@code who} and the base's own value for everyone else.
      */
     private static Object value(ConfigKnob knob, @Nullable Object base, String raw, String path,
                                 @Nullable Predicate<Player> who) {
         Object decoded = decode(knob, raw, path);
-        if (who == null) return knob.fieldValued() ? FieldValue.constant(decoded) : decoded;
-        if (!knob.fieldValued() || knob.get() == null) {
-            throw new IllegalArgumentException("'" + knob.name() + "' is a plain value and cannot vary per player: " + path);
-        }
+        if (who == null) return FieldValue.constant(decoded);
         @SuppressWarnings("unchecked")
         FieldValue<Object, Object> inherited = base != null ? (FieldValue<Object, Object>) knob.get().apply(base) : null;
         return FieldValue.targeted(who, FieldValue.constant(decoded), inherited);
@@ -244,14 +240,11 @@ public final class PathEdits {
     @SuppressWarnings("unchecked")
     private static @Nullable Map<String, ConfigKnob> knobsOf(Class<?> configClass) {
         Object cached = KNOB_TABLES.computeIfAbsent(configClass, c -> {
-            for (String suffix : new String[]{"BuilderBase", "Knobs"}) {
-                try {
-                    return Class.forName(c.getName() + suffix).getField("KNOBS").get(null);
-                } catch (ReflectiveOperationException ignored) {
-                    // try the other table shape
-                }
+            try {
+                return Class.forName(c.getName() + "BuilderBase").getField("KNOBS").get(null);
+            } catch (ReflectiveOperationException e) {
+                return Map.of(); // not a @GenerateBuilder config
             }
-            return Map.of(); // neither @GenerateBuilder nor @GenerateKnobs
         });
         Map<String, ConfigKnob> map = (Map<String, ConfigKnob>) cached;
         return map.isEmpty() ? null : map;

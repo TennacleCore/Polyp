@@ -1,6 +1,8 @@
 package io.github.term4.polyp.vri;
 
 import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
+import io.github.term4.polyp.config.FieldValue;
+import io.github.term4.polyp.vri.VriConfig;
 import io.github.term4.polyp.entity.DroppedItemEntity;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.MinecraftServer;
@@ -37,7 +39,7 @@ public final class ItemDrop {
             ItemStack cursor = inventory.getCursorItem();
             if (cursor.isAir()) return;
             inventory.setCursorItem(ItemStack.AIR);
-            if (!vri.configFor(e.getPlayer()).itemDrop) {
+            if (!VriConfig.on(vri.configFor(e.getPlayer()).itemDrop, e.getPlayer())) {
                 // tossing is off, but the close may not strand the stack in the invisible cursor
                 inventory.addItemStack(cursor);
                 inventory.update();
@@ -65,7 +67,7 @@ public final class ItemDrop {
             Player player = e.getPlayer();
             Instance instance = player.getInstance();
             VriConfig cfg = vri.configFor(player);
-            if (instance == null || !cfg.itemDrop) return;
+            if (instance == null || !VriConfig.on(cfg.itemDrop, player)) return;
 
             double yaw = Math.toRadians(player.getPosition().yaw()), pitch = Math.toRadians(player.getPosition().pitch());
             var rnd = ThreadLocalRandom.current();
@@ -80,7 +82,7 @@ public final class ItemDrop {
 
             DroppedItemEntity.spawn(instance,
                     player.getPosition().add(0, player.getEyeHeight() - 0.30000001192092896, 0),
-                    new Vec(vx, vy, vz), e.getItemStack(), cfg.itemPhysics,
+                    new Vec(vx, vy, vz), e.getItemStack(), FieldValue.resolve(cfg.itemPhysics, new VriConfig.VriContext(player)),
                     PICKUP_DELAY_TICKS, ItemSpawnEvent.Cause.PLAYER_DROP, player);
         }));
     }

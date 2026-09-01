@@ -1,6 +1,8 @@
 package io.github.term4.polyp.mechanics.consumable;
 
 import io.github.term4.polyp.codegen.CheckResolveOrder;
+import net.minestom.server.entity.Entity;
+import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.util.tick.TickScaler;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.config.Config;
@@ -26,7 +28,9 @@ public final class ConsumableConfigResolver {
      * What the per-consumable {@code FieldValue}s resolve against, and what the {@link ConsumableBehavior} hooks
      * receive; {@link Services} lets a behavior reach hunger / attributes / etc.
      */
-    public record ConsumableContext(Player user, ItemStack item, PlayerHand hand, Consumable consumable, @Nullable Services services) {
+    public record ConsumableContext(Player user, ItemStack item, PlayerHand hand, Consumable consumable, @Nullable Services services) implements SubjectContext {
+        @Override public @Nullable Entity subject() { return user(); }
+
 
         /**
          * Effective per-consumable config, layered highest-first: {@code cfg}'s per-type override -&gt; its generic

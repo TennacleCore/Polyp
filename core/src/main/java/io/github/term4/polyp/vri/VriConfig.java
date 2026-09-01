@@ -1,27 +1,33 @@
 package io.github.term4.polyp.vri;
 
-import io.github.term4.polyp.codegen.GenerateKnobs;
+import io.github.term4.polyp.codegen.GenerateBuilder;
+import io.github.term4.polyp.config.FieldValue;
+import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.entity.DroppedItemEntity;
+import net.minestom.server.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 
 /** Toggles for the VRI (Vanilla Re-Implemented) behaviors, per scope via {@code MechanicsKeys.VRI}; the set grows as chests / deaths etc. land. */
-@GenerateKnobs
+@GenerateBuilder
 public final class VriConfig {
 
+    /** What a VRI knob resolves against: the player breaking, dropping, picking up or igniting. */
+    public record VriContext(@Nullable Entity subject) implements SubjectContext {}
+
     /** Default off. */
-    public final boolean blockBreakProgress;
-    /** {@code null} = off; compose custom loot with {@link BlockDrops#chain}. */
-    public final @Nullable BlockDrops.DropRule blockDrops;
-    /** {@code null} resolves {@code MechanicsKeys.ITEM_PHYSICS} from the profile (LEGACY fallback). */
-    public final @Nullable DroppedItemEntity.Model itemPhysics;
+    public final @Nullable FieldValue<VriContext, Boolean> blockBreakProgress;
+    /** Unset = off; compose custom loot with {@link BlockDrops#chain}. */
+    public final @Nullable FieldValue<VriContext, BlockDrops.DropRule> blockDrops;
+    /** Unset resolves {@code MechanicsKeys.ITEM_PHYSICS} from the profile (LEGACY fallback). */
+    public final @Nullable FieldValue<VriContext, DroppedItemEntity.Model> itemPhysics;
     /** Default off. */
-    public final boolean itemPickup;
+    public final @Nullable FieldValue<VriContext, Boolean> itemPickup;
     /** Q / drag-out. Default off. */
-    public final boolean itemDrop;
+    public final @Nullable FieldValue<VriContext, Boolean> itemDrop;
     /** Fire parity on breaks: direct-break fizz + orphaned-fire removal. Default off. */
-    public final boolean fireBreaks;
+    public final @Nullable FieldValue<VriContext, Boolean> fireBreaks;
     /** Hand ignition (flint and steel / fire charge); redstone, fire spread, dispensers and flaming projectiles are not. Default off. */
-    public final boolean tntIgnite;
+    public final @Nullable FieldValue<VriContext, Boolean> tntIgnite;
 
     private VriConfig(Builder b) {
         blockBreakProgress = b.blockBreakProgress;
@@ -33,6 +39,11 @@ public final class VriConfig {
         tntIgnite = b.tntIgnite;
     }
 
+    /** A boolean toggle for {@code actor}; unset is off. */
+    public static boolean on(@Nullable FieldValue<VriContext, Boolean> knob, @Nullable Entity actor) {
+        return Boolean.TRUE.equals(FieldValue.resolve(knob, new VriContext(actor)));
+    }
+
     public static Builder builder() { return new Builder(); }
 
     /** Everything on: {@link BlockDrops#VANILLA} drops, item physics from the profile. */
@@ -41,30 +52,21 @@ public final class VriConfig {
                 .blockDrops(BlockDrops.VANILLA).itemPickup(true).itemDrop(true).fireBreaks(true).tntIgnite(true).build();
     }
 
-    /** This config as a builder - the copy route an overlay edits one knob through. */
-    public Builder toBuilder() {
-        return builder().blockBreakProgress(blockBreakProgress).blockDrops(blockDrops).itemPhysics(itemPhysics)
-                .itemPickup(itemPickup).itemDrop(itemDrop).fireBreaks(fireBreaks).tntIgnite(tntIgnite);
+    public Builder toBuilder() { return new Builder(this); }
+
+    /** Merges this config over {@code base}. */
+    public VriConfig fromBase(VriConfig base) {
+        Builder b = new Builder();
+        b.mergeKnobs(this, base);
+        return b.build();
     }
 
-    public static final class Builder {
-        private boolean blockBreakProgress;
-        private @Nullable BlockDrops.DropRule blockDrops;
-        private @Nullable DroppedItemEntity.Model itemPhysics;
-        private boolean itemPickup;
-        private boolean itemDrop;
-        private boolean fireBreaks;
-        private boolean tntIgnite;
+    public static final class Builder extends VriConfigBuilderBase<Builder> {
+
+        @Override protected Builder self() { return this; }
 
         Builder() {}
-
-        public Builder blockBreakProgress(boolean v) { blockBreakProgress = v; return this; }
-        public Builder blockDrops(@Nullable BlockDrops.DropRule v) { blockDrops = v; return this; }
-        public Builder itemPhysics(@Nullable DroppedItemEntity.Model v) { itemPhysics = v; return this; }
-        public Builder itemPickup(boolean v) { itemPickup = v; return this; }
-        public Builder itemDrop(boolean v) { itemDrop = v; return this; }
-        public Builder fireBreaks(boolean v) { fireBreaks = v; return this; }
-        public Builder tntIgnite(boolean v) { tntIgnite = v; return this; }
+        Builder(VriConfig c) { super(c); }
 
         public VriConfig build() { return new VriConfig(this); }
     }

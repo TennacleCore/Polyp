@@ -333,7 +333,7 @@ class VriFeaturesTest extends HeadlessServerTest {
     @Test
     void aScopeOverridesTheInstallConfig() {
         var noDrops = flatInstance(MechanicsProfile.builder()
-                .set(MechanicsKeys.VRI, VriConfig.builder().blockDrops(null).build())
+                .set(MechanicsKeys.VRI, VriConfig.builder().blockDrops((BlockDrops.DropRule) null).build())
                 .build());
         FakePlayer scoped = FakePlayer.connect(noDrops, new Pos(3.5, 43, 3.5), "NoDropWorld");
         try {

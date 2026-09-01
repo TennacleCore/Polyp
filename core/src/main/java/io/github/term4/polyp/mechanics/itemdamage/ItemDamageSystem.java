@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.itemdamage;
 
 import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.MechanicsModule;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.util.BlockContact;
@@ -97,18 +98,20 @@ public final class ItemDamageSystem implements MechanicsModule {
         return polyp.profiles().resolve(item, MechanicsKeys.ITEM_DAMAGE);
     }
 
-    private static boolean on(@Nullable ItemDamageConfig cfg) {
-        return cfg != null && !Boolean.FALSE.equals(cfg.enabled());
+    private static boolean on(@Nullable ItemDamageConfig cfg, ItemEntity item) {
+        return cfg != null && !Boolean.FALSE.equals(FieldValue.resolve(cfg.enabled, ctx(item)));
     }
 
-    private static <T> T pick(@Nullable T scoped, T fallback) { return scoped != null ? scoped : fallback; }
+    private static ItemDamageConfig.ItemDamageContext ctx(ItemEntity item) {
+        return new ItemDamageConfig.ItemDamageContext(item);
+    }
 
     /** Starting health for this stack: the scope's per-item override, else its default, else vanilla 5. */
     public int maxHealth(ItemEntity item) {
         ItemDamageConfig cfg = configFor(item);
         if (cfg == null) return VANILLA_HEALTH;
         Integer perItem = cfg.health(item.getItemStack().material());
-        return perItem != null ? perItem : pick(cfg.health(), VANILLA_HEALTH);
+        return perItem != null ? perItem : FieldValue.resolve(cfg.health, ctx(item), VANILLA_HEALTH);
     }
 
     /** Remaining health, seeded from {@link #maxHealth} on first read. */
@@ -155,7 +158,7 @@ public final class ItemDamageSystem implements MechanicsModule {
      */
     public boolean hurt(ItemEntity item, Key source, float amount) {
         ItemDamageConfig cfg = configFor(item);
-        if (!on(cfg) || item.isRemoved() || immune(item, source)) return false;
+        if (!on(cfg, item) || item.isRemoved() || immune(item, source)) return false;
         Float priced = cfg.damage(source);
         float dealt = priced != null ? priced : amount;
         if (!(dealt > 0)) return false;
@@ -173,7 +176,7 @@ public final class ItemDamageSystem implements MechanicsModule {
         if (cfg != null) {
             if (cfg.vulnerable(material, source)) return false;
             if (cfg.immune(material, source)) return true;
-            if (!Boolean.FALSE.equals(cfg.itemResistance()) && resistsByComponent(item, source)) return true;
+            if (!Boolean.FALSE.equals(FieldValue.resolve(cfg.itemResistance, ctx(item))) && resistsByComponent(item, source)) return true;
         }
         return EXPLOSION.equals(source) && material == Material.NETHER_STAR;
     }
@@ -205,8 +208,8 @@ public final class ItemDamageSystem implements MechanicsModule {
         for (Entity entity : world.entities()) {
             if (!(entity instanceof ItemEntity item) || item.isRemoved() || !ctx.owns(item)) continue;
             ItemDamageConfig cfg = configFor(item);
-            if (!on(cfg)) continue;
-            if (!Boolean.FALSE.equals(cfg.voidDestroys()) && world.isInVoid(item.getPosition())) {
+            if (!on(cfg, item)) continue;
+            if (!Boolean.FALSE.equals(FieldValue.resolve(cfg.voidDestroys, ctx(item))) && world.isInVoid(item.getPosition())) {
                 item.remove(); // vanilla removes outright below the floor - never a damage source
                 continue;
             }
@@ -219,7 +222,7 @@ public final class ItemDamageSystem implements MechanicsModule {
     private boolean burnDown(ItemEntity item, ItemDamageConfig cfg) {
         int ticks = fireTicks(item);
         if (ticks <= 0) return true;
-        int interval = Math.max(1, TickScaler.duration(item, pick(cfg.burnInterval(), BURN_INTERVAL), KEY));
+        int interval = Math.max(1, TickScaler.duration(item, FieldValue.resolve(cfg.burnInterval, ctx(item), BURN_INTERVAL), KEY));
         boolean charge = ticks % interval == 0;
         int left = ticks - 1;
         item.setTag(FIRE_TICKS, left);
@@ -242,7 +245,7 @@ public final class ItemDamageSystem implements MechanicsModule {
         });
         if (hot[3]) extinguish(item); // vanilla fizz: water parks the stock
         if (hot[0]) {
-            if (!hot[3]) ignite(item, TickScaler.duration(item, pick(cfg.lavaIgniteTicks(), LAVA_IGNITE_TICKS), KEY));
+            if (!hot[3]) ignite(item, TickScaler.duration(item, FieldValue.resolve(cfg.lavaIgniteTicks, ctx(item), LAVA_IGNITE_TICKS), KEY));
             if (hurt(item, LAVA, LAVA_DAMAGE)) return;
         }
         if (hot[1]) {
@@ -250,7 +253,7 @@ public final class ItemDamageSystem implements MechanicsModule {
             if (!hot[3]) {
                 int ticks = fireTicks(item);
                 if (ticks < 0) item.setTag(FIRE_TICKS, ticks + 1);
-                if (ticks + 1 == 0) ignite(item, TickScaler.duration(item, pick(cfg.fireIgniteTicks(), FIRE_IGNITE_TICKS), KEY));
+                if (ticks + 1 == 0) ignite(item, TickScaler.duration(item, FieldValue.resolve(cfg.fireIgniteTicks, ctx(item), FIRE_IGNITE_TICKS), KEY));
             }
             if (hurt(item, FIRE, FIRE_TICK_DAMAGE)) return;
         }

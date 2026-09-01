@@ -1,6 +1,9 @@
 package io.github.term4.polyp.mechanics.itemdamage;
 
-import io.github.term4.polyp.codegen.GenerateKnobs;
+import io.github.term4.polyp.codegen.GenerateBuilder;
+import io.github.term4.polyp.config.FieldValue;
+import io.github.term4.polyp.config.SubjectContext;
+import net.minestom.server.entity.Entity;
 import net.kyori.adventure.key.Key;
 import net.minestom.server.item.Material;
 import org.jetbrains.annotations.Nullable;
@@ -19,16 +22,26 @@ import java.util.Set;
  * {@link Builder#damage per-source price}, and immunity in both directions -
  * {@link Builder#immune add} or {@link Builder#vulnerable strip} one, including the vanilla defaults.
  */
-@GenerateKnobs
+@GenerateBuilder
 public final class ItemDamageConfig {
 
-    private final @Nullable Boolean enabled;
-    private final @Nullable Integer health;
-    private final @Nullable Boolean voidDestroys;
-    private final @Nullable Boolean itemResistance;
-    private final @Nullable Integer fireIgniteTicks;
-    private final @Nullable Integer lavaIgniteTicks;
-    private final @Nullable Integer burnInterval;
+    /** What an item-damage knob resolves against: the dropped item entity. */
+    public record ItemDamageContext(@Nullable Entity subject) implements SubjectContext {}
+
+    /** Unset = active. */
+    public final @Nullable FieldValue<ItemDamageContext, Boolean> enabled;
+    /** Starting health of a dropped item (vanilla 5, both eras). */
+    public final @Nullable FieldValue<ItemDamageContext, Integer> health;
+    /** Below the world floor an item is removed outright, never damaged (vanilla {@code outOfWorld}); unset = on. */
+    public final @Nullable FieldValue<ItemDamageContext, Boolean> voidDestroys;
+    /** Honour the stack's own {@code damage_resistant} component (26.1's rule: netherite shrugs off fire); unset = on. */
+    public final @Nullable FieldValue<ItemDamageContext, Boolean> itemResistance;
+    /** Fire-ticks an item standing in flame is lit for (vanilla {@code setOnFire(8)} = 160). */
+    public final @Nullable FieldValue<ItemDamageContext, Integer> fireIgniteTicks;
+    /** Fire-ticks lava lights it for (vanilla {@code setOnFire(15)} = 300). */
+    public final @Nullable FieldValue<ItemDamageContext, Integer> lavaIgniteTicks;
+    /** Fire-ticks between lingering burn charges (vanilla {@code fireTicks % 20}). */
+    public final @Nullable FieldValue<ItemDamageContext, Integer> burnInterval;
     /** Per-item health, overriding {@link #health()}. */
     public final Map<Material, Integer> healthPerItem;
     /** Per-source damage, keyed by the {@link ItemDamageSystem} source keys; unset = the source's own amount. */
@@ -58,29 +71,8 @@ public final class ItemDamageConfig {
         return Map.copyOf(out);
     }
 
-    /** Unset = active. */
-    public @Nullable Boolean enabled() { return enabled; }
-
-    /** Starting health of a dropped item (vanilla 5, both eras). */
-    public @Nullable Integer health() { return health; }
-
     /** Starting health for {@code material}, or null = {@link #health()}. */
     public @Nullable Integer health(Material material) { return healthPerItem.get(material); }
-
-    /** Below the world floor an item is removed outright, never damaged (vanilla {@code outOfWorld}); unset = on. */
-    public @Nullable Boolean voidDestroys() { return voidDestroys; }
-
-    /** Honour the stack's own {@code damage_resistant} component (26.1's rule: netherite shrugs off fire); unset = on. */
-    public @Nullable Boolean itemResistance() { return itemResistance; }
-
-    /** Fire-ticks an item standing in flame is lit for (vanilla {@code setOnFire(8)} = 160). */
-    public @Nullable Integer fireIgniteTicks() { return fireIgniteTicks; }
-
-    /** Fire-ticks lava lights it for (vanilla {@code setOnFire(15)} = 300). */
-    public @Nullable Integer lavaIgniteTicks() { return lavaIgniteTicks; }
-
-    /** Fire-ticks between lingering burn charges (vanilla {@code fireTicks % 20}). */
-    public @Nullable Integer burnInterval() { return burnInterval; }
 
     /** Damage for {@code source}, or null = use the amount the source itself supplies. */
     public @Nullable Float damage(Key source) { return damage.get(source); }
@@ -99,14 +91,8 @@ public final class ItemDamageConfig {
 
     /** Merges this config over {@code base}; the maps overlay entry-wise. */
     public ItemDamageConfig fromBase(ItemDamageConfig base) {
-        Builder b = new Builder()
-                .enabled(enabled != null ? enabled : base.enabled)
-                .health(health != null ? health : base.health)
-                .voidDestroys(voidDestroys != null ? voidDestroys : base.voidDestroys)
-                .itemResistance(itemResistance != null ? itemResistance : base.itemResistance)
-                .fireIgniteTicks(fireIgniteTicks != null ? fireIgniteTicks : base.fireIgniteTicks)
-                .lavaIgniteTicks(lavaIgniteTicks != null ? lavaIgniteTicks : base.lavaIgniteTicks)
-                .burnInterval(burnInterval != null ? burnInterval : base.burnInterval);
+        Builder b = new Builder();
+        b.mergeKnobs(this, base);
         b.healthPerItem.putAll(base.healthPerItem);
         b.healthPerItem.putAll(healthPerItem);
         b.damage.putAll(base.damage);
@@ -121,27 +107,25 @@ public final class ItemDamageConfig {
     }
 
     public static Builder builder() { return new Builder(); }
+    public Builder toBuilder() { return new Builder(this); }
 
-    public static final class Builder {
-        private @Nullable Boolean enabled;
-        private @Nullable Integer health;
-        private @Nullable Boolean voidDestroys;
-        private @Nullable Boolean itemResistance;
-        private @Nullable Integer fireIgniteTicks;
-        private @Nullable Integer lavaIgniteTicks;
-        private @Nullable Integer burnInterval;
+    public static final class Builder extends ItemDamageConfigBuilderBase<Builder> {
+
+        @Override protected Builder self() { return this; }
+
         private final Map<Material, Integer> healthPerItem = new LinkedHashMap<>();
         private final Map<Key, Float> damage = new LinkedHashMap<>();
         private final Map<Material, Set<Key>> immune = new LinkedHashMap<>();
         private final Map<Material, Set<Key>> vulnerable = new LinkedHashMap<>();
 
-        public Builder enabled(@Nullable Boolean v) { enabled = v; return this; }
-        public Builder health(@Nullable Integer v) { health = v; return this; }
-        public Builder voidDestroys(@Nullable Boolean v) { voidDestroys = v; return this; }
-        public Builder itemResistance(@Nullable Boolean v) { itemResistance = v; return this; }
-        public Builder fireIgniteTicks(@Nullable Integer v) { fireIgniteTicks = v; return this; }
-        public Builder lavaIgniteTicks(@Nullable Integer v) { lavaIgniteTicks = v; return this; }
-        public Builder burnInterval(@Nullable Integer v) { burnInterval = v; return this; }
+        Builder() {}
+        Builder(ItemDamageConfig c) {
+            super(c);
+            healthPerItem.putAll(c.healthPerItem);
+            damage.putAll(c.damage);
+            merge(immune, c.immune);
+            merge(vulnerable, c.vulnerable);
+        }
 
         /** Health for one item; {@code null} drops the override back to the global {@link #health(Integer)}. */
         public Builder health(Material material, @Nullable Integer v) {

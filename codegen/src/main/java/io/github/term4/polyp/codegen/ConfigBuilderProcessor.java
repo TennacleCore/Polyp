@@ -22,8 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 /** Emits {@code <Config>BuilderBase} for each {@link GenerateBuilder} config; see the annotation for the contract. */
-@SupportedAnnotationTypes({"io.github.term4.polyp.codegen.GenerateBuilder", "io.github.term4.polyp.codegen.GenerateKnobs",
-        "io.github.term4.polyp.codegen.CheckResolveOrder"})
+@SupportedAnnotationTypes({"io.github.term4.polyp.codegen.GenerateBuilder", "io.github.term4.polyp.codegen.CheckResolveOrder"})
 @SupportedSourceVersion(SourceVersion.RELEASE_25)
 public final class ConfigBuilderProcessor extends AbstractProcessor {
 
@@ -56,9 +55,6 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment round) {
-        for (Element e : round.getElementsAnnotatedWith(GenerateKnobs.class)) {
-            if (e instanceof TypeElement config) generateKnobsOnly(config);
-        }
         for (Element e : round.getElementsAnnotatedWith(GenerateBuilder.class)) {
             if (e instanceof TypeElement config) {
                 generate(config);
@@ -157,83 +153,6 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
         }
     }
 
-    /** Type-use annotations ride the mirror's toString ({@code java.lang.@Nullable Boolean}); strip them. */
-    private static String clean(String type) {
-        return type.replaceAll("@[A-Za-z0-9_.]+ *", "").trim();
-    }
-
-    /** Boxed name for a primitive, so the table's value type is always a class literal. */
-    private static String boxed(String type) {
-        return switch (type) {
-            case "boolean" -> "Boolean";
-            case "int" -> "Integer";
-            case "long" -> "Long";
-            case "double" -> "Double";
-            case "float" -> "Float";
-            default -> type;
-        };
-    }
-
-    /**
-     * {@link GenerateKnobs}: a KNOBS table only - no builder, no field rewriting. A field is addressable when
-     * the handwritten Builder has a setter of the same name; anything else (maps, computed members) is skipped.
-     */
-    private void generateKnobsOnly(TypeElement config) {
-        String pkg = processingEnv.getElementUtils().getPackageOf(config).getQualifiedName().toString();
-        String cfg = config.getSimpleName().toString();
-
-        // the Builder's single-arg setters, by name -> parameter type
-        java.util.Map<String, String> setters = new java.util.LinkedHashMap<>();
-        for (Element member : config.getEnclosedElements()) {
-            if (member.getKind() != ElementKind.CLASS || !member.getSimpleName().contentEquals("Builder")) continue;
-            for (Element m : member.getEnclosedElements()) {
-                if (m.getKind() != ElementKind.METHOD || !(m instanceof ExecutableElement method)) continue;
-                if (method.getParameters().size() != 1) continue;
-                setters.put(method.getSimpleName().toString(), clean(method.getParameters().get(0).asType().toString()));
-            }
-        }
-
-        List<Knob> knobs = new ArrayList<>();
-        for (Element member : config.getEnclosedElements()) {
-            if (member.getKind() != ElementKind.FIELD) continue;
-            String name = member.getSimpleName().toString();
-            String setterType = setters.get(name);
-            if (setterType == null) continue; // no same-named setter: code-only
-            String boxedType = boxed(setterType);
-            if (boxedType.contains("<") || boxedType.contains("[")) continue; // generic / array: no class literal
-            knobs.add(new Knob(boxedType, name));
-        }
-        if (knobs.isEmpty()) {
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
-                    "no addressable fields (a field needs a same-named Builder setter)", config);
-            return;
-        }
-
-        StringBuilder s = new StringBuilder();
-        s.append("package ").append(pkg).append(";\n\n")
-         .append("/** Generated knob table for {@link ").append(cfg).append("} (").append(GenerateKnobs.class.getSimpleName()).append(") - do not edit. */\n")
-         .append("@SuppressWarnings({\"unchecked\", \"rawtypes\"})\n")
-         .append("public final class ").append(cfg).append("Knobs {\n\n")
-         .append("    private ").append(cfg).append("Knobs() {}\n\n")
-         .append("    /** Name -> knob, for {@link io.github.term4.polyp.config.PathEdits}; values are PLAIN, not FieldValues. */\n")
-         .append("    public static final java.util.Map<String, io.github.term4.polyp.config.ConfigKnob> KNOBS;\n")
-         .append("    static {\n")
-         .append("        java.util.Map<String, io.github.term4.polyp.config.ConfigKnob> m = new java.util.LinkedHashMap<>();\n");
-        for (Knob k : knobs) {
-            s.append("        m.put(\"").append(k.name).append("\", new io.github.term4.polyp.config.ConfigKnob(\"")
-             .append(k.name).append("\", ").append(k.type).append(".class, false, null")
-             .append(", (b, v) -> ((").append(cfg).append(".Builder) b).").append(k.name).append("((").append(k.type).append(") v)));\n");
-        }
-        s.append("        KNOBS = java.util.Map.copyOf(m);\n    }\n}\n");
-
-        try {
-            Writer w = processingEnv.getFiler().createSourceFile(pkg + "." + cfg + "Knobs", config).openWriter();
-            try (w) { w.write(s.toString()); }
-        } catch (IOException ex) {
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "knob codegen failed: " + ex, config);
-        }
-    }
-
     private void generate(TypeElement config) {
         String pkg = processingEnv.getElementUtils().getPackageOf(config).getQualifiedName().toString();
         String cfg = config.getSimpleName().toString();
@@ -292,7 +211,7 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
             // generic value types have no class literal - registered as code-only (null valueType)
             String literal = k.type.contains("<") ? "null" : k.type + ".class";
             s.append("        m.put(\"").append(k.name).append("\", new io.github.term4.polyp.config.ConfigKnob(\"")
-             .append(k.name).append("\", ").append(literal).append(", true")
+             .append(k.name).append("\", ").append(literal)
              .append(", c -> ((").append(cfg).append(") c).").append(k.name)
              .append(", (b, v) -> ((").append(base).append(") b).").append(k.name).append("((FieldValue) v)));\n");
         }

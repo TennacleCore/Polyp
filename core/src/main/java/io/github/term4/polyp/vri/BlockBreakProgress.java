@@ -1,6 +1,7 @@
 package io.github.term4.polyp.vri;
 
 import io.github.term4.polyp.world.MechanicsWorld;
+import io.github.term4.polyp.vri.VriConfig;
 import io.github.term4.polyp.world.WorldPolicy;
 import io.github.term4.polyp.util.tick.TickContext;
 import io.github.term4.polyp.util.tick.TickPhase;
@@ -48,7 +49,7 @@ public final class BlockBreakProgress {
     public static void install(EventNode<@NotNull Event> node, Vri vri) {
         var feature = new BlockBreakProgress();
         node.addListener(PlayerStartDiggingEvent.class, e -> {
-            if (vri.configFor(e.getPlayer()).blockBreakProgress) feature.start(e.getPlayer(), e.getInstance(), e.getBlockPosition());
+            if (VriConfig.on(vri.configFor(e.getPlayer()).blockBreakProgress, e.getPlayer())) feature.start(e.getPlayer(), e.getInstance(), e.getBlockPosition());
         });
         node.addListener(PlayerCancelDiggingEvent.class, e -> feature.clear(e.getPlayer()));
         node.addListener(PlayerFinishDiggingEvent.class, e -> feature.clear(e.getPlayer()));

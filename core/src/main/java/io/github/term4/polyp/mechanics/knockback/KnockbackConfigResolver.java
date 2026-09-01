@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.knockback;
 
 import io.github.term4.polyp.codegen.CheckResolveOrder;
+import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.config.FieldValue;
@@ -24,7 +25,9 @@ public final class KnockbackConfigResolver {
     private KnockbackConfigResolver() {}
 
     public record KnockbackContext(KnockbackSnapshot snap, Services services,
-                                   @Nullable VelocityRule resolvedVelocity) {
+                                   @Nullable VelocityRule resolvedVelocity) implements SubjectContext {
+        @Override public @Nullable Entity subject() { return snap().target(); }
+
         public static KnockbackContext of(KnockbackSnapshot snap, Services services) {
             return new KnockbackContext(snap, services, null);
         }

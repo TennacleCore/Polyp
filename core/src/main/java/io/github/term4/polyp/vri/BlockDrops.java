@@ -1,6 +1,8 @@
 package io.github.term4.polyp.vri;
 
 import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
+import io.github.term4.polyp.config.FieldValue;
+import io.github.term4.polyp.vri.VriConfig;
 import io.github.term4.polyp.entity.DroppedItemEntity;
 import io.github.term4.polyp.item.Enchants;
 import net.kyori.adventure.key.Key;
@@ -78,7 +80,9 @@ public final class BlockDrops {
             GameMode mode = e.getPlayer().getGameMode();
             if (mode == GameMode.CREATIVE || mode == GameMode.SPECTATOR) return;
             VriConfig cfg = vri.configFor(e.getPlayer());
-            if (cfg.blockDrops == null) return;
+            VriConfig.VriContext scope = new VriConfig.VriContext(e.getPlayer());
+            DropRule rule = FieldValue.resolve(cfg.blockDrops, scope);
+            if (rule == null) return;
 
             ItemStack tool = e.getPlayer().getItemInMainHand();
             Tool component = tool.get(DataComponents.TOOL);
@@ -87,7 +91,7 @@ public final class BlockDrops {
             DropContext ctx = new DropContext(e.getPlayer(), e.getBlock(), tool,
                     Enchants.level(tool, FORTUNE), Enchants.level(tool, SILK_TOUCH) > 0, correct);
 
-            List<ItemStack> drops = cfg.blockDrops.drops(ctx);
+            List<ItemStack> drops = rule.drops(ctx);
             if (drops == null) return;
             var rnd = ThreadLocalRandom.current();
             for (ItemStack stack : drops) {
@@ -97,7 +101,7 @@ public final class BlockDrops {
                                 e.getBlockPosition().y() + rnd.nextDouble() * 0.5 + 0.25,
                                 e.getBlockPosition().z() + rnd.nextDouble() * 0.5 + 0.25),
                         new Vec(rnd.nextDouble() * 0.2 - 0.1, 0.2, rnd.nextDouble() * 0.2 - 0.1),
-                        stack, cfg.itemPhysics, PICKUP_DELAY_TICKS, ItemSpawnEvent.Cause.BLOCK_DROP, e.getPlayer());
+                        stack, FieldValue.resolve(cfg.itemPhysics, scope), PICKUP_DELAY_TICKS, ItemSpawnEvent.Cause.BLOCK_DROP, e.getPlayer());
             }
         }));
     }

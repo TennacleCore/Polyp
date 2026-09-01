@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.explosion;
 
 import io.github.term4.polyp.codegen.CheckResolveOrder;
+import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.api.event.explosion.TntPrimeEvent;
 import io.github.term4.polyp.config.FieldValue;
@@ -15,7 +16,9 @@ public final class TntConfigResolver {
 
     /** One prime's inputs; {@code igniter} null for a sourceless prime. */
     public record TntContext(@Nullable Entity igniter, MechanicsWorld world, TntPrimeEvent.Cause cause,
-                             Services services) {}
+                             Services services) implements SubjectContext {
+        @Override public @Nullable Entity subject() { return igniter(); }
+}
 
     private TntConfigResolver() {}
 

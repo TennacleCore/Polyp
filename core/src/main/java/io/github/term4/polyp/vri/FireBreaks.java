@@ -1,6 +1,7 @@
 package io.github.term4.polyp.vri;
 
 import io.github.term4.polyp.world.FireSupport;
+import io.github.term4.polyp.vri.VriConfig;
 import io.github.term4.polyp.world.MechanicsWorld;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
@@ -19,7 +20,7 @@ final class FireBreaks {
 
     static void install(EventNode<@NotNull Event> node, Vri vri) {
         node.addListener(PlayerBlockBreakEvent.class, e -> {
-            if (e.isCancelled() || !vri.configFor(e.getPlayer()).fireBreaks) return;
+            if (e.isCancelled() || !VriConfig.on(vri.configFor(e.getPlayer()).fireBreaks, e.getPlayer())) return;
             MechanicsWorld world = MechanicsWorld.of(e.getPlayer());
             if (FireSupport.isFire(e.getBlock())) {
                 world.broadcast(new WorldEventPacket(FireSupport.FIZZ, e.getBlockPosition(), 0, false));

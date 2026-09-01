@@ -1,5 +1,7 @@
 package io.github.term4.polyp.mechanics.attribute;
 import io.github.term4.polyp.codegen.CheckResolveOrder;
+import net.minestom.server.entity.Entity;
+import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.mechanics.attribute.source.Source;
 
 import io.github.term4.polyp.Services;
@@ -26,7 +28,9 @@ public final class AttributeConfigResolver {
      * {@link AttributeSystem}; modifiers pass {@link AttributeConfig#tuningFor tuning} before they fold.
      */
     public record AttributeContext(LivingEntity entity, @Nullable ItemStack item, AttributeConfig config, Services services,
-                                   Map<FactKey<?>, Object> facts) {
+                                   Map<FactKey<?>, Object> facts) implements SubjectContext {
+        @Override public @Nullable Entity subject() { return entity(); }
+
 
         public static AttributeContext of(LivingEntity entity, @Nullable ItemStack item, AttributeConfig config, Services services) {
             return new AttributeContext(entity, item, config, services, Map.of());

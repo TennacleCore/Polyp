@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.projectile;
 
 import io.github.term4.polyp.codegen.CheckResolveOrder;
+import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.config.Config;
 import io.github.term4.polyp.config.FieldValue;
@@ -30,7 +31,9 @@ public final class ProjectileConfigResolver {
      * {@link #atHit} adds the impact fields ({@link #target}, {@link #throwOrigin}, {@link #hitPos}).
      */
     public record ProjectileContext(ProjectileSnapshot snap, @Nullable Services services,
-                                    @Nullable Entity target, @Nullable Pos throwOrigin, @Nullable Point hitPos) {
+                                    @Nullable Entity target, @Nullable Pos throwOrigin, @Nullable Point hitPos) implements SubjectContext {
+        @Override public @Nullable Entity subject() { return snap().shooter(); }
+
         public static ProjectileContext of(ProjectileSnapshot snap, @Nullable Services services) {
             return new ProjectileContext(snap, services, null, null, null);
         }

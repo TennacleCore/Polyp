@@ -1,6 +1,7 @@
 package io.github.term4.polyp.config;
 
 import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.mechanics.hunger.HungerConfig;
 import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.mechanics.damage.DamageConfigResolver.DamageContext;
 import io.github.term4.polyp.mechanics.damage.DamageSnapshot;
@@ -20,8 +21,6 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Per-player variation is a VALUE inside one world profile, not a player scope: a team-targeted entry becomes
@@ -86,11 +85,22 @@ class TargetedKnobsTest extends HeadlessServerTest {
         }
     }
 
+    /** "Red has hunger, blue does not" is a targeted knob too - every member carries a subject. */
     @Test
-    void aPlainValueKnobCannotVaryPerPlayer() {
-        MechanicsProfile.Builder b = MechanicsProfile.builder();
-        String reason = assertThrows(IllegalArgumentException.class,
-                () -> PathEdits.apply(b, null, "hunger/enabled", "false", p -> true)).getMessage();
-        assertTrue(reason.contains("cannot vary per player"), reason);
+    void hungerVariesPerTeamToo() {
+        FakePlayer red = FakePlayer.connect(instance, new Pos(4.5, 65, 0.5), "HunRed");
+        FakePlayer blue = FakePlayer.connect(instance, new Pos(5.5, 65, 0.5), "HunBlue");
+        try {
+            MechanicsProfile base = MechanicsProfile.builder()
+                    .set(MechanicsKeys.HUNGER, HungerConfig.builder().enabled(true).build()).build();
+            MechanicsProfile.Builder b = MechanicsProfile.builder();
+            PathEdits.apply(b, base, "hunger/enabled", "false", p -> p == blue.player);
+            HungerConfig hunger = b.build().get(MechanicsKeys.HUNGER);
+            assertEquals(Boolean.TRUE, hunger.enabled.resolve(new HungerConfig.HungerContext(red.player)));
+            assertEquals(Boolean.FALSE, hunger.enabled.resolve(new HungerConfig.HungerContext(blue.player)));
+        } finally {
+            red.player.remove();
+            blue.player.remove();
+        }
     }
 }

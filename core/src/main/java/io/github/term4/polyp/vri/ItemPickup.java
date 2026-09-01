@@ -1,6 +1,7 @@
 package io.github.term4.polyp.vri;
 
 import io.github.term4.polyp.Polyp;
+import io.github.term4.polyp.vri.VriConfig;
 import io.github.term4.polyp.fx.FxContext;
 import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.world.WorldPolicy;
@@ -22,7 +23,7 @@ public final class ItemPickup {
     public static void install(EventNode<@NotNull Event> node, Vri vri) {
         node.addListener(PickupItemEvent.class, e -> {
             if (!(e.getLivingEntity() instanceof Player player)) return;
-            if (!vri.configFor(player).itemPickup) return;
+            if (!VriConfig.on(vri.configFor(player).itemPickup, player)) return;
             // vanilla gates the collision sweep on health > 0 && !spectator (1.8 EntityPlayer.onUpdate); Minestom's scan doesn't
             if (player.isDead() || player.getGameMode() == GameMode.SPECTATOR) {
                 e.setCancelled(true);

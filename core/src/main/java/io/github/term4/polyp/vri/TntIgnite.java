@@ -1,6 +1,7 @@
 package io.github.term4.polyp.vri;
 
 import io.github.term4.polyp.util.HeldItems;
+import io.github.term4.polyp.vri.VriConfig;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.api.event.explosion.TntPrimeEvent;
 import io.github.term4.polyp.entity.PrimedTnt;
@@ -32,7 +33,7 @@ final class TntIgnite {
     private static void onInteract(PlayerBlockInteractEvent e, Vri system) {
         if (!e.getBlock().compare(Block.TNT)) return;
         Player p = e.getPlayer();
-        if (!system.configFor(p).tntIgnite) return;
+        if (!VriConfig.on(system.configFor(p).tntIgnite, p)) return;
         ItemStack held = p.getItemInHand(e.getHand());
         boolean flintAndSteel = held.material() == Material.FLINT_AND_STEEL;
         if (!flintAndSteel && held.material() != Material.FIRE_CHARGE) return;

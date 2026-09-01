@@ -1,19 +1,24 @@
 package io.github.term4.polyp.platform.player;
 
-import io.github.term4.polyp.codegen.GenerateKnobs;
+import io.github.term4.polyp.codegen.GenerateBuilder;
+import io.github.term4.polyp.config.FieldValue;
+import io.github.term4.polyp.config.SubjectContext;
+import net.minestom.server.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 
 /**
  * Immutable player platform config (per-player server behavior, not combat mechanics). Scoped via
  * {@code MechanicsProfile.player} and applied at spawn (join / instance change) by {@link PlayerConfigApplier}.
- * Plain values only - no {@code FieldValue}/subconfig machinery; these are rarely-changing platform knobs, not
- * per-hit values. Unset ({@code null}) fields are left unmanaged.
+ * Unset fields are left unmanaged.
  */
-@GenerateKnobs
+@GenerateBuilder
 public final class PlayerConfig {
 
+    /** What a player platform knob resolves against: the player it is applied to. */
+    public record PlayerContext(@Nullable Entity subject) implements SubjectContext {}
+
     /** Position broadcast interval in ticks (1 = every tick, the Minestom default). */
-    public final @Nullable Integer positionBroadcastInterval;
+    public final @Nullable FieldValue<PlayerContext, Integer> positionBroadcastInterval;
 
     private PlayerConfig(Builder b) {
         positionBroadcastInterval = b.positionBroadcastInterval;
@@ -24,16 +29,12 @@ public final class PlayerConfig {
     public static Builder builder() { return builder(null); }
     public static Builder builder(@Nullable PlayerConfig base) { return base != null ? new Builder(base) : new Builder(); }
 
-    public static final class Builder {
-        private @Nullable Integer positionBroadcastInterval;
+    public static final class Builder extends PlayerConfigBuilderBase<Builder> {
+
+        @Override protected Builder self() { return this; }
 
         Builder() {}
-
-        Builder(PlayerConfig c) {
-            positionBroadcastInterval = c.positionBroadcastInterval;
-        }
-
-        public Builder positionBroadcastInterval(@Nullable Integer v) { positionBroadcastInterval = v; return this; }
+        Builder(PlayerConfig c) { super(c); }
 
         public PlayerConfig build() { return new PlayerConfig(this); }
     }

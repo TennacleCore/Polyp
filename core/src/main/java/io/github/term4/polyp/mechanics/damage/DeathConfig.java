@@ -1,6 +1,8 @@
 package io.github.term4.polyp.mechanics.damage;
 
 import io.github.term4.polyp.codegen.GenerateBuilder;
+import net.minestom.server.entity.Entity;
+import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.config.Config;
 import io.github.term4.polyp.config.FieldValue;
 import net.minestom.server.entity.LivingEntity;
@@ -16,7 +18,9 @@ import java.util.function.Function;
 @GenerateBuilder
 public final class DeathConfig extends Config<DeathConfig.DeathContext, DeathConfig> {
 
-    public record DeathContext(LivingEntity victim) {}
+    public record DeathContext(LivingEntity victim) implements SubjectContext {
+        @Override public @Nullable Entity subject() { return victim(); }
+}
 
     public final @Nullable FieldValue<DeathContext, Boolean> clearEffects;
     public final @Nullable FieldValue<DeathContext, Boolean> resetMechanicsState;

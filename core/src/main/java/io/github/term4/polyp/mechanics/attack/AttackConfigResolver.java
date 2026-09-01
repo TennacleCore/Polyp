@@ -1,6 +1,8 @@
 package io.github.term4.polyp.mechanics.attack;
 
 import io.github.term4.polyp.codegen.CheckResolveOrder;
+import net.minestom.server.entity.Entity;
+import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.presets.vanilla18.Attack;
 import io.github.term4.polyp.api.event.attack.AttackEvent;
@@ -14,7 +16,9 @@ public final class AttackConfigResolver {
 
     private AttackConfigResolver() {}
 
-    public record AttackContext(AttackSnapshot snap, Services services) {
+    public record AttackContext(AttackSnapshot snap, Services services) implements SubjectContext {
+        @Override public @Nullable Entity subject() { return snap().attacker(); }
+
         public static AttackContext of(AttackSnapshot snap, Services services) {
             return new AttackContext(snap, services);
         }

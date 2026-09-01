@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.explosion;
 
 import io.github.term4.polyp.codegen.CheckResolveOrder;
+import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.mechanics.attribute.defense.Bypass;
@@ -22,7 +23,9 @@ public final class ExplosionConfigResolver {
 
     /** Resolution context for one explosion (not per-victim: power/exposure falloff are computed by the system per entity). */
     public record ExplosionContext(Instance instance, Point center, @Nullable Entity source, Services services,
-                                   @Nullable Double power) {
+                                   @Nullable Double power) implements SubjectContext {
+        @Override public @Nullable Entity subject() { return source(); }
+
         /** Power-less: only for calls that derive the radius FROM the config being resolved. */
         public static ExplosionContext of(Instance instance, Point center, @Nullable Entity source, Services services) {
             return of(instance, center, source, services, null);
