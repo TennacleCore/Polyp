@@ -3,6 +3,7 @@ package io.github.term4.polyp.mechanics.damage;
 import io.github.term4.polyp.codegen.GenerateBuilder;
 import io.github.term4.polyp.config.Config;
 import io.github.term4.polyp.config.FieldValue;
+import io.github.term4.polyp.config.KeySet;
 import io.github.term4.polyp.mechanics.damage.DamageConfigResolver.DamageContext;
 import io.github.term4.polyp.mechanics.damage.types.DamageTypeConfig;
 import io.github.term4.polyp.mechanics.knockback.KnockbackConfig;
@@ -20,6 +21,12 @@ import java.util.function.Function;
 public final class DamageConfig extends Config<DamageContext, DamageConfig> {
 
     public final FieldValue<DamageContext, Integer> invulTicks;
+    /**
+     * Which damage types this scope admits ({@link KeySet}); default every registered type. A type the set
+     * denies is inert here regardless of its own {@code enabled} - the way a mode says "only melee and arrows
+     * hurt" without restating one switch per type.
+     */
+    public final FieldValue<DamageContext, KeySet> enabledTypes;
     public final FieldValue<DamageContext, Boolean> enableOverdamage;
     public final FieldValue<DamageContext, Boolean> silent;
     public final FieldValue<DamageContext, Boolean> overdamageSilent;
@@ -49,6 +56,7 @@ public final class DamageConfig extends Config<DamageContext, DamageConfig> {
         overdamageSilent = b.overdamageSilent;
         syncHurtVelocity = b.syncHurtVelocity;
         hurtKnockback = b.hurtKnockback;
+        enabledTypes = b.enabledTypes;
         typeConfigs = Map.copyOf(b.typeConfigs);
         customComponents = b.customComponents;
     }

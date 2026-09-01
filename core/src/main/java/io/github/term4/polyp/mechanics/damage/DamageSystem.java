@@ -16,6 +16,8 @@ import io.github.term4.polyp.api.event.damage.DamageEvent;
 import io.github.term4.polyp.api.event.damage.FatalDamageEvent;
 import io.github.term4.polyp.api.event.damage.PreDamageEvent;
 import io.github.term4.polyp.api.event.damage.DamageAppliedEvent;
+import io.github.term4.polyp.config.FieldValue;
+import io.github.term4.polyp.config.KeySet;
 import io.github.term4.polyp.mechanics.damage.DamageCalculator.DamageResult;
 import io.github.term4.polyp.mechanics.damage.DamageConfigResolver.DamageContext;
 import io.github.term4.polyp.mechanics.damage.DamageConfigResolver.ResolvedDamageConfig;
@@ -223,8 +225,10 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         DamageType type = finalSnap.type();
         DamageContext typeCtx = contextFor(finalSnap);
         DamageTypeConfig typeCfg = typeCtx.typeConfig();
-        // per-scope kill switch; read off the final snap so a listener can swap in an enabled config
-        if (!typeCfg.enabled(typeCtx)) return DamageOutcome.BLOCKED;
+        // per-scope kill switch; read off the final snap so a listener can swap in an enabled config.
+        // the scope's type SELECTION gates first: a denied type is inert whatever its own switch says
+        KeySet admitted = FieldValue.resolve(effective.enabledTypes, typeCtx, KeySet.ALL);
+        if (!admitted.admits(type.key()) || !typeCfg.enabled(typeCtx)) return DamageOutcome.BLOCKED;
         amount = event.amount();
         boolean bypassImmune = event.bypassImmune() || typeCfg.bypassImmune(typeCtx);
         boolean bypassInvul = event.bypassInvul() || typeCfg.bypassInvul(typeCtx);

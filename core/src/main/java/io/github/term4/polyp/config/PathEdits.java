@@ -53,6 +53,8 @@ public final class PathEdits {
     static {
         // the shipped behaviour vocabularies, registered where the path layer first needs them
         io.github.term4.polyp.mechanics.explosion.DamageModel.registerFactories();
+        KeySet.registerFactories();
+        io.github.term4.polyp.mechanics.consumable.ConsumableBehavior.registerFactories();
         io.github.term4.polyp.fx.FxEffect.registerFactories();
 
         MEMBERS.put("projectiles", new Member(MechanicsKeys.PROJECTILES, ProjectileConfig.class, new TypedFamily(

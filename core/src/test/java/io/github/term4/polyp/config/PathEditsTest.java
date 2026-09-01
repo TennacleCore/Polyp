@@ -205,6 +205,40 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
         assertEquals(80, hunger.regenInterval(), "an untouched knob keeps the base value");
     }
 
+    /** "only melee and arrows hurt here" as a selection over the catalog, not eleven enabled=false lines. */
+    @Test
+    void damageTypesAreSelectedNotRestated() {
+        MechanicsProfile.Builder b = MechanicsProfile.builder();
+        PathEdits.apply(b, base(), "damage/enabledTypes", "only(minecraft:player_attack, minecraft:thrown)");
+        var types = b.build().get(MechanicsKeys.DAMAGE).enabledTypes.constantOrNull();
+        assertNotNull(types);
+        assertTrue(types.admits(io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage.KEY));
+        assertTrue(types.admits(io.github.term4.polyp.mechanics.damage.types.projectile.ProjectileDamage.KEY));
+        assertFalse(types.admits(net.kyori.adventure.key.Key.key("minecraft:fall")));
+
+        MechanicsProfile.Builder allBut = MechanicsProfile.builder();
+        PathEdits.apply(allBut, base(), "damage/enabledTypes", "except(minecraft:fall)");
+        var kept = allBut.build().get(MechanicsKeys.DAMAGE).enabledTypes.constantOrNull();
+        assertFalse(kept.admits(net.kyori.adventure.key.Key.key("minecraft:fall")));
+        assertTrue(kept.admits(io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage.KEY));
+    }
+
+    /** The apple keeps its eat time and gate; only what it dishes out changes. */
+    @Test
+    void aConsumablesPayloadIsData() {
+        MechanicsProfile.Builder b = MechanicsProfile.builder();
+        PathEdits.apply(b, MechanicsProfile.builder()
+                        .set(MechanicsKeys.CONSUMABLES, io.github.term4.polyp.presets.vanilla18.Consumables.config())
+                        .build(),
+                "consumables/minecraft:golden_apple/behavior",
+                "payload(heal(0), if-absent(minecraft:absorption, effect(minecraft:absorption, 1, 1200)))");
+        var apple = b.build().get(MechanicsKeys.CONSUMABLES)
+                .typeConfig(net.kyori.adventure.key.Key.key("minecraft:golden_apple"));
+        assertNotNull(apple);
+        assertNotNull(apple.behavior.constantOrNull(), "the payload built");
+        assertNotNull(apple.canConsume, "the preset's 1.8 edibility gate rides along");
+    }
+
     @Test
     void everythingInvalidThrowsWithTheReason() {
         MechanicsProfile.Builder b = MechanicsProfile.builder();
