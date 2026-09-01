@@ -124,27 +124,23 @@ public interface FxAudience {
         });
     }
 
-    /**
-     * {@code base} narrowed to LEGACY clients, by polyp's own {@code clientInfo().isLegacy} - fx those clients
-     * need because they do not predict it locally. In code only: nothing has wanted version-filtered fx from
-     * data, and registering it is one line if that changes.
-     */
-    static @NotNull FxAudience legacy(@NotNull FxAudience base) {
-        return (ctx, to) -> {
-            var polyp = io.github.term4.polyp.Polyp.getInstance();
-            var info = polyp.isInitialized() ? polyp.clientInfo() : null;
-            if (info == null) return;
-            base.each(ctx, (player, at) -> { if (info.isLegacy(player)) to.accept(player, at); });
-        };
-    }
-
     /** {@code base} re-anchored on each recipient, so nothing attenuates with distance. */
     static @NotNull FxAudience atListener(@NotNull FxAudience base) {
         return (ctx, to) -> base.each(ctx, (player, at) -> to.accept(player, player.getPosition()));
     }
 
-    /** The one surviving alias: {@code both(VIEWERS, legacy(SOURCE))} - 1.8's local sound sinks are stubs. */
-    FxAudience PREDICTED = both(VIEWERS, legacy(SOURCE));
+    /**
+     * {@link #VIEWERS} plus the source when its client will NOT produce the effect itself: modern clients
+     * predict their own world sounds locally, while 1.8's local sound sinks are stubs, so its doer hears
+     * nothing unless we echo it. The one audience defined by client CAPABILITY rather than by scope - if
+     * more of these turn up they belong in the compat layer, not in this algebra.
+     */
+    FxAudience PREDICTED = (ctx, to) -> {
+        VIEWERS.each(ctx, to);
+        var polyp = io.github.term4.polyp.Polyp.getInstance();
+        var info = polyp.isInitialized() ? polyp.clientInfo() : null;
+        if (info != null && ctx.source() instanceof Player p && info.isLegacy(p)) to.accept(p, ctx.position());
+    };
 
     private static Set<Player> identitySet() {
         return Collections.newSetFromMap(new IdentityHashMap<>());
