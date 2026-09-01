@@ -1,5 +1,6 @@
 package io.github.term4.polyp.mechanics.itemdamage;
 
+import io.github.term4.polyp.codegen.GenerateKnobs;
 import net.kyori.adventure.key.Key;
 import net.minestom.server.item.Material;
 import org.jetbrains.annotations.Nullable;
@@ -18,6 +19,7 @@ import java.util.Set;
  * {@link Builder#damage per-source price}, and immunity in both directions -
  * {@link Builder#immune add} or {@link Builder#vulnerable strip} one, including the vanilla defaults.
  */
+@GenerateKnobs
 public final class ItemDamageConfig {
 
     private final @Nullable Boolean enabled;

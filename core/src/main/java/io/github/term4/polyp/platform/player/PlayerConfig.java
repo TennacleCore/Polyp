@@ -1,5 +1,6 @@
 package io.github.term4.polyp.platform.player;
 
+import io.github.term4.polyp.codegen.GenerateKnobs;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -8,6 +9,7 @@ import org.jetbrains.annotations.Nullable;
  * Plain values only - no {@code FieldValue}/subconfig machinery; these are rarely-changing platform knobs, not
  * per-hit values. Unset ({@code null}) fields are left unmanaged.
  */
+@GenerateKnobs
 public final class PlayerConfig {
 
     /** Position broadcast interval in ticks (1 = every tick, the Minestom default). */

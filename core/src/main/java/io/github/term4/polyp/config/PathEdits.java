@@ -81,6 +81,12 @@ public final class PathEdits {
         MEMBERS.put("tnt", new Member(MechanicsKeys.TNT, io.github.term4.polyp.mechanics.explosion.TntConfig.class, null));
         MEMBERS.put("death", new Member(MechanicsKeys.DEATH, io.github.term4.polyp.mechanics.damage.DeathConfig.class, null));
         MEMBERS.put("knockback", new Member(MechanicsKeys.KNOCKBACK, io.github.term4.polyp.mechanics.knockback.KnockbackConfig.class, null));
+        MEMBERS.put("attributes", new Member(MechanicsKeys.ATTRIBUTES, io.github.term4.polyp.mechanics.attribute.AttributeConfig.class, null));
+        // plain-value configs: addressable through their @GenerateKnobs tables, runtime shape untouched
+        MEMBERS.put("hunger", new Member(MechanicsKeys.HUNGER, io.github.term4.polyp.mechanics.hunger.HungerConfig.class, null));
+        MEMBERS.put("vri", new Member(MechanicsKeys.VRI, io.github.term4.polyp.vri.VriConfig.class, null));
+        MEMBERS.put("player", new Member(MechanicsKeys.PLAYER, io.github.term4.polyp.platform.player.PlayerConfig.class, null));
+        MEMBERS.put("item-damage", new Member(MechanicsKeys.ITEM_DAMAGE, io.github.term4.polyp.mechanics.itemdamage.ItemDamageConfig.class, null));
         // fx/<key> = <factory call>, e.g. global-sound(entity.player.teleport, player, 1, 1)
         MEMBERS.put("fx", new Member(MechanicsKeys.FX, FxRegistry.class, null, (base, slot, raw, path) -> {
             Key fxKey = parseKey(slot, path);
@@ -131,10 +137,32 @@ public final class PathEdits {
     private static Object editFlat(Class<?> configClass, @Nullable Object base, String knobName, String raw, String path) {
         Class<?> cls = base != null ? base.getClass() : configClass;
         ConfigKnob knob = findKnob(cls, knobName, path);
+        // editing the base's own builder keeps every other field by construction; sparse+fromBase is the
+        // fallback for configs that merge instead of copying
+        Object copy = base != null ? copyBuilder(base) : null;
+        if (copy != null) {
+            knob.set().accept(copy, value(knob, raw, path));
+            return build(copy, path);
+        }
         Object builder = newBuilder(cls, null, path);
-        knob.set().accept(builder, FieldValue.constant(decode(knob, raw, path)));
+        knob.set().accept(builder, value(knob, raw, path));
         Object sparse = build(builder, path);
         return base != null ? fromBase(sparse, base, path) : sparse;
+    }
+
+    /** {@code base.toBuilder()}, or {@code null} when the config has no copy route. */
+    private static @Nullable Object copyBuilder(Object base) {
+        try {
+            return base.getClass().getMethod("toBuilder").invoke(base);
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+    }
+
+    /** The value a knob's setter wants: a constant FieldValue, or the plain decoded value. */
+    private static Object value(ConfigKnob knob, String raw, String path) {
+        Object decoded = decode(knob, raw, path);
+        return knob.fieldValued() ? FieldValue.constant(decoded) : decoded;
     }
 
     private static Object editEntry(Class<?> defaultClass, @Nullable Object baseEntry, Key typeKey,
@@ -143,7 +171,7 @@ public final class PathEdits {
         ConfigKnob knob = findKnob(cls, knobName, path);
         Object builder = newBuilder(cls, typeKey, path);
         try {
-            knob.set().accept(builder, FieldValue.constant(decode(knob, raw, path)));
+            knob.set().accept(builder, value(knob, raw, path));
         } catch (ClassCastException e) {
             // the knob is declared on an ancestor whose builder line this entry's builder doesn't extend
             throw new IllegalArgumentException("'" + knobName + "' is declared above " + cls.getSimpleName()
@@ -173,12 +201,14 @@ public final class PathEdits {
     @SuppressWarnings("unchecked")
     private static @Nullable Map<String, ConfigKnob> knobsOf(Class<?> configClass) {
         Object cached = KNOB_TABLES.computeIfAbsent(configClass, c -> {
-            try {
-                Class<?> table = Class.forName(c.getName() + "BuilderBase");
-                return table.getField("KNOBS").get(null);
-            } catch (ReflectiveOperationException e) {
-                return Map.of(); // not a @GenerateBuilder config
+            for (String suffix : new String[]{"BuilderBase", "Knobs"}) {
+                try {
+                    return Class.forName(c.getName() + suffix).getField("KNOBS").get(null);
+                } catch (ReflectiveOperationException ignored) {
+                    // try the other table shape
+                }
             }
+            return Map.of(); // neither @GenerateBuilder nor @GenerateKnobs
         });
         Map<String, ConfigKnob> map = (Map<String, ConfigKnob>) cached;
         return map.isEmpty() ? null : map;

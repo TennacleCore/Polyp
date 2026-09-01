@@ -1,5 +1,6 @@
 package io.github.term4.polyp.mechanics.hunger;
 
+import io.github.term4.polyp.codegen.GenerateKnobs;
 import net.kyori.adventure.key.Key;
 import org.jetbrains.annotations.Nullable;
 
@@ -11,6 +12,7 @@ import java.util.Map;
  * every cost: each source charges through its {@link ExhaustionCost} entry (no entry = {@link ExhaustionCost#dynamic()}
  * for custom keys, inert for lib keys), times the global {@code exhaustionScale}.
  */
+@GenerateKnobs
 public final class HungerConfig {
 
     private final @Nullable Boolean enabled;

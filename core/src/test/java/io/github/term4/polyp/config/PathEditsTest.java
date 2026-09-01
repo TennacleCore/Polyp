@@ -18,6 +18,7 @@ import io.github.term4.polyp.presets.vanilla18.Vanilla18;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -178,12 +179,38 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
         assertTrue(audience.contains("no FxAudience named"), audience);
     }
 
+    /** A @GenerateKnobs config: plain values, no FieldValue, and an edit keeps every other field. */
+    @Test
+    void plainValueConfigsArePathAddressableToo() {
+        MechanicsProfile base = MechanicsProfile.builder()
+                .set(MechanicsKeys.VRI, io.github.term4.polyp.vri.VriConfig.all())
+                .set(MechanicsKeys.HUNGER, io.github.term4.polyp.mechanics.hunger.HungerConfig.builder()
+                        .enabled(true).naturalRegen(true).regenInterval(80).build())
+                .build();
+
+        MechanicsProfile.Builder b = MechanicsProfile.builder();
+        PathEdits.apply(b, base, "vri/itemDrop", "false");
+        PathEdits.apply(b, base, "hunger/enabled", "false");
+        PathEdits.apply(b, base, "hunger/naturalRegen", "false");
+        MechanicsProfile out = b.build();
+
+        var vri = out.get(MechanicsKeys.VRI);
+        assertFalse(vri.itemDrop, "the edited knob");
+        assertTrue(vri.itemPickup, "everything else survives the edit");
+        assertTrue(vri.blockBreakProgress);
+
+        var hunger = out.get(MechanicsKeys.HUNGER);
+        assertEquals(Boolean.FALSE, hunger.enabled());
+        assertEquals(Boolean.FALSE, hunger.naturalRegen());
+        assertEquals(80, hunger.regenInterval(), "an untouched knob keeps the base value");
+    }
+
     @Test
     void everythingInvalidThrowsWithTheReason() {
         MechanicsProfile.Builder b = MechanicsProfile.builder();
         MechanicsProfile base = base();
         assertTrue(assertThrows(IllegalArgumentException.class,
-                () -> PathEdits.apply(b, base, "hunger/enabled", "false")).getMessage().contains("unknown member"));
+                () -> PathEdits.apply(b, base, "nosuchmember/enabled", "false")).getMessage().contains("unknown member"));
         assertTrue(assertThrows(IllegalArgumentException.class,
                 () -> PathEdits.apply(b, base, "projectiles/minecraft:arrow/noSuchKnob", "1")).getMessage().contains("unknown knob"));
         assertTrue(assertThrows(IllegalArgumentException.class,

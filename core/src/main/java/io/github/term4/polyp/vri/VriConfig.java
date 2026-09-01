@@ -1,9 +1,11 @@
 package io.github.term4.polyp.vri;
 
+import io.github.term4.polyp.codegen.GenerateKnobs;
 import io.github.term4.polyp.entity.DroppedItemEntity;
 import org.jetbrains.annotations.Nullable;
 
 /** Toggles for the VRI (Vanilla Re-Implemented) behaviors, per scope via {@code MechanicsKeys.VRI}; the set grows as chests / deaths etc. land. */
+@GenerateKnobs
 public final class VriConfig {
 
     /** Default off. */
@@ -37,6 +39,12 @@ public final class VriConfig {
     public static VriConfig all() {
         return builder().blockBreakProgress(true)
                 .blockDrops(BlockDrops.VANILLA).itemPickup(true).itemDrop(true).fireBreaks(true).tntIgnite(true).build();
+    }
+
+    /** This config as a builder - the copy route an overlay edits one knob through. */
+    public Builder toBuilder() {
+        return builder().blockBreakProgress(blockBreakProgress).blockDrops(blockDrops).itemPhysics(itemPhysics)
+                .itemPickup(itemPickup).itemDrop(itemDrop).fireBreaks(fireBreaks).tntIgnite(tntIgnite);
     }
 
     public static final class Builder {
