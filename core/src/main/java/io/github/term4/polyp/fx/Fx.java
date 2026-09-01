@@ -3,7 +3,6 @@ package io.github.term4.polyp.fx;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.api.event.fx.FxEvent;
-import io.github.term4.polyp.config.FieldFns;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.minestom.server.event.EventDispatcher;
@@ -166,42 +165,6 @@ public final class Fx {
                         .and(FxHandler.sound(SoundEvent.ENTITY_PLAYER_ATTACK_CRIT, Sound.Source.PLAYER, 1.0f, 1.0f)))
                 // ThrownEnderpearl.playSound: positional at the destination, PLAYERS category
                 .register(PEARL_TELEPORT, pearlTeleport());
-    }
-
-    /**
-     * Names the ways an fx can be built, so a data path can pick one with its own arguments
-     * ({@code fx/polyp:pearl_teleport = global-sound(entity.player.teleport, player, 1, 1)}). Open by
-     * registration - these are constructors, not a menu of preset instances.
-     */
-    public static void registerFactories() {
-        FieldFns.register(FxHandler.class, "none", args -> FxHandler.NONE);
-        FieldFns.register(FxHandler.class, "sound", args -> FxHandler.sound(
-                sound(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
-        FieldFns.register(FxHandler.class, "global-sound", args -> FxHandler.globalSound(
-                sound(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
-        FieldFns.register(FxHandler.class, "source-sound", args -> FxHandler.sourceSound(
-                sound(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
-        // the doer's own client predicts these locally, so they go to the others (predicted- adds 1.8 doers back)
-        FieldFns.register(FxHandler.class, "viewer-sound", args -> ctx -> ctx.viewerSound(
-                sound(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
-        FieldFns.register(FxHandler.class, "predicted-sound", args -> ctx -> ctx.predictedSound(
-                sound(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
-        FieldFns.register(FxHandler.class, "particle", args -> FxHandler.particle(
-                particle(args.arity(4), 0), args.integer(1), args.dbl(2), args.flt(3)));
-    }
-
-    private static Particle particle(FieldFns.Args args, int i) {
-        Key key = args.key(i);
-        Particle particle = Particle.fromKey(key);
-        if (particle == null) throw new IllegalArgumentException("unknown particle '" + key.asString() + "'");
-        return particle;
-    }
-
-    private static SoundEvent sound(FieldFns.Args args, int i) {
-        Key key = args.key(i);
-        SoundEvent sound = SoundEvent.fromKey(key);
-        if (sound == null) throw new IllegalArgumentException("unknown sound '" + key.asString() + "'");
-        return sound;
     }
 
     /** The vanilla pearl landing: positional at the destination, so it fades with distance. */

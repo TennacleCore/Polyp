@@ -122,12 +122,13 @@ class PathEditsTest {
         assertEquals(ProjectileTypeConfig.KnockbackSource.PROJECTILE, arrow.knockbackSource.constantOrNull());
     }
 
-    /** The whole Hypixel.bedwars() delta as data - and any sound, not a preordained "game-wide" instance. */
+    /** The whole Hypixel.bedwars() delta as data: any effect, delivered to any audience. */
     @Test
-    void fxIsBuiltFromTheSameFactoryVocabulary() {
+    void fxComposesAnEffectWithAnAudience() {
         MechanicsProfile hypixelish = MechanicsProfile.builder().set(MechanicsKeys.FX, Hypixel.fx()).build();
         MechanicsProfile.Builder b = MechanicsProfile.builder();
-        PathEdits.apply(b, hypixelish, "fx/polyp:pearl_teleport", "global-sound(entity.player.teleport, player, 1, 1)");
+        PathEdits.apply(b, hypixelish, "fx/polyp:pearl_teleport",
+                "to(everywhere, sound(entity.player.teleport, player, 1, 1))");
 
         FxRegistry fx = b.build().get(MechanicsKeys.FX);
         assertNotNull(fx.get(Fx.PEARL_TELEPORT));
@@ -138,21 +139,22 @@ class PathEditsTest {
         assertEquals(FxHandler.NONE, silence.build().get(MechanicsKeys.FX).get(Fx.PEARL_TELEPORT));
     }
 
-    /** Every audience the fx layer can address is reachable from data, not just the global one. */
+    /** Effects and audiences are independent, so every pairing works without being registered as a pairing. */
     @Test
-    void theFxVocabularyCoversEveryAudience() {
-        for (String spec : java.util.List.of(
-                "sound(entity.player.teleport, player, 1, 1)",
-                "viewer-sound(entity.player.teleport, player, 1, 1)",
-                "predicted-sound(entity.player.teleport, player, 1, 1)",
-                "source-sound(entity.player.teleport, player, 1, 1)",
-                "global-sound(entity.player.teleport, player, 1, 1)",
-                "particle(crit, 8, 0.5, 0)",
-                "none")) {
-            MechanicsProfile.Builder b = MechanicsProfile.builder();
-            PathEdits.apply(b, null, "fx/polyp:pearl_teleport", spec);
-            assertNotNull(b.build().get(MechanicsKeys.FX).get(Fx.PEARL_TELEPORT), spec);
+    void everyAudienceComposesWithEveryEffect() {
+        for (String audience : java.util.List.of("shard", "viewers", "predicted", "source", "everywhere", "within(20)")) {
+            for (String effect : java.util.List.of(
+                    "sound(entity.player.teleport, player, 1, 1)", "particle(crit, 8, 0.5, 0)")) {
+                String spec = "to(" + audience + ", " + effect + ")";
+                MechanicsProfile.Builder b = MechanicsProfile.builder();
+                PathEdits.apply(b, null, "fx/polyp:pearl_teleport", spec);
+                assertNotNull(b.build().get(MechanicsKeys.FX).get(Fx.PEARL_TELEPORT), spec);
+            }
         }
+        // a bare effect keeps the vanilla shard audience
+        MechanicsProfile.Builder bare = MechanicsProfile.builder();
+        PathEdits.apply(bare, null, "fx/polyp:pearl_teleport", "sound(entity.player.teleport, player, 1, 1)");
+        assertNotNull(bare.build().get(MechanicsKeys.FX).get(Fx.PEARL_TELEPORT));
     }
 
     @Test
@@ -160,7 +162,10 @@ class PathEditsTest {
         MechanicsProfile.Builder b = MechanicsProfile.builder();
         String message = assertThrows(IllegalArgumentException.class,
                 () -> PathEdits.apply(b, null, "fx/polyp:pearl_teleport", "sideways")).getMessage();
-        assertTrue(message.contains("global-sound") && message.contains("none"), message);
+        assertTrue(message.contains("to") && message.contains("none"), message);
+        String audience = assertThrows(IllegalArgumentException.class,
+                () -> PathEdits.apply(b, null, "fx/polyp:pearl_teleport", "to(nobody, sound(a, player, 1, 1))")).getMessage();
+        assertTrue(audience.contains("no FxAudience named"), audience);
     }
 
     @Test

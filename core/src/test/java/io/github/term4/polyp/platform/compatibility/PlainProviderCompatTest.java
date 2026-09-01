@@ -1,6 +1,7 @@
 package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
@@ -24,14 +25,16 @@ class PlainProviderCompatTest extends HeadlessServerTest {
     @Test
     void foreignProviderPlayersStillGetTheSprintStrip() {
         var manager = MinecraftServer.getConnectionManager();
+        // no global profile of our own: this test owns what it sets, and restores whatever was there
         var previousProfile = polyp.profiles().global();
+        var baseProfile = previousProfile != null ? previousProfile.toBuilder() : MechanicsProfile.builder();
         manager.setPlayerProvider(Player::new); // a server that replaced our provider entirely
         FakePlayer fake = null;
         try {
             fake = FakePlayer.connect(instance, new Pos(30.5, 65, 30.5), "PlainSprint");
             assertFalse(fake.player instanceof OptimizedPlayer, "the point: a plain player");
 
-            polyp.profiles().setGlobal(previousProfile.toBuilder()
+            polyp.profiles().setGlobal(baseProfile
                     .set(MechanicsKeys.COMPAT, CompatConfig.builder().restrictSprintSneak(true).build())
                     .build());
             EventDispatcher.call(new PlayerStartSprintingEvent(fake.player)); // tracked client sprint

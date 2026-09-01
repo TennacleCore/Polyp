@@ -19,24 +19,25 @@ public interface FxHandler {
     /** Plays nothing - register a key to this to silence that key. */
     FxHandler NONE = ctx -> {};
 
-    /** A positional sound at the context position, to the shard audience. */
+    /**
+     * The composition point: any {@link FxEffect} delivered to any {@link FxAudience}. One seed per play is
+     * shared across recipients, so a variant sound picks the same variant for everyone.
+     */
+    static @NotNull FxHandler of(@NotNull FxAudience audience, @NotNull FxEffect effect) {
+        return ctx -> {
+            long seed = java.util.concurrent.ThreadLocalRandom.current().nextLong();
+            audience.each(ctx, (player, at) -> effect.send(ctx, player, at, seed));
+        };
+    }
+
+    /** A positional sound at the context position, to the shard audience ({@link FxAudience#SHARD}). */
     static @NotNull FxHandler sound(@NotNull SoundEvent sound, @NotNull Sound.Source source, float volume, float pitch) {
-        return ctx -> ctx.sound(sound, source, volume, pitch);
+        return of(FxAudience.SHARD, FxEffect.sound(sound, source, volume, pitch));
     }
 
-    /** The same sound to the whole shard at full volume, wherever a listener stands (BedWars' pearl landing). */
-    static @NotNull FxHandler globalSound(@NotNull SoundEvent sound, @NotNull Sound.Source source, float volume, float pitch) {
-        return ctx -> ctx.globalSound(sound, source, volume, pitch);
-    }
-
-    /** A sound only the context's source hears (a hit marker). */
-    static @NotNull FxHandler sourceSound(@NotNull SoundEvent sound, @NotNull Sound.Source source, float volume, float pitch) {
-        return ctx -> ctx.sourceSound(sound, source, volume, pitch);
-    }
-
-    /** A symmetric particle burst at the context position. */
+    /** A symmetric particle burst at the context position, to the shard audience. */
     static @NotNull FxHandler particle(@NotNull Particle particle, int count, double spread, float speed) {
-        return ctx -> ctx.particle(particle, count, spread, spread, spread, speed);
+        return of(FxAudience.SHARD, FxEffect.particle(particle, count, spread, speed));
     }
 
     /** An entity animation on the context source, to its viewers + itself. */

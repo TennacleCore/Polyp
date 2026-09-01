@@ -5,7 +5,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -15,7 +14,7 @@ import java.util.function.Function;
 
 /**
  * Named FACTORIES for behaviour-typed config values, so a data path can build one:
- * <pre>explosion/damageModel = flat(2.0)      fx/polyp:pearl_teleport = global-sound(entity.player.teleport, player, 1, 1)</pre>
+ * <pre>explosion/damageModel = flat(2.0)   fx/polyp:pearl_teleport = to(everywhere, sound(entity.player.teleport, player, 1, 1))</pre>
  * Not a fixed menu of instances - a factory takes arguments, so one registration covers every parameterisation,
  * and registering another extends the vocabulary for that type everywhere. Unknown names list what the type offers.
  *
@@ -72,6 +71,15 @@ public final class FieldFns {
                     + new java.util.TreeSet<>(named.keySet()) + "): " + where);
         }
         return (T) factory.create(new Args(name, raw, where));
+    }
+
+    /** Applies an already-registered factory to {@code args} - lets one type's vocabulary reuse another's. */
+    @SuppressWarnings("unchecked")
+    public static <T> @NotNull T build(@NotNull Class<T> type, @NotNull String name, @NotNull Args args) {
+        Map<String, Factory<?>> named = BY_TYPE.get(type);
+        Factory<?> factory = named != null ? named.get(name) : null;
+        if (factory == null) throw new IllegalArgumentException("no " + type.getSimpleName() + " named '" + name + "'");
+        return (T) factory.create(args);
     }
 
     /** Splits on top-level commas so a nested call can be an argument later. */
@@ -138,6 +146,11 @@ public final class FieldFns {
                     "one of " + java.util.Arrays.toString(type.getEnumConstants()));
         }
 
+        /** A nested factory call as an argument: {@code to(everywhere, sound(...))}. */
+        public <T> @NotNull T of(int i, @NotNull Class<T> type) {
+            return FieldFns.parse(type, str(i), where);
+        }
+
         /** {@code i}-th argument, or {@code fallback} when absent. */
         public double dblOr(int i, double fallback) { return i < values.size() ? dbl(i) : fallback; }
 
@@ -151,7 +164,4 @@ public final class FieldFns {
             }
         }
     }
-
-    /** Registrations the core ships; systems add their own next to the behaviour they build. */
-    static final Map<String, String> DOCS = new LinkedHashMap<>();
 }
