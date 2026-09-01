@@ -113,6 +113,11 @@ public class InstanceWorld implements MechanicsWorld {
     }
 
 
+    // the tracker's chunk index, not a walk over every player on the map
+    @Override public void forEachMemberWithin(@NotNull Point point, double range, @NotNull Consumer<Player> action) {
+        instance.getEntityTracker().nearbyEntities(point, range, EntityTracker.Target.PLAYERS, action);
+    }
+
     @Override public @NotNull CompletableFuture<Void> spawn(@NotNull Entity entity, @NotNull Pos position) {
         return entity.setInstance(instance, position);
     }

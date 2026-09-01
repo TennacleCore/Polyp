@@ -271,6 +271,18 @@ public interface MechanicsWorld extends Block.Getter, ForwardingAudience, Taggab
         for (Player p : players()) action.accept(p);
     }
 
+    /**
+     * Every member within {@code range} of {@code point} - a query about who is THERE, so members only: a
+     * spectator watching a generator is not standing next to it. Indexed where the world can be (an instance
+     * asks its entity tracker); the default walks the members with a distance check.
+     */
+    default void forEachMemberWithin(@NotNull Point point, double range, @NotNull java.util.function.Consumer<Player> action) {
+        double rangeSq = range * range;
+        for (Player p : players()) {
+            if (p.getPosition().distanceSquared(point) <= rangeSq) action.accept(p);
+        }
+    }
+
     /** Every watcher, without materialising a collection. Implementations that snapshot in {@link #watchers()} override. */
     default void forEachWatcher(@NotNull java.util.function.Consumer<Player> action) {
         for (Player p : watchers()) action.accept(p);
