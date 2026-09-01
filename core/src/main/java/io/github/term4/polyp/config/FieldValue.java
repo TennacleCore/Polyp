@@ -56,6 +56,7 @@ public record FieldValue<CTX, T>(Function<CTX, T> fn, @Nullable T constant) {
 
     /** Uses {@code fallback} when this one resolves to {@code null}. */
     public FieldValue<CTX, T> or(FieldValue<CTX, T> fallback) {
+        if (constant != null) return this; // a constant never resolves null - keep it introspectable through merges
         return new FieldValue<>(ctx -> {
             T r = fn.apply(ctx);
             return r != null ? r : fallback.fn.apply(ctx);

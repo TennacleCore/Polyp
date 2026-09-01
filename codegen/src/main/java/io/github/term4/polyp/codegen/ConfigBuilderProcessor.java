@@ -179,7 +179,8 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
          .append("import io.github.term4.polyp.config.FieldValue;\n\n")
          .append("import java.util.function.Function;\n\n")
          .append("/** Generated from {@link ").append(cfg).append("}'s FieldValue fields (").append(GenerateBuilder.class.getSimpleName()).append(") - do not edit. */\n")
-         .append("abstract class ").append(base).append("<B extends ").append(base).append("<B>> {\n\n");
+         .append("@SuppressWarnings({\"unchecked\", \"rawtypes\"})\n")
+         .append("public abstract class ").append(base).append("<B extends ").append(base).append("<B>> {\n\n");
         for (Knob k : knobs) {
             s.append("    FieldValue<").append(ctx).append(", ").append(k.type).append("> ").append(k.name).append(";\n");
         }
@@ -199,7 +200,22 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
         s.append("    }\n");
         s.append("\n    /** Sets every generated knob to {@code a} layered over {@code base} ({@code FieldValue.merge}). */\n    final void mergeKnobs(").append(cfg).append(" a, ").append(cfg).append(" base) {\n");
         for (Knob k : knobs) s.append("        ").append(k.name).append(" = FieldValue.merge(a.").append(k.name).append(", base.").append(k.name).append(");\n");
-        s.append("    }\n}\n");
+        s.append("    }\n");
+
+        // the path-addressable knob table (config field <-> builder setter), consumed by PathEdits
+        s.append("\n    /** Name -> knob, for {@link io.github.term4.polyp.config.PathEdits}. */\n")
+         .append("    public static final java.util.Map<String, io.github.term4.polyp.config.ConfigKnob> KNOBS;\n")
+         .append("    static {\n")
+         .append("        java.util.Map<String, io.github.term4.polyp.config.ConfigKnob> m = new java.util.LinkedHashMap<>();\n");
+        for (Knob k : knobs) {
+            // generic value types have no class literal - registered as code-only (null valueType)
+            String literal = k.type.contains("<") ? "null" : k.type + ".class";
+            s.append("        m.put(\"").append(k.name).append("\", new io.github.term4.polyp.config.ConfigKnob(\"")
+             .append(k.name).append("\", ").append(literal)
+             .append(", c -> ((").append(cfg).append(") c).").append(k.name)
+             .append(", (b, v) -> ((").append(base).append(") b).").append(k.name).append("((FieldValue) v)));\n");
+        }
+        s.append("        KNOBS = java.util.Map.copyOf(m);\n    }\n}\n");
 
         try {
             Writer w = processingEnv.getFiler().createSourceFile(pkg + "." + base, config).openWriter();

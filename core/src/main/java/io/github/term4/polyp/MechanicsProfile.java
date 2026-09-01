@@ -34,6 +34,20 @@ public final class MechanicsProfile {
             return this;
         }
 
+        /** The member currently in this builder, or {@code null}. */
+        @SuppressWarnings("unchecked")
+        public <C> @Nullable C get(ConfigKey<C> key) { return (C) values.get(key); }
+
+        /**
+         * Edits the member IN PLACE of replacing it: {@code edit} receives the builder's current value
+         * ({@code null} if unset - seed with {@link #set} or fall back inside the edit) and its result is
+         * stored. The composable route for sparse overrides - a wholesale {@code set} of a hand-assembled
+         * config is how base tuning gets wiped.
+         */
+        public <C> Builder mutate(ConfigKey<C> key, java.util.function.UnaryOperator<@Nullable C> edit) {
+            return set(key, edit.apply(get(key)));
+        }
+
         public MechanicsProfile build() { return new MechanicsProfile(Map.copyOf(values)); }
     }
 }
