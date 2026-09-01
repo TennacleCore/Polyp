@@ -1,7 +1,9 @@
 package io.github.term4.polyp;
 
 import io.github.term4.polyp.world.MechanicsWorld;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -32,9 +34,12 @@ import org.jetbrains.annotations.Nullable;
 public final class MechanicsProfiles {
 
     private static final Tag<MechanicsProfile> PROFILE = Tag.Transient("polyp:profile");
-    /** Player scope is a stack of owned contributions, newest in force. Immutable and swapped WHOLESALE
-     *  through {@code updateTag}: a game tick and a join land on different threads. */
-    private static final Tag<Map<Key, MechanicsProfile>> CONTRIBUTIONS = Tag.Transient("polyp:profile-stack");
+    /** Player scope is a stack of owned contributions, newest LAST. Immutable and swapped WHOLESALE through
+     *  {@code updateTag}: a game tick and a join land on different threads. A list, not a map, because the
+     *  read is hot (every hit) and wants the newest in O(1) - the rewrite on write is the rare path. */
+    private static final Tag<List<Contribution>> CONTRIBUTIONS = Tag.Transient("polyp:profile-stack");
+
+    private record Contribution(Key owner, MechanicsProfile profile) {}
 
     private volatile @Nullable MechanicsProfile global;
     // fires with the affected player, or null for a wider scope (global/world/instance)
@@ -83,11 +88,8 @@ public final class MechanicsProfiles {
 
     /** The player's EFFECTIVE profile: the newest contribution, or {@code null} when it has none. */
     public @Nullable MechanicsProfile player(Player player) {
-        Map<Key, MechanicsProfile> stack = player.getTag(CONTRIBUTIONS);
-        if (stack == null || stack.isEmpty()) return null;
-        MechanicsProfile top = null;
-        for (MechanicsProfile profile : stack.values()) top = profile; // insertion order: last in wins
-        return top;
+        List<Contribution> stack = player.getTag(CONTRIBUTIONS);
+        return stack == null || stack.isEmpty() ? null : stack.get(stack.size() - 1).profile();
     }
 
     /** The owner of the anonymous {@link #setPlayer(Player, MechanicsProfile)} overload. */
@@ -104,9 +106,15 @@ public final class MechanicsProfiles {
      */
     public void setPlayer(Player player, @NotNull Key owner, @Nullable MechanicsProfile profile) {
         player.updateTag(CONTRIBUTIONS, stack -> {
-            Map<Key, MechanicsProfile> next = new LinkedHashMap<>(stack != null ? stack : Map.of());
-            if (profile == null) next.remove(owner); else next.put(owner, profile);
-            return next.isEmpty() ? null : Collections.unmodifiableMap(next);
+            List<Contribution> current = stack != null ? stack : List.of();
+            List<Contribution> next = new ArrayList<>(current.size() + 1);
+            boolean replaced = false;
+            for (Contribution held : current) {
+                if (!held.owner().equals(owner)) next.add(held);
+                else if (profile != null) { next.add(new Contribution(owner, profile)); replaced = true; }
+            }
+            if (profile != null && !replaced) next.add(new Contribution(owner, profile));
+            return next.isEmpty() ? null : List.copyOf(next);
         });
         changed(player);
     }
@@ -129,8 +137,11 @@ public final class MechanicsProfiles {
 
     /** {@code player}'s contributions, oldest first - the newest is the one in force. For inspection. */
     public @NotNull Map<Key, MechanicsProfile> contributions(Player player) {
-        Map<Key, MechanicsProfile> stack = player.getTag(CONTRIBUTIONS);
-        return stack != null ? stack : Map.of();
+        List<Contribution> stack = player.getTag(CONTRIBUTIONS);
+        if (stack == null || stack.isEmpty()) return Map.of();
+        Map<Key, MechanicsProfile> out = new LinkedHashMap<>();
+        for (Contribution held : stack) out.put(held.owner(), held.profile());
+        return Collections.unmodifiableMap(out);
     }
 
     // single-member assignment: merges into the scope's existing profile instead of replacing it
