@@ -68,6 +68,24 @@ class PathEditsTest {
         assertEquals(2.0, cfg.flatDamage.constantOrNull());
     }
 
+    /** The case a presence-encoded model can't serve: hypixel's flat TNT switched back to the vanilla curve. */
+    @Test
+    void anOverlayCanSwitchTheExplosionDamageModelBothWays() {
+        MechanicsProfile hypixelish = MechanicsProfile.builder()
+                .set(MechanicsKeys.EXPLOSION, ExplosionConfig.builder().flatDamage(2.0).build()).build();
+
+        MechanicsProfile.Builder toCurve = MechanicsProfile.builder();
+        PathEdits.apply(toCurve, hypixelish, "explosion/damageModel", "curve");
+        ExplosionConfig curved = toCurve.build().get(MechanicsKeys.EXPLOSION);
+        assertEquals(ExplosionConfig.DamageModel.CURVE, curved.damageModel.constantOrNull());
+        assertEquals(2.0, curved.flatDamage.constantOrNull(), "the base value survives - the model chooses, not presence");
+
+        MechanicsProfile.Builder toFlat = MechanicsProfile.builder();
+        PathEdits.apply(toFlat, hypixelish, "explosion/damageModel", "flat");
+        assertEquals(ExplosionConfig.DamageModel.FLAT,
+                toFlat.build().get(MechanicsKeys.EXPLOSION).damageModel.constantOrNull());
+    }
+
     @Test
     void enumValuesDecode() {
         MechanicsProfile.Builder b = MechanicsProfile.builder();

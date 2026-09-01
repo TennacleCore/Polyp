@@ -238,8 +238,14 @@ public final class ExplosionSystem implements MechanicsModule {
             if (hit == null) continue;
             // a dropped item takes the blast like anything else (vanilla EntityItem.damageEntity); its own
             // health/pricing lives in the item-damage config, so the raw curve amount is what it receives
+            // unset model = the legacy presence encoding (flatDamage set means flat); an explicit CURVE is how
+            // an overlay switches back, since a layered config can add a knob but never unset the base's
+            boolean flat = resolved.damageModel() != null
+                    ? resolved.damageModel() == ExplosionConfig.DamageModel.FLAT
+                    : resolved.flatDamage() != null;
             float damage = entity instanceof ItemEntity ? hit.damage()
-                    : !living ? 0f : (resolved.flatDamage() != null ? resolved.flatDamage().floatValue() : hit.damage());
+                    : !living ? 0f
+                    : (flat && resolved.flatDamage() != null ? resolved.flatDamage().floatValue() : hit.damage());
             damage *= (float) resolved.damageScale(); // post-floor, so a scaled vanilla curve stays step-quantized (MineMen FBF)
             Vec push = kbTarget ? hit.knockback() : null; // a non-KB target (mob) still takes damage, no push
             targets.add(new ExplosionEvent.Target(entity, distance, exposure, push, damage));

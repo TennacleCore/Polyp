@@ -22,6 +22,14 @@ import java.util.function.Predicate;
 @GenerateBuilder
 public final class ExplosionConfig extends Config<ExplosionContext, ExplosionConfig> {
 
+    /** How a blast decides a living target's damage. */
+    public enum DamageModel {
+        /** {@link #flatDamage} to everything in range (Hypixel/BedWars); falls back to the curve if it is unset. */
+        FLAT,
+        /** The vanilla falloff curve, even where a base config set {@link #flatDamage} (Hypixel SkyWars TNT). */
+        CURVE
+    }
+
     /** Which cells the incendiary pass may light. */
     public enum FireScope {
         /** Every selected cell (vanilla) - fire can land on intact surfaces the blast merely reached. */
@@ -36,8 +44,11 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
     public final FieldValue<ExplosionContext, Double> damageConstant;
     /** Floor the per-entity damage to an int (1.8 parity). */
     public final FieldValue<ExplosionContext, Boolean> floorDamage;
-    /** Flat damage to every in-range target, overriding the falloff curve (Hypixel/BedWars = 2.0). {@code null} = use the curve. */
+    /** Flat damage to every in-range target when the model is {@link DamageModel#FLAT} (Hypixel/BedWars = 2.0). */
     public final FieldValue<ExplosionContext, Double> flatDamage;
+    /** Which damage model this blast uses; unset = FLAT when {@link #flatDamage} is set, else CURVE. Set it
+     *  explicitly to switch models from an overlay - an overlay can add a knob but never unset the base's. */
+    public final FieldValue<ExplosionContext, DamageModel> damageModel;
     /** Damage this blast deals to a DROPPED ITEM; unset = the same curve amount a player takes. */
     public final FieldValue<ExplosionContext, Double> itemDamage;
     /** Scale on the final damage, applied AFTER the floor (MineMen Fireball-Fight = the vanilla floored curve × 0.05). Default 1.0. */
@@ -82,6 +93,7 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
         damageConstant = b.damageConstant;
         floorDamage = b.floorDamage;
         flatDamage = b.flatDamage;
+        damageModel = b.damageModel;
         itemDamage = b.itemDamage;
         damageScale = b.damageScale;
         damageBypass = b.damageBypass;
