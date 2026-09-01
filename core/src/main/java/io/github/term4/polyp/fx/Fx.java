@@ -1,6 +1,7 @@
 package io.github.term4.polyp.fx;
 
 import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.world.Recipients;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.api.event.fx.FxEvent;
 import net.kyori.adventure.key.Key;
@@ -9,7 +10,6 @@ import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.ListenerHandle;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockSoundType;
-import net.minestom.server.network.packet.server.play.WorldEventPacket;
 import net.minestom.server.worldevent.WorldEvent;
 import net.minestom.server.network.packet.server.play.EntityAnimationPacket;
 import net.minestom.server.particle.Particle;
@@ -153,8 +153,7 @@ public final class Fx {
                 .register(BLOCK_BREAK, ctx -> {
                     Block block = ctx.detail(Block.class);
                     if (block == null || ctx.source() == null) return;
-                    ctx.source().sendPacketToViewers(new WorldEventPacket(
-                            WorldEvent.PARTICLES_DESTROY_BLOCK.id(), ctx.position(), block.stateId(), false));
+                    ctx.emit(Recipients.VIEWERS, FxEffect.worldEvent(WorldEvent.PARTICLES_DESTROY_BLOCK.id(), block.stateId()));
                 });
     }
 

@@ -9,8 +9,8 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * A pluggable audiovisual fx: given an {@link FxContext} (where + who), emits sounds / particles / entity
- * animations to the shard-scoped audience. Registered per {@link Fx key} in an {@link FxRegistry}. Runs
- * on the caller's thread (the shard's clock); its only side effect is packet sends, which are thread-safe.
+ * animations to the world's audience. Registered per {@link Fx key} in an {@link FxRegistry}. Runs
+ * on the caller's thread (the world's clock); its only side effect is packet sends, which are thread-safe.
  */
 @FunctionalInterface
 public interface FxHandler {

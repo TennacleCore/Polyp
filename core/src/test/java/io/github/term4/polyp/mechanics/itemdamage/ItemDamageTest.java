@@ -56,7 +56,7 @@ class ItemDamageTest extends HeadlessServerTest {
     void pricedBlastsStackToTheCapturedCount() {
         ItemDamageSystem items = polyp.module(ItemDamageSystem.class);
         Instance inst = flatInstance(MechanicsProfile.builder()
-                .set(MechanicsKeys.ITEM_DAMAGE, io.github.term4.polyp.presets.mmc18.Items.damage()).build());
+                .set(MechanicsKeys.ITEM_DAMAGE, io.github.term4.polyp.presets.vanilla18.Items.damage()).build());
         ItemEntity item = drop(inst, Material.DIAMOND, new Pos(24.5, 66, 24.5));
         assertFalse(items.hurt(item, ItemDamageSystem.EXPLOSION, 2f), "survives the first fireball");
         assertFalse(items.hurt(item, ItemDamageSystem.EXPLOSION, 2f), "and the second");
@@ -131,7 +131,7 @@ class ItemDamageTest extends HeadlessServerTest {
     void explosionSystemDestroysGroundLoot() {
         ExplosionSystem explosions = explosions();
         Instance inst = flatInstance(MechanicsProfile.builder()
-                .set(MechanicsKeys.ITEM_DAMAGE, io.github.term4.polyp.presets.mmc18.Items.damage())
+                .set(MechanicsKeys.ITEM_DAMAGE, io.github.term4.polyp.presets.vanilla18.Items.damage())
                 .set(MechanicsKeys.EXPLOSION, io.github.term4.polyp.presets.mmc18.Explosion.config())
                 .build());
         ItemEntity item = drop(inst, Material.DIAMOND, new Pos(50.5, 66, 50.5));
@@ -157,7 +157,7 @@ class ItemDamageTest extends HeadlessServerTest {
     void sourcelessBlastStillUsesTheWorldsPreset() {
         ExplosionSystem explosions = explosions();
         Instance inst = flatInstance(MechanicsProfile.builder()
-                .set(MechanicsKeys.ITEM_DAMAGE, io.github.term4.polyp.presets.mmc18.Items.damage())
+                .set(MechanicsKeys.ITEM_DAMAGE, io.github.term4.polyp.presets.vanilla18.Items.damage())
                 .set(MechanicsKeys.EXPLOSION, io.github.term4.polyp.presets.mmc18.Explosion.config())
                 .build());
         ItemEntity item = drop(inst, Material.DIAMOND, new Pos(60.5, 66, 60.5));
@@ -176,7 +176,7 @@ class ItemDamageTest extends HeadlessServerTest {
     void fireballScalePowerPricesTwoWithoutASourceEntity() {
         ExplosionSystem explosions = explosions();
         Instance inst = flatInstance(MechanicsProfile.builder()
-                .set(MechanicsKeys.ITEM_DAMAGE, io.github.term4.polyp.presets.mmc18.Items.damage())
+                .set(MechanicsKeys.ITEM_DAMAGE, io.github.term4.polyp.presets.vanilla18.Items.damage())
                 .set(MechanicsKeys.EXPLOSION, io.github.term4.polyp.presets.mmc18.Explosion.config())
                 .build());
         ItemEntity item = drop(inst, Material.DIAMOND, new Pos(64.5, 66, 64.5));

@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.damage.types.breathing;
 
 import io.github.term4.polyp.codegen.GenerateBuilder;
+import io.github.term4.polyp.config.ConfigBuilder;
 import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.mechanics.damage.DamageConfigResolver.DamageContext;
 import io.github.term4.polyp.mechanics.damage.types.DamageTypeConfig;
@@ -45,8 +46,15 @@ public final class BreathingConfig extends DamageTypeConfig {
     }
 
     public static Builder builder() { return new Builder(); }
+    @Override
+    public Builder toBuilder() {
+        Builder b = new Builder();
+        b.common.copyFrom(this);
+        b.copyKnobs(this);
+        return b;
+    }
 
-    public static final class Builder extends BreathingConfigBuilderBase<Builder> {
+    public static final class Builder extends BreathingConfigBuilderBase<Builder> implements ConfigBuilder<BreathingConfig> {
 
         @Override protected Builder self() { return this; }
         private final DamageTypeConfig.Builder common = new DamageTypeConfig.Builder();

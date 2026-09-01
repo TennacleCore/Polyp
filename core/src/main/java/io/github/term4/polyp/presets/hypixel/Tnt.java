@@ -1,12 +1,9 @@
 package io.github.term4.polyp.presets.hypixel;
 
-import io.github.term4.polyp.Polyp;
-import io.github.term4.polyp.api.event.explosion.TntPrimeEvent;
 import io.github.term4.polyp.entity.PrimedTnt;
 import io.github.term4.polyp.mechanics.explosion.ExplosionSystem;
 import io.github.term4.polyp.mechanics.explosion.TntConfig;
 import io.github.term4.polyp.mechanics.explosion.TntConfigResolver;
-import io.github.term4.polyp.world.MechanicsWorld;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Instance;
 import org.jetbrains.annotations.Nullable;
@@ -22,8 +19,6 @@ public final class Tnt {
     }
 
     public static @Nullable PrimedTnt spawn(ExplosionSystem explosion, Instance instance, Point tntBlock) {
-        MechanicsWorld world = MechanicsWorld.of(instance);
-        return PrimedTnt.spawn(explosion, world, tntBlock, TntConfigResolver.resolve(config(),
-                null, world, TntPrimeEvent.Cause.API, Polyp.getInstance().services()));
+        return TntConfigResolver.spawn(explosion, instance, tntBlock, config());
     }
 }

@@ -7,19 +7,16 @@ import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.network.packet.server.play.EntityAnimationPacket;
-import net.minestom.server.network.packet.server.play.ParticlePacket;
-import net.minestom.server.network.packet.server.play.SoundEffectPacket;
 import net.minestom.server.particle.Particle;
 import net.minestom.server.sound.SoundEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Where + who an {@link FxHandler} plays for: a {@code position} in a shard-scoped {@link MechanicsWorld}, an optional
+ * Where + who an {@link FxHandler} plays for: a {@code position} in a {@link MechanicsWorld}, an optional
  * {@code source} entity (entity animations ride its viewers), and an optional {@code target} (hit feedback). The emit
- * helpers route through the world / the source's viewers, so the audience follows the shard.
+ * helpers route through the world / the source's viewers, so the audience follows the world.
  */
 public final class FxContext {
 
@@ -120,15 +117,14 @@ public final class FxContext {
         emit(Recipients.atListener(Recipients.WATCHERS), FxEffect.sound(sound, src, volume, pitch));
     }
 
-    /** A particle burst at {@link #position()} to the shard audience. */
+    /** A particle burst at {@link #position()} to everyone rendering the world. */
     public void particle(@NotNull Particle particle, int count, double offsetX, double offsetY, double offsetZ, float speed) {
-        world.broadcast(new ParticlePacket(particle, position.x(), position.y(), position.z(),
-                (float) offsetX, (float) offsetY, (float) offsetZ, speed, count));
+        emit(Recipients.WATCHERS, FxEffect.particle(particle, count, offsetX, offsetY, offsetZ, speed));
     }
 
     /** An entity animation on the {@code source} to its viewers + itself; no-op without a source. */
     public void entityAnimation(EntityAnimationPacket.@NotNull Animation animation) {
-        if (source != null) source.sendPacketToViewersAndSelf(new EntityAnimationPacket(source.getEntityId(), animation));
+        emit(Recipients.both(Recipients.VIEWERS, Recipients.SOURCE), FxEffect.animation(animation));
     }
 
     /**
@@ -138,9 +134,7 @@ public final class FxContext {
      * doubles; polyp doesn't. Universal - not version-gated.
      */
     public void hitAnimation(EntityAnimationPacket.@NotNull Animation animation) {
-        if (source != null && target != null) {
-            source.sendPacketToViewers(new EntityAnimationPacket(target.getEntityId(), animation));
-        }
+        emit(Recipients.VIEWERS, FxEffect.targetAnimation(animation));
     }
 
     /**
@@ -148,8 +142,6 @@ public final class FxContext {
      * client, so it predicts nothing and must be sent the sparkle too.
      */
     public void hitAnimationAll(EntityAnimationPacket.@NotNull Animation animation) {
-        if (source != null && target != null) {
-            source.sendPacketToViewersAndSelf(new EntityAnimationPacket(target.getEntityId(), animation));
-        }
+        emit(Recipients.both(Recipients.VIEWERS, Recipients.SOURCE), FxEffect.targetAnimation(animation));
     }
 }

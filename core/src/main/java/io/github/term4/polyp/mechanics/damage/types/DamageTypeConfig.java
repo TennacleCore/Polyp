@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.damage.types;
 
 import io.github.term4.polyp.codegen.GenerateBuilder;
+import io.github.term4.polyp.config.ConfigBuilder;
 import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.config.TypeConfig;
 import io.github.term4.polyp.mechanics.damage.DamageConfig;
@@ -142,9 +143,11 @@ public class DamageTypeConfig extends TypeConfig<DamageContext, DamageTypeConfig
 
     /** A builder for the base config; a key is required since configs are keyed by type. */
     public static Builder builder(Key key) { return new Builder().key(key); }
+    /** Narrowed by each subclass to its own builder. */
+    public ConfigBuilder<? extends DamageTypeConfig> toBuilder() { return new Builder().copyFrom(this); }
 
     /** Plain builder for the common knobs. Subclass builders compose one of these and delegate to it. */
-    public static class Builder extends DamageTypeConfigBuilderBase<Builder> {
+    public static class Builder extends DamageTypeConfigBuilderBase<Builder> implements ConfigBuilder<DamageTypeConfig> {
 
         @Override protected Builder self() { return this; }
         private Key key;

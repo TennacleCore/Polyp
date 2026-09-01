@@ -14,7 +14,7 @@ import java.util.function.Function;
 
 /**
  * Named FACTORIES for behaviour-typed config values, so a data path can build one:
- * <pre>explosion/damageModel = flat(2.0)   fx/polyp:pearl_teleport = to(everywhere, sound(entity.player.teleport, player, 1, 1))</pre>
+ * <pre>explosion/damageModel = flat(2.0)   fx/polyp:pearl_teleport = to(at-listener(watchers), sound(entity.player.teleport, player, 1, 1))</pre>
  * Not a fixed menu of instances - a factory takes arguments, so one registration covers every parameterisation,
  * and registering another extends the vocabulary for that type everywhere. Unknown names list what the type offers.
  *
@@ -45,31 +45,69 @@ public final class FieldFns {
                                     @NotNull Factory<T> factory) {
         int paren = signature.indexOf('(');
         String name = (paren < 0 ? signature : signature.substring(0, paren)).trim();
-        BY_TYPE.computeIfAbsent(type, t -> new ConcurrentHashMap<>())
-                .put(name, new Entry<>(name, signature.trim(), doc, factory));
+        Entry<?> clash = BY_TYPE.computeIfAbsent(type, t -> new ConcurrentHashMap<>())
+                .putIfAbsent(name, new Entry<>(name, signature.trim(), doc, factory));
+        // last-write-wins would let a mode silently replace a shipped factory (or its own, re-installed)
+        if (clash != null) {
+            throw new IllegalStateException(type.getSimpleName() + " already has '" + name + "' (" + clash.signature()
+                    + "); unregister it first if the replacement is deliberate");
+        }
+    }
+
+    /** Removes {@code name} for {@code type}; {@code false} when it was not registered. Tests and re-installs use this. */
+    public static boolean unregister(@NotNull Class<?> type, @NotNull String name) {
+        Map<String, Entry<?>> named = BY_TYPE.get(type);
+        return named != null && named.remove(name) != null;
+    }
+
+    /** Builds a value for a name no registered factory matches, or returns {@code null} to decline. */
+    @FunctionalInterface
+    public interface Fallback<T> {
+        @Nullable T create(@NotNull String name, @NotNull Args args);
+    }
+
+    private record FallbackEntry<T>(@NotNull String doc, @NotNull Fallback<T> fallback) {}
+
+    private static final Map<Class<?>, FallbackEntry<?>> FALLBACKS = new ConcurrentHashMap<>();
+
+    /**
+     * A catch-all consulted after the named factories - how one vocabulary can lend its names to another
+     * (a bare {@code sound(...)} as an {@code FxHandler}) without snapshotting them at registration time.
+     */
+    public static <T> void fallback(@NotNull Class<T> type, @NotNull String doc, @NotNull Fallback<T> fallback) {
+        FALLBACKS.put(type, new FallbackEntry<>(doc, fallback));
     }
 
     /** The factory names {@code type} offers, for errors and pickers. */
     public static @NotNull Set<String> names(@NotNull Class<?> type) {
+        Vocabulary.ensure();
         Map<String, Entry<?>> named = BY_TYPE.get(type);
         return named != null ? Set.copyOf(named.keySet()) : Set.of();
     }
 
     /** Every way to build a {@code type}, signature first, sorted - what a help command prints. */
     public static @NotNull List<String> vocabulary(@NotNull Class<?> type) {
+        Vocabulary.ensure();
         Map<String, Entry<?>> named = BY_TYPE.get(type);
-        if (named == null) return List.of();
-        return named.values().stream()
-                .sorted(java.util.Comparator.comparing(Entry::name))
-                .map(e -> e.signature() + " - " + e.doc())
-                .toList();
+        List<String> out = new ArrayList<>();
+        if (named != null) {
+            named.values().stream().sorted(java.util.Comparator.comparing(Entry::name))
+                    .map(e -> e.signature() + " - " + e.doc()).forEach(out::add);
+        }
+        FallbackEntry<?> fallback = FALLBACKS.get(type);
+        if (fallback != null) out.add(fallback.doc());
+        return List.copyOf(out);
     }
 
     /** The types with a registered vocabulary. */
-    public static @NotNull Set<Class<?>> types() { return Set.copyOf(BY_TYPE.keySet()); }
+    public static @NotNull Set<Class<?>> types() {
+        Vocabulary.ensure();
+        return Set.copyOf(BY_TYPE.keySet());
+    }
 
     public static boolean supports(@NotNull Class<?> type) {
-        return BY_TYPE.containsKey(type);
+        Vocabulary.ensure();
+        return BY_TYPE.containsKey(type) || FALLBACKS.containsKey(type);
     }
 
     /**
@@ -78,10 +116,9 @@ public final class FieldFns {
      */
     @SuppressWarnings("unchecked")
     public static <T> @NotNull T parse(@NotNull Class<T> type, @NotNull String spec, @NotNull String where) {
-        Map<String, Entry<?>> named = BY_TYPE.get(type);
-        if (named == null) {
-            throw new IllegalArgumentException(type.getSimpleName() + " has no registered factories: " + where);
-        }
+        Vocabulary.ensure();
+        // an empty vocabulary reports like an unknown name: one message shape, and it lists what exists (nothing)
+        Map<String, Entry<?>> named = BY_TYPE.getOrDefault(type, Map.of());
         String trimmed = spec.trim();
         int open = trimmed.indexOf('(');
         String name = (open < 0 ? trimmed : trimmed.substring(0, open)).trim();
@@ -91,6 +128,9 @@ public final class FieldFns {
         List<String> raw = open < 0 ? List.of() : split(trimmed.substring(open + 1, trimmed.length() - 1));
         Entry<?> entry = named.get(name);
         if (entry == null) {
+            FallbackEntry<?> fallback = FALLBACKS.get(type);
+            Object built = fallback != null ? fallback.fallback().create(name, new Args(name + "(...)", raw, where)) : null;
+            if (built != null) return (T) built;
             throw new IllegalArgumentException("no " + type.getSimpleName() + " named '" + name + "' (known: "
                     + new java.util.TreeSet<>(named.keySet()) + "): " + where);
         }
@@ -104,6 +144,7 @@ public final class FieldFns {
     /** Applies an already-registered factory to {@code args} - lets one type's vocabulary reuse another's. */
     @SuppressWarnings("unchecked")
     public static <T> @NotNull T build(@NotNull Class<T> type, @NotNull String name, @NotNull Args args) {
+        Vocabulary.ensure();
         Map<String, Entry<?>> named = BY_TYPE.get(type);
         Entry<?> entry = named != null ? named.get(name) : null;
         if (entry == null) throw new IllegalArgumentException("no " + type.getSimpleName() + " named '" + name + "'");
@@ -174,7 +215,7 @@ public final class FieldFns {
                     "one of " + java.util.Arrays.toString(type.getEnumConstants()));
         }
 
-        /** A nested factory call as an argument: {@code to(everywhere, sound(...))}. */
+        /** A nested factory call as an argument: {@code to(at-listener(watchers), sound(...))}. */
         public <T> @NotNull T of(int i, @NotNull Class<T> type) {
             return FieldFns.parse(type, str(i), where);
         }

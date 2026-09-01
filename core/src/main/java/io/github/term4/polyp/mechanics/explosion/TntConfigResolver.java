@@ -1,6 +1,9 @@
 package io.github.term4.polyp.mechanics.explosion;
 
 import io.github.term4.polyp.codegen.CheckResolveOrder;
+import net.minestom.server.instance.Instance;
+import net.minestom.server.coordinate.Point;
+import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.api.event.explosion.TntPrimeEvent;
@@ -40,5 +43,12 @@ public final class TntConfigResolver {
                 FieldValue.resolve(cfg.bounce, ctx, v.bounce()),
                 FieldValue.resolve(cfg.tntVictimScale, ctx, v.tntVictimScale()),
                 FieldValue.resolve(cfg.igniteOnPlace, ctx, v.igniteOnPlace()));
+    }
+
+    /** Primes {@code cfg}'s TNT at {@code tntBlock} with no igniter - the preset-level spawn helper. */
+    public static @Nullable PrimedTnt spawn(ExplosionSystem explosion, Instance instance, Point tntBlock, TntConfig cfg) {
+        MechanicsWorld world = MechanicsWorld.of(instance);
+        return PrimedTnt.spawn(explosion, world, tntBlock,
+                resolve(cfg, null, world, TntPrimeEvent.Cause.API, Polyp.getInstance().services()));
     }
 }

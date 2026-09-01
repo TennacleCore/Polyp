@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A bundle of mechanics configs assignable to a scope (player / instance / global) via {@link MechanicsProfiles}.
+ * A bundle of mechanics configs assignable to a scope (player / world / instance / global) via {@link MechanicsProfiles}.
  * Members are keyed by {@link ConfigKey} (built-ins in {@link MechanicsKeys}); a partial profile (e.g. knockback only)
  * overrides just that member and lets the rest fall through to the next scope.
  */

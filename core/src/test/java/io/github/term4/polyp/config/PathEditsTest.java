@@ -164,7 +164,7 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
                 assertNotNull(b.build().get(MechanicsKeys.FX).get(Fx.PEARL_TELEPORT), spec);
             }
         }
-        // a bare effect keeps the vanilla shard audience
+        // a bare effect keeps the watchers audience
         MechanicsProfile.Builder bare = MechanicsProfile.builder();
         PathEdits.apply(bare, null, "fx/polyp:pearl_teleport", "sound(entity.player.teleport, player, 1, 1)");
         assertNotNull(bare.build().get(MechanicsKeys.FX).get(Fx.PEARL_TELEPORT));
@@ -233,18 +233,21 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
     void aConsumablePointsAtANamedBehaviour() {
         ConsumableBehavior custom = new ConsumableBehavior() {};
         FieldFns.register(ConsumableBehavior.class, "test-apple", "a stand-in", args -> custom);
+        try {
+            MechanicsProfile.Builder b = MechanicsProfile.builder();
+            PathEdits.apply(b, MechanicsProfile.builder()
+                            .set(MechanicsKeys.CONSUMABLES, io.github.term4.polyp.presets.vanilla18.Consumables.config())
+                            .build(),
+                    "consumables/minecraft:golden_apple/behavior", "test-apple");
 
-        MechanicsProfile.Builder b = MechanicsProfile.builder();
-        PathEdits.apply(b, MechanicsProfile.builder()
-                        .set(MechanicsKeys.CONSUMABLES, io.github.term4.polyp.presets.vanilla18.Consumables.config())
-                        .build(),
-                "consumables/minecraft:golden_apple/behavior", "test-apple");
-
-        var apple = b.build().get(MechanicsKeys.CONSUMABLES)
-                .typeConfig(net.kyori.adventure.key.Key.key("minecraft:golden_apple"));
-        assertNotNull(apple);
-        assertEquals(custom, apple.behavior.constantOrNull(), "the named behaviour, not a rebuilt one");
-        assertNotNull(apple.canConsume, "the preset's 1.8 edibility gate rides along");
+            var apple = b.build().get(MechanicsKeys.CONSUMABLES)
+                    .typeConfig(net.kyori.adventure.key.Key.key("minecraft:golden_apple"));
+            assertNotNull(apple);
+            assertEquals(custom, apple.behavior.constantOrNull(), "the named behaviour, not a rebuilt one");
+            assertNotNull(apple.canConsume, "the preset's 1.8 edibility gate rides along");
+        } finally {
+            FieldFns.unregister(ConsumableBehavior.class, "test-apple");
+        }
     }
 
     /** The dry run a server can sweep its rulesets with at boot - same checks, nothing written. */

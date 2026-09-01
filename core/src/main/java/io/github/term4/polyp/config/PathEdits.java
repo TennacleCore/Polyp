@@ -53,11 +53,7 @@ public final class PathEdits {
     private static final Map<String, Member> MEMBERS = new LinkedHashMap<>();
 
     static {
-        // the shipped behaviour vocabularies, registered where the path layer first needs them
-        io.github.term4.polyp.mechanics.explosion.DamageModel.registerFactories();
-        KeySet.registerFactories();
-        io.github.term4.polyp.mechanics.projectile.shootables.DrawPower.registerFactories();
-        io.github.term4.polyp.fx.FxEffect.registerFactories();
+        Vocabulary.ensure();
 
         MEMBERS.put("projectiles", new Member(MechanicsKeys.PROJECTILES, ProjectileConfig.class, new TypedFamily(
                 ProjectileTypeConfig.class,
@@ -90,7 +86,7 @@ public final class PathEdits {
         MEMBERS.put("vri", new Member(MechanicsKeys.VRI, io.github.term4.polyp.vri.VriConfig.class, null));
         MEMBERS.put("player", new Member(MechanicsKeys.PLAYER, io.github.term4.polyp.platform.player.PlayerConfig.class, null));
         MEMBERS.put("item-damage", new Member(MechanicsKeys.ITEM_DAMAGE, io.github.term4.polyp.mechanics.itemdamage.ItemDamageConfig.class, null));
-        // fx/<key> = <factory call>, e.g. global-sound(entity.player.teleport, player, 1, 1)
+        // fx/<key> = <factory call>, e.g. to(at-listener(watchers), sound(entity.player.teleport, player, 1, 1))
         MEMBERS.put("fx", new Member(MechanicsKeys.FX, FxRegistry.class, null, (base, slot, raw, path) -> {
             Key fxKey = parseKey(slot, path);
             FxHandler handler = FieldFns.parse(FxHandler.class, raw, path);
@@ -168,26 +164,17 @@ public final class PathEdits {
                                    String path, @Nullable Predicate<Player> who) {
         Class<?> cls = base != null ? base.getClass() : configClass;
         ConfigKnob knob = findKnob(cls, knobName, path);
-        Object value = value(knob, base, raw, path, who);
-        // editing the base's own builder keeps every other field by construction; sparse+fromBase is the
-        // fallback for configs that merge instead of copying
-        Object copy = base != null ? copyBuilder(base) : null;
-        if (copy != null) {
-            knob.set().accept(copy, value);
-            return build(copy, path);
-        }
-        Object builder = newBuilder(cls, null, path);
-        knob.set().accept(builder, value);
-        Object sparse = build(builder, path);
-        return base != null ? fromBase(sparse, base, path) : sparse;
+        Object builder = base != null ? copyBuilder(base, path) : newBuilder(cls, null, path);
+        knob.set().accept(builder, value(knob, base, raw, path, who));
+        return build(builder, path);
     }
 
-    /** {@code base.toBuilder()}, or {@code null} when the config has no copy route. */
-    private static @Nullable Object copyBuilder(Object base) {
+    /** {@code base.toBuilder()}: editing the base's own builder keeps every other field by construction. */
+    private static Object copyBuilder(Object base, String path) {
         try {
             return base.getClass().getMethod("toBuilder").invoke(base);
         } catch (ReflectiveOperationException e) {
-            return null;
+            throw new IllegalStateException(base.getClass().getSimpleName() + " has no toBuilder(): " + path, e);
         }
     }
 
@@ -200,7 +187,7 @@ public final class PathEdits {
         Object decoded = decode(knob, raw, path);
         if (who == null) return FieldValue.constant(decoded);
         @SuppressWarnings("unchecked")
-        FieldValue<Object, Object> inherited = base != null ? (FieldValue<Object, Object>) knob.get().apply(base) : null;
+        FieldValue<SubjectContext, Object> inherited = base != null ? (FieldValue<SubjectContext, Object>) knob.get().apply(base) : null;
         return FieldValue.targeted(who, FieldValue.constant(decoded), inherited);
     }
 
@@ -208,7 +195,7 @@ public final class PathEdits {
                                     String knobName, String raw, String path, @Nullable Predicate<Player> who) {
         Class<?> cls = baseEntry != null ? baseEntry.getClass() : defaultClass;
         ConfigKnob knob = findKnob(cls, knobName, path);
-        Object builder = newBuilder(cls, typeKey, path);
+        Object builder = baseEntry != null ? copyBuilder(baseEntry, path) : newBuilder(cls, typeKey, path);
         try {
             knob.set().accept(builder, value(knob, baseEntry, raw, path, who));
         } catch (ClassCastException e) {
@@ -216,8 +203,7 @@ public final class PathEdits {
             throw new IllegalArgumentException("'" + knobName + "' is declared above " + cls.getSimpleName()
                     + " and cannot be path-set on this entry (" + e.getMessage() + "): " + path);
         }
-        Object sparse = build(builder, path);
-        return baseEntry != null ? fromBase(sparse, baseEntry, path) : sparse;
+        return build(builder, path);
     }
 
     /** The knob from the config class's own generated table, else the nearest ancestor's. */
@@ -285,26 +271,6 @@ public final class PathEdits {
         }
     }
 
-    private static Object fromBase(Object sparse, Object base, String path) {
-        try {
-            return sparse.getClass().getMethod("fromBase", base.getClass()).invoke(sparse, base);
-        } catch (NoSuchMethodException e) {
-            // subclass entry over a parent-typed sparse (or vice versa): look for any applicable fromBase
-            for (Method m : sparse.getClass().getMethods()) {
-                if (m.getName().equals("fromBase") && m.getParameterCount() == 1
-                        && m.getParameterTypes()[0].isAssignableFrom(base.getClass())) {
-                    try {
-                        return m.invoke(sparse, base);
-                    } catch (ReflectiveOperationException ex) {
-                        throw new IllegalArgumentException("fromBase failed for " + path + ": " + ex.getMessage(), ex);
-                    }
-                }
-            }
-            throw new IllegalArgumentException(sparse.getClass().getSimpleName() + " has no fromBase: " + path);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalArgumentException("fromBase failed for " + path + ": " + e.getMessage(), e);
-        }
-    }
 
     // -------------------------------------------------------------- values
 

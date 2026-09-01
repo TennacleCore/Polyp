@@ -14,11 +14,11 @@ import java.util.function.BiConsumer;
 
 /**
  * <em>Who</em> perceives something that happens at a point in a world, and from where. A world-level concept
- * rather than an fx one: picking recipients is what every outward send does - effects, hurt broadcasts,
- * velocity, block feedback - so the scopes live beside {@link MechanicsWorld#players()} /
+ * rather than an fx one: picking recipients is what every outward send should route through - effects,
+ * block feedback, world sounds - so the scopes live beside {@link MechanicsWorld#players()} /
  * {@link MechanicsWorld#watchers()} / {@link MechanicsWorld#family()} that define them.
  *
- * <p>Not a menu of cases. Six primitives closed under {@link #both union}, {@link #except difference},
+ * <p>Not a menu of cases. Seven primitives closed under {@link #both union}, {@link #except difference},
  * {@link #only intersection}, {@link #tree}, {@link #within}, and {@link #atListener} for the anchor -
  * "on the instance but not in this world" is {@code except(INSTANCE, WATCHERS)}, not another constant.
  *

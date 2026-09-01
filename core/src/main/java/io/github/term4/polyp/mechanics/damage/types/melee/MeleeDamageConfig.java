@@ -2,6 +2,7 @@ package io.github.term4.polyp.mechanics.damage.types.melee;
 
 import io.github.term4.polyp.codegen.GenerateBuilder;
 import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.config.ConfigBuilder;
 import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.item.ItemRegistry;
 import io.github.term4.polyp.item.ItemStat;
@@ -57,8 +58,15 @@ public final class MeleeDamageConfig extends DamageTypeConfig {
     }
 
     public static Builder builder() { return new Builder(); }
+    @Override
+    public Builder toBuilder() {
+        Builder b = new Builder();
+        b.common.copyFrom(this);
+        b.copyKnobs(this);
+        return b;
+    }
 
-    public static final class Builder extends MeleeDamageConfigBuilderBase<Builder> {
+    public static final class Builder extends MeleeDamageConfigBuilderBase<Builder> implements ConfigBuilder<MeleeDamageConfig> {
 
         @Override protected Builder self() { return this; }
         // invul/overdamage stay unset to inherit the global config

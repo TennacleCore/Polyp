@@ -57,13 +57,12 @@ public record FieldValue<CTX, T>(Function<CTX, T> fn, @Nullable T constant) {
     }
 
     /** Uses {@code fallback} when this one resolves to {@code null}. */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public FieldValue<CTX, T> or(FieldValue<CTX, T> fallback) {
         if (constant != null) return this; // a constant never resolves null - keep it introspectable through merges
-        if (fn instanceof Targeted<?, ?> raw) { // same for a targeted value: the merge lands in its fallback
-            Targeted<CTX, T> t = (Targeted<CTX, T>) raw;
-            FieldValue<CTX, T> below = t.fallback() == null ? fallback : t.fallback().or(fallback);
-            return new FieldValue<>(new Targeted<>(t.who(), t.value(), below), null);
+        if (fn instanceof Targeted raw) { // same for a targeted value: the merge lands in its fallback
+            FieldValue below = raw.fallback() == null ? fallback : raw.fallback().or(fallback);
+            return new FieldValue<>(new Targeted(raw.who(), raw.value(), below), null);
         }
         return new FieldValue<>(ctx -> {
             T r = fn.apply(ctx);
@@ -77,17 +76,20 @@ public record FieldValue<CTX, T>(Function<CTX, T> fn, @Nullable T constant) {
      * lands in the ONE world profile a game owns, instead of a per-player scope that has to be pushed,
      * ordered and cleared. Inspectable: {@link #fn()} is a {@link Targeted}.
      */
-    public static <CTX, T> FieldValue<CTX, T> targeted(Predicate<Player> who, FieldValue<CTX, T> value,
-                                                       @Nullable FieldValue<CTX, T> fallback) {
+    public static <CTX extends SubjectContext, T> FieldValue<CTX, T> targeted(Predicate<Player> who, FieldValue<CTX, T> value,
+                                                                              @Nullable FieldValue<CTX, T> fallback) {
         return new FieldValue<>(new Targeted<>(who, value, fallback), null);
     }
 
-    /** The function behind a {@link #targeted} value, kept as a record so tooling can read it back. */
-    public record Targeted<CTX, T>(Predicate<Player> who, FieldValue<CTX, T> value,
-                                   @Nullable FieldValue<CTX, T> fallback) implements Function<CTX, T> {
+    /**
+     * The function behind a {@link #targeted} value, kept as a record so tooling can read it back. The context
+     * bound is what makes a knob with no subject a compile error rather than a value that quietly never applies.
+     */
+    public record Targeted<CTX extends SubjectContext, T>(Predicate<Player> who, FieldValue<CTX, T> value,
+                                                          @Nullable FieldValue<CTX, T> fallback) implements Function<CTX, T> {
         @Override
         public T apply(CTX ctx) {
-            if (ctx instanceof SubjectContext sc && sc.subject() instanceof Player p && who.test(p)) return value.resolve(ctx);
+            if (ctx.subject() instanceof Player p && who.test(p)) return value.resolve(ctx);
             return fallback != null ? fallback.resolve(ctx) : null;
         }
     }

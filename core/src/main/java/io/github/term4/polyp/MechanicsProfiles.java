@@ -20,7 +20,7 @@ import org.jetbrains.annotations.Nullable;
  * <p><b>Scope subject.</b> Attack resolves against the <em>attacker</em>; damage and knockback resolve against the
  * <em>victim</em>. Both usually share the instance, so the distinction only matters for player overrides.
  *
- * <p>Player and instance assignments live in transient tags, so they clean up with their holder (a player's profile
+ * <p>Player, world and instance assignments live in transient tags, so they clean up with their holder (a player's profile
  * drops on disconnect).
  */
 public final class MechanicsProfiles {
@@ -100,35 +100,28 @@ public final class MechanicsProfiles {
 
     /** The effective value of {@code key} for {@code subject}. For a hit reading several members, prefer {@link #resolved}. */
     public <C> @Nullable C resolve(@Nullable Entity subject, ConfigKey<C> key) {
-        if (subject != null) {
-            if (subject instanceof Player p) {
-                C v = memberOf(p.getTag(PROFILE), key);
-                if (v != null) return v;
-            }
-            Instance in = subject.getInstance();
-            if (in != null) {
-                C v = memberOf(MechanicsWorld.of(subject).getTag(PROFILE), key);
-                if (v != null) return v;
-                v = memberOf(in.getTag(PROFILE), key);
-                if (v != null) return v;
-            }
-        }
-        return memberOf(global, key);
+        MechanicsProfile player = subject instanceof Player p ? p.getTag(PROFILE) : null;
+        Instance in = subject != null ? subject.getInstance() : null;
+        return walk(player, in != null ? MechanicsWorld.of(subject).getTag(PROFILE) : null,
+                in != null ? in.getTag(PROFILE) : null, global, key);
     }
 
     /** The effective value of {@code key} for a WORLD with no entity in hand - a sourceless explosion, a
-     *  block-driven effect. Walks the same chain minus the player: shard/world -&gt; instance -&gt; global. */
+     *  block-driven effect. Walks the same chain minus the player: world -&gt; instance -&gt; global. */
     public <C> @Nullable C resolveWorld(@Nullable MechanicsWorld world, ConfigKey<C> key) {
-        if (world != null) {
-            C v = memberOf(world.getTag(PROFILE), key);
-            if (v != null) return v;
-            Instance in = world.instance();
-            if (in != null) {
-                v = memberOf(in.getTag(PROFILE), key);
-                if (v != null) return v;
-            }
-        }
-        return memberOf(global, key);
+        Instance in = world != null ? world.instance() : null;
+        return walk(null, world != null ? world.getTag(PROFILE) : null, in != null ? in.getTag(PROFILE) : null, global, key);
+    }
+
+    /** THE scope chain, player -> world -> instance -> global; every resolver above and {@link Resolved} walk this one. */
+    private static <C> @Nullable C walk(@Nullable MechanicsProfile player, @Nullable MechanicsProfile world,
+                                        @Nullable MechanicsProfile instance, @Nullable MechanicsProfile global,
+                                        ConfigKey<C> key) {
+        C v;
+        if (player != null && (v = player.get(key)) != null) return v;
+        if (world != null && (v = world.get(key)) != null) return v;
+        if (instance != null && (v = instance.get(key)) != null) return v;
+        return global != null ? global.get(key) : null;
     }
 
     /** {@link #resolve} with a fallback: the effective value of {@code key} for {@code subject}, else {@code fallback}. */
@@ -137,9 +130,6 @@ public final class MechanicsProfiles {
         return scoped != null ? scoped : fallback;
     }
 
-    private static <C> @Nullable C memberOf(@Nullable MechanicsProfile profile, ConfigKey<C> key) {
-        return profile != null ? profile.get(key) : null;
-    }
 
     /** Snapshots {@code subject}'s scopes once, then answers any key off it - one scope walk for a whole hit. */
     public Resolved resolved(@Nullable Entity subject) {
@@ -172,11 +162,7 @@ public final class MechanicsProfiles {
         }
 
         public <C> @Nullable C get(ConfigKey<C> key) {
-            C v;
-            if (player != null && (v = player.get(key)) != null) return v;
-            if (world != null && (v = world.get(key)) != null) return v;
-            if (instance != null && (v = instance.get(key)) != null) return v;
-            return global != null ? global.get(key) : null;
+            return walk(player, world, instance, global, key);
         }
     }
 }

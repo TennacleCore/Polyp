@@ -44,10 +44,9 @@ public interface KeySet {
     }
 
     static void registerFactories() {
-        FieldFns.register(KeySet.class, "all", "every type in the catalog", args -> ALL);
-        FieldFns.register(KeySet.class, "none", "no type at all", args -> NONE);
-        FieldFns.register(KeySet.class, "only(key...)", "only the listed types", args -> only(keys(args)));
-        FieldFns.register(KeySet.class, "except(key...)", "every type but the listed ones", args -> except(keys(args)));
+        // no "all"/"none": they are except() and only() with nothing listed, and naming them would be naming cases
+        FieldFns.register(KeySet.class, "only(key...)", "only the listed types; only() is nothing", args -> only(keys(args)));
+        FieldFns.register(KeySet.class, "except(key...)", "every type but the listed; except() is everything", args -> except(keys(args)));
     }
 
     private static Key[] keys(FieldFns.Args args) {

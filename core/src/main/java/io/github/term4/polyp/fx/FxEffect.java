@@ -1,6 +1,7 @@
 package io.github.term4.polyp.fx;
 
 import io.github.term4.polyp.config.FieldFns;
+import net.minestom.server.network.packet.server.play.WorldEventPacket;
 import io.github.term4.polyp.world.Recipients;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
@@ -31,8 +32,18 @@ public interface FxEffect {
     }
 
     static @NotNull FxEffect particle(@NotNull Particle particle, int count, double spread, float speed) {
+        return particle(particle, count, spread, spread, spread, speed);
+    }
+
+    static @NotNull FxEffect particle(@NotNull Particle particle, int count, double offsetX, double offsetY,
+                                      double offsetZ, float speed) {
         return (ctx, to, at, seed) -> to.sendPacket(new ParticlePacket(particle, at.x(), at.y(), at.z(),
-                (float) spread, (float) spread, (float) spread, speed, count));
+                (float) offsetX, (float) offsetY, (float) offsetZ, speed, count));
+    }
+
+    /** A world event (block break particles, etc.) the client renders from {@code data} at the anchor. */
+    static @NotNull FxEffect worldEvent(int id, int data) {
+        return (ctx, to, at, seed) -> to.sendPacket(new WorldEventPacket(id, at, data, false));
     }
 
     /** An animation on the context's source entity. */
@@ -52,8 +63,8 @@ public interface FxEffect {
     /**
      * The data vocabulary: EFFECTS here and AUDIENCES in {@link Recipients}, composed by {@code to(audience,
      * effect)} - a new audience works with every effect and vice versa, so the two never multiply out. A bare
-     * effect keeps the vanilla shard audience:
-     * <pre>fx/polyp:pearl_teleport = to(everywhere, sound(entity.player.teleport, player, 1, 1))</pre>
+     * effect keeps the watchers audience:
+     * <pre>fx/polyp:pearl_teleport = to(at-listener(watchers), sound(entity.player.teleport, player, 1, 1))</pre>
      * Lives here, not on {@code Fx}, whose class init needs a running server.
      */
     static void registerFactories() {
@@ -70,12 +81,11 @@ public interface FxEffect {
         FieldFns.register(FxHandler.class, "none", "plays nothing - silences this key", args -> FxHandler.NONE);
         FieldFns.register(FxHandler.class, "to(audience, effect)", "an effect delivered to an audience",
                 args -> FxHandler.of(args.arity(2).of(0, Recipients.class), args.of(1, FxEffect.class)));
-        // a bare effect is the default audience, so the common case stays short
-        for (String effect : FieldFns.names(FxEffect.class)) {
-            // the signature keeps its parens: these forward their arguments to the effect factory
-            FieldFns.register(FxHandler.class, effect + "(...)", "shorthand for to(watchers, " + effect + "(...))",
-                    args -> FxHandler.of(Recipients.WATCHERS, FieldFns.build(FxEffect.class, effect, args)));
-        }
+        // a bare effect is the default audience - resolved at parse time, so an effect registered later
+        // gets its shorthand too instead of a snapshot missing it
+        FieldFns.fallback(FxHandler.class, "<effect>(...) - shorthand for to(watchers, <effect>(...))",
+                (name, args) -> FieldFns.names(FxEffect.class).contains(name)
+                        ? FxHandler.of(Recipients.WATCHERS, FieldFns.build(FxEffect.class, name, args)) : null);
     }
 
     private static SoundEvent soundOf(FieldFns.Args args, int i) {
