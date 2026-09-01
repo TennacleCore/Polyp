@@ -62,6 +62,8 @@ public final class Polyp {
      * the player class set {@link #playerFactory} instead of disabling this - the packet-level compat keys on it.
      */
     public boolean installPlayerProvider = true;
+    /** Exact 1.8 knockback through the ViaBridge Velocity plugin. Opt in: a proxy without it costs one RPC timeout per player. */
+    public boolean installViaBridge = false;
 
     /** Builds each connecting player. Swap for an {@code OptimizedPlayer} subclass to keep the whole
      *  {@code instanceof}-gated compat/fixes layer; read per-connect, so setting it after init works too. */
@@ -183,8 +185,8 @@ public final class Polyp {
         if (viaProxyDetails || installPlayerProvider) mountTracker(clientInfo);
         if (installPlayerProvider) {
             CompatAnimatium.install(this);
-            ViaBridgeRpc.install(this);
-            LegacyVelocityBridge.install(this);
+            if (installViaBridge) ViaBridgeRpc.install(this);
+            LegacyVelocityBridge.install(this); // Animatium shorts need no proxy; the 1.8 route checks isInstalled()
         }
     }
 
