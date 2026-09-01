@@ -148,11 +148,11 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
     void everyAudienceComposesWithEveryEffect() {
         for (String audience : java.util.List.of(
                 // primitives
-                "members", "watchers", "instance", "viewers", "source", "nobody", "predicted",
+                "members", "watchers", "instance", "server", "viewers", "source", "nobody", "predicted",
                 // compositions - none of these is a registered case
                 "except(instance, watchers)", "both(members, viewers)", "only(instance, members)",
                 "tree(members)", "at-listener(tree(watchers))", "within(20, except(watchers, source))",
-                "protocol-below(48, members)", "at-listener(watchers)")) {
+                "at-listener(server)", "at-listener(watchers)")) {
             for (String effect : java.util.List.of("sound(entity.player.teleport, player, 1, 1)",
                     "particle(crit, 8, 0.5, 0)", "animation(SWING_MAIN_ARM)")) {
                 String spec = "to(" + audience + ", " + effect + ")";
