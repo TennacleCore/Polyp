@@ -12,8 +12,8 @@ class PresetCompatTest extends HeadlessServerTest { // profile() boots Fx, which
 
     @Test
     void hypixelRefusesSelfOverlappingPlacementWhereThe18PresetsAllowIt() {
-        assertEquals(Boolean.FALSE, Preset.HYPIXEL.compat().legacySelfPlace);
-        assertEquals(Boolean.FALSE, Preset.HYPIXEL_BEDWARS.compat().legacySelfPlace);
+        assertEquals(Boolean.FALSE, Preset.HYPIXEL.compat().legacySelfPlace.constantOrNull());
+        assertEquals(Boolean.FALSE, Preset.HYPIXEL_BEDWARS.compat().legacySelfPlace.constantOrNull());
         for (Preset legacy : new Preset[]{Preset.VANILLA18, Preset.MMC18, Preset.SCRIMS18}) {
             assertNull(legacy.compat().legacySelfPlace, legacy + " keeps the 1.8 mechanic");
         }
@@ -22,15 +22,15 @@ class PresetCompatTest extends HeadlessServerTest { // profile() boots Fx, which
     /** Everything else the 1.8 layer sets still rides along - hypixel is a delta, not a replacement. */
     @Test
     void hypixelKeepsTheRestOfTheLegacyLayer() {
-        assertEquals(Preset.VANILLA18.compat().legacyHitbox, Preset.HYPIXEL.compat().legacyHitbox);
-        assertEquals(Preset.VANILLA18.compat().blockPlaceReach, Preset.HYPIXEL.compat().blockPlaceReach);
-        assertEquals(Preset.VANILLA18.compat().attackHitboxMargin, Preset.HYPIXEL.compat().attackHitboxMargin);
-        assertNotNull(Preset.HYPIXEL.compat().disabledPoses);
+        assertEquals(Preset.VANILLA18.compat().legacyHitbox.constantOrNull(), Preset.HYPIXEL.compat().legacyHitbox.constantOrNull());
+        assertEquals(Preset.VANILLA18.compat().blockPlaceReach.constantOrNull(), Preset.HYPIXEL.compat().blockPlaceReach.constantOrNull());
+        assertEquals(Preset.VANILLA18.compat().attackHitboxMargin.constantOrNull(), Preset.HYPIXEL.compat().attackHitboxMargin.constantOrNull());
+        assertNotNull(Preset.HYPIXEL.compat().disabledPoses.constantOrNull());
     }
 
     @Test
     void modernPresetRunsNoLegacyLayer() {
-        assertEquals(Boolean.FALSE, Preset.VANILLA.compat().legacyHitbox, "nothing to reconcile on 26.1");
+        assertEquals(Boolean.FALSE, Preset.VANILLA.compat().legacyHitbox.constantOrNull(), "nothing to reconcile on 26.1");
     }
 
     /** Every preset hands back a complete layer - callers set it, they never assemble one. */
