@@ -5,7 +5,12 @@ import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.mechanics.damage.DamageConfig;
 import io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamageConfig;
 import io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage;
+import io.github.term4.polyp.fx.Fx;
+import io.github.term4.polyp.fx.FxHandler;
+import io.github.term4.polyp.fx.FxHandlers;
+import io.github.term4.polyp.fx.FxRegistry;
 import io.github.term4.polyp.mechanics.explosion.ExplosionConfig;
+import io.github.term4.polyp.presets.hypixel.Hypixel;
 import io.github.term4.polyp.mechanics.projectile.ProjectileConfig;
 import io.github.term4.polyp.mechanics.projectile.types.Arrow;
 import io.github.term4.polyp.mechanics.projectile.types.ProjectileTypeConfig;
@@ -68,17 +73,18 @@ class PathEditsTest {
         assertEquals(2.0, cfg.flatDamage.constantOrNull());
     }
 
-    /** The case a presence-encoded model can't serve: hypixel's flat TNT switched back to the vanilla curve. */
+    /** Hypixel's flat TNT switched back to the vanilla curve for SkyWars - the model is a value, so it overlays. */
     @Test
     void anOverlayCanSwitchTheExplosionDamageModelBothWays() {
         MechanicsProfile hypixelish = MechanicsProfile.builder()
-                .set(MechanicsKeys.EXPLOSION, ExplosionConfig.builder().flatDamage(2.0).build()).build();
+                .set(MechanicsKeys.EXPLOSION, ExplosionConfig.builder()
+                        .damageModel(ExplosionConfig.DamageModel.FLAT).flatDamage(2.0).build()).build();
 
         MechanicsProfile.Builder toCurve = MechanicsProfile.builder();
         PathEdits.apply(toCurve, hypixelish, "explosion/damageModel", "curve");
         ExplosionConfig curved = toCurve.build().get(MechanicsKeys.EXPLOSION);
         assertEquals(ExplosionConfig.DamageModel.CURVE, curved.damageModel.constantOrNull());
-        assertEquals(2.0, curved.flatDamage.constantOrNull(), "the base value survives - the model chooses, not presence");
+        assertEquals(2.0, curved.flatDamage.constantOrNull(), "the parameter survives - the model chooses");
 
         MechanicsProfile.Builder toFlat = MechanicsProfile.builder();
         PathEdits.apply(toFlat, hypixelish, "explosion/damageModel", "flat");
@@ -92,6 +98,30 @@ class PathEditsTest {
         PathEdits.apply(b, base(), "projectiles/minecraft:arrow/knockbackSource", "projectile");
         ProjectileTypeConfig arrow = b.build().get(MechanicsKeys.PROJECTILES).typeConfig(Arrow.KEY);
         assertEquals(ProjectileTypeConfig.KnockbackSource.PROJECTILE, arrow.knockbackSource.constantOrNull());
+    }
+
+    /** The whole Hypixel.bedwars() delta as data: the game-wide pearl landing, one path. */
+    @Test
+    void fxHandlersAreSwappableByName() {
+        MechanicsProfile hypixelish = MechanicsProfile.builder().set(MechanicsKeys.FX, Hypixel.fx()).build();
+        MechanicsProfile.Builder b = MechanicsProfile.builder();
+        PathEdits.apply(b, hypixelish, "fx/polyp:pearl_teleport", "game-wide");
+
+        FxRegistry fx = b.build().get(MechanicsKeys.FX);
+        assertEquals(FxHandlers.get(Fx.PEARL_TELEPORT, "game-wide"), fx.get(Fx.PEARL_TELEPORT));
+        assertNotNull(fx.get(Fx.ARROW_HIT_PLAYER), "the rest of the registry rides along");
+
+        MechanicsProfile.Builder silence = MechanicsProfile.builder();
+        PathEdits.apply(silence, hypixelish, "fx/polyp:pearl_teleport", "none");
+        assertEquals(FxHandler.NONE, silence.build().get(MechanicsKeys.FX).get(Fx.PEARL_TELEPORT));
+    }
+
+    @Test
+    void anUnknownFxNameListsWhatTheKeyOffers() {
+        MechanicsProfile.Builder b = MechanicsProfile.builder();
+        String message = assertThrows(IllegalArgumentException.class,
+                () -> PathEdits.apply(b, null, "fx/polyp:pearl_teleport", "sideways")).getMessage();
+        assertTrue(message.contains("game-wide") && message.contains("none"), message);
     }
 
     @Test

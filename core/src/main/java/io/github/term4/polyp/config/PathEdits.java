@@ -1,6 +1,9 @@
 package io.github.term4.polyp.config;
 
 import io.github.term4.polyp.ConfigKey;
+import io.github.term4.polyp.fx.FxHandler;
+import io.github.term4.polyp.fx.FxHandlers;
+import io.github.term4.polyp.fx.FxRegistry;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.mechanics.consumable.ConsumableConfig;
@@ -36,7 +39,15 @@ public final class PathEdits {
                                BiFunction<Object, Key, @Nullable Object> entry,
                                BiFunction<@Nullable Object, Object, Object> withEntry) {}
 
-    private record Member(ConfigKey<?> key, Class<?> configClass, @Nullable TypedFamily typed) {}
+    /** A member whose value has no knob table (FX): it owns the whole edit. */
+    @FunctionalInterface
+    private interface Editor {
+        Object edit(@Nullable Object base, String slot, String rawValue, String path);
+    }
+
+    private record Member(ConfigKey<?> key, Class<?> configClass, @Nullable TypedFamily typed, @Nullable Editor editor) {
+        Member(ConfigKey<?> key, Class<?> configClass, @Nullable TypedFamily typed) { this(key, configClass, typed, null); }
+    }
 
     private static final Map<String, Member> MEMBERS = new LinkedHashMap<>();
 
@@ -67,6 +78,16 @@ public final class PathEdits {
         MEMBERS.put("tnt", new Member(MechanicsKeys.TNT, io.github.term4.polyp.mechanics.explosion.TntConfig.class, null));
         MEMBERS.put("death", new Member(MechanicsKeys.DEATH, io.github.term4.polyp.mechanics.damage.DeathConfig.class, null));
         MEMBERS.put("knockback", new Member(MechanicsKeys.KNOCKBACK, io.github.term4.polyp.mechanics.knockback.KnockbackConfig.class, null));
+        // fx/<key> = <named handler>: the value picks from FxHandlers, not from a knob table
+        MEMBERS.put("fx", new Member(MechanicsKeys.FX, FxRegistry.class, null, (base, slot, raw, path) -> {
+            Key fxKey = parseKey(slot, path);
+            FxHandler handler = FxHandlers.get(fxKey, raw);
+            if (handler == null) {
+                throw new IllegalArgumentException("no fx named '" + raw + "' for " + fxKey.asString()
+                        + " (known: " + FxHandlers.names(fxKey) + "): " + path);
+            }
+            return (base != null ? (FxRegistry) base : FxRegistry.empty()).register(fxKey, handler);
+        }));
     }
 
     /** The addressable member names (for errors and enumeration). */
@@ -89,6 +110,10 @@ public final class PathEdits {
         ConfigKey<Object> key = (ConfigKey<Object>) member.key();
         b.mutate(key, cur -> {
             Object base = cur != null ? cur : (fallback != null ? fallback.get(key) : null);
+            if (member.editor() != null) {
+                if (parts.length != 2) throw new IllegalArgumentException(parts[0] + " paths are " + parts[0] + "/<key>: " + path);
+                return member.editor().edit(base, parts[1], rawValue, path);
+            }
             if (parts.length == 2) {
                 return editFlat(member.configClass(), base, parts[1], rawValue, path);
             }

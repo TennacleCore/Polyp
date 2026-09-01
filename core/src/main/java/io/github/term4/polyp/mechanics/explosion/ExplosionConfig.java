@@ -24,10 +24,10 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
 
     /** How a blast decides a living target's damage. */
     public enum DamageModel {
-        /** {@link #flatDamage} to everything in range (Hypixel/BedWars); falls back to the curve if it is unset. */
-        FLAT,
-        /** The vanilla falloff curve, even where a base config set {@link #flatDamage} (Hypixel SkyWars TNT). */
-        CURVE
+        /** The vanilla falloff curve (distance + exposure). */
+        CURVE,
+        /** {@link #flatDamage} to every target in range, whatever the distance (Hypixel/BedWars). */
+        FLAT
     }
 
     /** Which cells the incendiary pass may light. */
@@ -44,11 +44,10 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
     public final FieldValue<ExplosionContext, Double> damageConstant;
     /** Floor the per-entity damage to an int (1.8 parity). */
     public final FieldValue<ExplosionContext, Boolean> floorDamage;
-    /** Flat damage to every in-range target when the model is {@link DamageModel#FLAT} (Hypixel/BedWars = 2.0). */
-    public final FieldValue<ExplosionContext, Double> flatDamage;
-    /** Which damage model this blast uses; unset = FLAT when {@link #flatDamage} is set, else CURVE. Set it
-     *  explicitly to switch models from an overlay - an overlay can add a knob but never unset the base's. */
+    /** Which damage model a living target takes. Default {@link DamageModel#CURVE}. */
     public final FieldValue<ExplosionContext, DamageModel> damageModel;
+    /** What {@link DamageModel#FLAT} deals per target (Hypixel/BedWars = 2.0); default 0, a knockback-only blast. */
+    public final FieldValue<ExplosionContext, Double> flatDamage;
     /** Damage this blast deals to a DROPPED ITEM; unset = the same curve amount a player takes. */
     public final FieldValue<ExplosionContext, Double> itemDamage;
     /** Scale on the final damage, applied AFTER the floor (MineMen Fireball-Fight = the vanilla floored curve × 0.05). Default 1.0. */
