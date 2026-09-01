@@ -145,6 +145,18 @@ class InventorySyncTest extends HeadlessServerTest {
     }
 
     @Test
+    void twoLegacyThrowsBothStayUnverified() {
+        InventorySync sync = new InventorySync();
+        assertNotNull(sync.filter(new SetPlayerInventorySlotPacket(9, APPLES)), "anchor slot 9");
+        assertNotNull(sync.filter(new SetPlayerInventorySlotPacket(10, APPLES)), "anchor slot 10");
+        sync.onClick(click(ClickType.THROW, 9, 0), true, null);
+        sync.onClick(click(ClickType.THROW, 10, 0), true, null);
+        assertNotNull(sync.filter(new SetPlayerInventorySlotPacket(9, APPLES)),
+                "the first throw's correction survives the second");
+        assertNotNull(sync.filter(new SetPlayerInventorySlotPacket(10, APPLES)));
+    }
+
+    @Test
     void windowItemsReBaselines() {
         InventorySync sync = new InventorySync();
         List<ItemStack> items = windowWithApples();

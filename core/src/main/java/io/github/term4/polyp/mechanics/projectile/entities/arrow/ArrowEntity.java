@@ -142,7 +142,7 @@ public class ArrowEntity extends ManagedProjectile {
         if (!(hitEntity instanceof LivingEntity le)) return;
         // hit-marker "ding" to the shooter, on a real target - not a self-hit
         if (shooter instanceof Player && shooter != le) Fx.play(services(), Fx.ARROW_HIT_PLAYER, FxContext.of(shooter, le));
-        StuckArrows.add(le, 1);
+        if (resolveHit(le).stuckInBody()) StuckArrows.add(le, 1);
         applyOnHitEffects(le);
     }
 

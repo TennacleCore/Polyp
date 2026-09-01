@@ -207,6 +207,8 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
     public final @Nullable FieldValue<ProjectileContext, DamageType> damageType;
     public final @Nullable FieldValue<ProjectileContext, Boolean> removeOnEntityHit;
     public final @Nullable FieldValue<ProjectileContext, Boolean> removeOnBlockHit;
+    /** Whether a damaging arrow adds the cosmetic stuck-in-body count (vanilla {@code true}); arrow-only. */
+    public final @Nullable FieldValue<ProjectileContext, Boolean> stuckInBody;
     /** Response for a hit the target rejects as invulnerable ({@link InvulnResponse}). 1.8 arrow = {@code invulnHit(DEFLECT, PASS_THROUGH)}; throwables {@code invulnHit(DESTROY)} (default). */
     public final @Nullable FieldValue<ProjectileContext, InvulnResponse> invulnHit;
     /** How a {@link HitResponse#DEFLECT} transforms the velocity ({@link Deflect}). 1.8 = {@code deflect(-0.1)}, 26.1 = {@code deflect(-0.5, 0, -10, 10)}. Default {@code deflect(-0.1)}. */
@@ -268,6 +270,7 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
         damageType = b.damageType;
         removeOnEntityHit = b.removeOnEntityHit;
         removeOnBlockHit = b.removeOnBlockHit;
+        stuckInBody = b.stuckInBody;
         invulnHit = b.invulnHit;
         deflect = b.deflect;
         pickupBox = b.pickupBox;

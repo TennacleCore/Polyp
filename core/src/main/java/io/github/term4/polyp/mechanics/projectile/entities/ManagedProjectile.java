@@ -51,7 +51,7 @@ public class ManagedProjectile extends ProjectileEntity {
     protected boolean hasBehavior() { return behavior != ProjectileBehavior.NONE; }
 
     /** {@code target} is the struck entity, or {@code null} for a block hit. */
-    private ResolvedHit resolveHit(@Nullable Entity target) {
+    protected ResolvedHit resolveHit(@Nullable Entity target) {
         ProjectileContext ctx = ProjectileContext.of(snap, services())
                 .atHit(target, getShooterOriginPos(), getPosition());
         return ProjectileConfigResolver.resolveHit(effectiveConfig, ctx);

@@ -99,8 +99,9 @@ public final class InventorySync {
     /** The client's believed slot contents, Minestom slot indexing (0-8 hotbar, 9-35 main, 36-40 craft, 41-44 armor, 45 offhand). */
     private final ItemStack[] believed = new ItemStack[PlayerInventory.INVENTORY_SIZE];
 
-    /** Slot the client predicted outside the click model ({@link #onPredictedUse}), or -1. */
-    private int unverifiedSlot = -1;
+    /** Slots the client predicted outside the click model ({@link #onPredictedUse}, legacy throws) -
+     * nothing is dropped for them until a server packet re-anchors each. */
+    private final Set<Integer> unverified = new HashSet<>();
     /** Legacy container click landed: the player half may hold predictions the mirror can't model. */
     private boolean containerTouched;
     private ItemStack believedCursor = ItemStack.AIR;
@@ -126,7 +127,7 @@ public final class InventorySync {
     private void forget() {
         Arrays.fill(believed, ItemStack.AIR);
         believedCursor = ItemStack.AIR;
-        unverifiedSlot = -1;
+        unverified.clear();
         containerTouched = false;
         leftDrag.clear();
         rightDrag.clear();
@@ -145,7 +146,7 @@ public final class InventorySync {
      */
     void onPredictedUse(int slot) {
         synchronized (lock) {
-            unverifiedSlot = slot;
+            unverified.add(slot);
             slotClaims.remove(slot); // the use post-dates the click, so the claim no longer describes the client
         }
     }
@@ -217,7 +218,7 @@ public final class InventorySync {
                     // unmodellable: ViaBackwards replays 1.8 hotbar drops as throw-clicks the client never made,
                     // and a CANCELLED GUI throw leaves truth == mirror while the client predicted the removal -
                     // the correction would match the mirror and be eaten (vanilla 1.8 always resends after a click)
-                    if (slot >= 0) unverifiedSlot = slot;
+                    if (slot >= 0) unverified.add(slot);
                     return;
                 }
                 if (slot < 0 || believed[slot].isAir()) return;
@@ -441,8 +442,7 @@ public final class InventorySync {
     /** {@code true} = send (mirror re-anchored to {@code item}); {@code false} = drop (already matches). */
     private boolean reconcile(int slot, ItemStack item) {
         if (slot < 0 || slot >= believed.length) return true;
-        if (slot == unverifiedSlot) unverifiedSlot = -1;
-        else {
+        if (!unverified.remove(slot)) {
             ItemStack.Hash claim = slotClaims.remove(slot);
             if (claim != null) { // the claim outranks the mirror's guess
                 believed[slot] = item;
@@ -456,7 +456,7 @@ public final class InventorySync {
 
     /** Whether {@code packet} carries exactly what the mirror already holds - a redundant full resync safe to drop. */
     private boolean redundant(WindowItemsPacket packet) {
-        if (containerTouched || unverifiedSlot >= 0 || !slotClaims.isEmpty() || cursorClaim != null
+        if (containerTouched || !unverified.isEmpty() || !slotClaims.isEmpty() || cursorClaim != null
                 || !packet.carriedItem().equals(believedCursor)) return false;
         final List<ItemStack> items = packet.items();
         for (int wire = 0; wire < items.size(); wire++) {
@@ -473,7 +473,7 @@ public final class InventorySync {
             if (slot >= 0 && slot < believed.length) believed[slot] = items.get(wire);
         }
         believedCursor = packet.carriedItem();
-        unverifiedSlot = -1;
+        unverified.clear();
         containerTouched = false;
         slotClaims.clear();
         cursorClaim = null;
