@@ -12,13 +12,16 @@ import net.minestom.server.potion.PotionEffect;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * One thing eating something does to the eater. A consumable's payload is a LIST of these, so a scope changes
- * what an item dishes out without replacing the item: bridge's apple is the vanilla golden apple with
- * {@code heal(full)} + a conditional absorption instead of regeneration + absorption. Same item, same eat
- * time, same edibility gate - different effects.
+ * <em>What</em> eating something does to the eater. A consumable's payload is a list of these, so a scope
+ * changes what an item dishes out without replacing the item: bridge's apple is the vanilla golden apple
+ * with a heal and a conditional absorption instead of regeneration + absorption. Same item, same eat time,
+ * same edibility gate - different effects.
+ *
+ * <p>Whether an effect applies is {@link ConsumeCondition}'s axis, joined by {@link #when}: there is no
+ * "chance" effect or "if absent" effect, because a probability and a missing potion are conditions that
+ * work with every effect there is.
  *
  * @see ConsumableBehavior#payload(ConsumeEffect...)
  */
@@ -27,7 +30,7 @@ public interface ConsumeEffect {
 
     void apply(@NotNull ConsumableContext ctx);
 
-    /** Restores food and saturation ({@code effectFood}'s nutrition half). */
+    /** Restores food and saturation. */
     static @NotNull ConsumeEffect food(int nutrition, float saturation) {
         return ctx -> {
             HungerSystem hunger = ctx.services() != null ? ctx.services().hunger() : null;
@@ -35,50 +38,42 @@ public interface ConsumeEffect {
         };
     }
 
-    /** A potion effect, applied at {@code chance} (1 = always). Level is 1-based, duration in ticks. */
-    static @NotNull ConsumeEffect effect(@NotNull PotionEffect id, int level, int ticks, float chance) {
-        return ctx -> {
-            if (chance < 1f && ThreadLocalRandom.current().nextFloat() >= chance) return;
-            VanillaPotions.addEffect(ctx.user(), new Potion(id, (byte) (level - 1), ticks,
-                    ctx.particles().potionFlags()));
-        };
+    /** A potion effect; level is 1-based, duration in ticks. */
+    static @NotNull ConsumeEffect effect(@NotNull PotionEffect id, int level, int ticks) {
+        return ctx -> VanillaPotions.addEffect(ctx.user(),
+                new Potion(id, (byte) (level - 1), ticks, ctx.particles().potionFlags()));
     }
 
-    /** Heals {@code hearts} of health, or everything when {@code hearts} is not positive. */
+    /** Heals {@code hearts} of health, clamped to max - so any amount at or above max is a full heal. */
     static @NotNull ConsumeEffect heal(double hearts) {
         return ctx -> {
             Player user = ctx.user();
             float max = (float) user.getAttributeValue(Attribute.MAX_HEALTH);
-            user.setHealth(hearts > 0 ? Math.min(max, user.getHealth() + (float) hearts) : max);
+            user.setHealth(Math.min(max, user.getHealth() + (float) hearts));
         };
     }
 
-    /** Runs {@code effect} only when the eater does NOT already have {@code id} - no refresh, no stacking. */
-    static @NotNull ConsumeEffect ifAbsent(@NotNull PotionEffect id, @NotNull ConsumeEffect effect) {
-        return ctx -> {
-            boolean present = ctx.user().getActiveEffects().stream()
-                    .anyMatch(active -> active.potion().effect().equals(id));
-            if (!present) effect.apply(ctx);
-        };
+    /** {@code effect}, but only when {@code condition} holds. */
+    static @NotNull ConsumeEffect when(@NotNull ConsumeCondition condition, @NotNull ConsumeEffect effect) {
+        return ctx -> { if (condition.test(ctx)) effect.apply(ctx); };
     }
 
-    /** Every listed effect, in order - the shape a payload built from data comes back as. */
+    /** Every listed effect, in order. */
     static @NotNull ConsumeEffect all(@NotNull ConsumeEffect... effects) {
         List<ConsumeEffect> list = List.of(effects);
         return ctx -> { for (ConsumeEffect e : list) e.apply(ctx); };
     }
 
     static void registerFactories() {
+        ConsumeCondition.registerFactories();
         FieldFns.register(ConsumeEffect.class, "food(nutrition, saturation)", "restores food and saturation",
                 args -> food(args.arity(2).integer(0), args.flt(1)));
-        FieldFns.register(ConsumeEffect.class, "effect(id, level, ticks)", "a potion effect, always applied",
-                args -> effect(potion(args.arity(3), 0), args.integer(1), args.integer(2), 1f));
-        FieldFns.register(ConsumeEffect.class, "chance-effect(id, level, ticks, chance)", "a potion effect at a chance",
-                args -> effect(potion(args.arity(4), 0), args.integer(1), args.integer(2), args.flt(3)));
-        FieldFns.register(ConsumeEffect.class, "heal(hearts)", "heals that much, or fully when 0 or less",
+        FieldFns.register(ConsumeEffect.class, "effect(id, level, ticks)", "applies a potion effect",
+                args -> effect(potion(args.arity(3), 0), args.integer(1), args.integer(2)));
+        FieldFns.register(ConsumeEffect.class, "heal(hearts)", "heals that much, clamped to max health",
                 args -> heal(args.arity(1).dbl(0)));
-        FieldFns.register(ConsumeEffect.class, "if-absent(id, effect)", "the effect, only when that potion is missing",
-                args -> ifAbsent(potion(args.arity(2), 0), args.of(1, ConsumeEffect.class)));
+        FieldFns.register(ConsumeEffect.class, "when(condition, effect)", "the effect, only when the condition holds",
+                args -> when(args.arity(2).of(0, ConsumeCondition.class), args.of(1, ConsumeEffect.class)));
         FieldFns.register(ConsumeEffect.class, "all(effect...)", "every listed effect, in order", args -> {
             ConsumeEffect[] out = new ConsumeEffect[args.size()];
             for (int i = 0; i < out.length; i++) out[i] = args.of(i, ConsumeEffect.class);
