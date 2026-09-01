@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.projectile.entities.arrow;
 
 import io.github.term4.polyp.world.MechanicsWorld;
+import io.github.term4.polyp.world.Recipients;
 import io.github.term4.polyp.world.WorldPolicy;
 import io.github.term4.polyp.fx.FxContext;
 import io.github.term4.polyp.fx.Fx;
@@ -201,7 +202,8 @@ public class ArrowEntity extends ManagedProjectile {
         if (instance == null) return;
         Pos arrow = getPosition();
         Player[] collected = {null};
-        MechanicsWorld.of(this).nearbyPlayers(arrow, pickupScanRange, p -> {
+        // members within reach - never an observer: a spectator must not collect
+        Recipients.within(pickupScanRange, Recipients.MEMBERS).each(MechanicsWorld.of(this), arrow, null, (p, at) -> {
             if (collected[0] == null && WorldPolicy.canAffect(p, this) && canCollect(p) && withinPickupBox(arrow, p)) collected[0] = p;
         });
         Player p = collected[0];

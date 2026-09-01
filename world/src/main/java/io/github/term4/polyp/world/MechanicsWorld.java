@@ -246,7 +246,6 @@ public interface MechanicsWorld extends Block.Getter, ForwardingAudience, Taggab
 
     @NotNull Collection<@NotNull Entity> nearbyEntities(@NotNull Point point, double range);
 
-    void nearbyPlayers(@NotNull Point point, double range, @NotNull Consumer<Player> consumer);
 
     /** Puts {@code entity} into this world at {@code position} (a virtual world also binds it). */
     @NotNull CompletableFuture<Void> spawn(@NotNull Entity entity, @NotNull Pos position);

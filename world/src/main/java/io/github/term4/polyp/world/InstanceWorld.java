@@ -112,9 +112,6 @@ public class InstanceWorld implements MechanicsWorld {
         return instance.getNearbyEntities(point, range);
     }
 
-    @Override public void nearbyPlayers(@NotNull Point point, double range, @NotNull Consumer<Player> consumer) {
-        instance.getEntityTracker().nearbyEntities(point, range, EntityTracker.Target.PLAYERS, consumer);
-    }
 
     @Override public @NotNull CompletableFuture<Void> spawn(@NotNull Entity entity, @NotNull Pos position) {
         return entity.setInstance(instance, position);
