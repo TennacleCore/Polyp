@@ -260,6 +260,13 @@ public interface MechanicsWorld extends Block.Getter, ForwardingAudience, Taggab
     /** Worlds layered directly on this one. */
     default @NotNull Collection<? extends MechanicsWorld> children() { return java.util.List.of(); }
 
+    /** The top of this world's layered family: itself when it has no parent. */
+    default @NotNull MechanicsWorld root() {
+        MechanicsWorld root = this;
+        for (int guard = 0; root.parent() != null && guard < 64; guard++) root = root.parent();
+        return root;
+    }
+
     /** Every member, without materialising a collection - the send path's iteration. */
     default void forEachMember(@NotNull java.util.function.Consumer<Player> action) {
         for (Player p : players()) action.accept(p);
