@@ -18,6 +18,7 @@ public final class Vocabulary {
         io.github.term4.polyp.mechanics.explosion.DamageModel.registerFactories();
         KeySet.registerFactories();
         io.github.term4.polyp.mechanics.projectile.shootables.DrawPower.registerFactories();
+        io.github.term4.polyp.fx.FxAudiences.registerFactories();
         io.github.term4.polyp.fx.FxEffect.registerFactories();
         io.github.term4.polyp.mechanics.knockback.KnockbackConfig.DirectionMode.registerFactories();
         io.github.term4.polyp.mechanics.knockback.KnockbackConfig.FrictionMode.registerFactories();

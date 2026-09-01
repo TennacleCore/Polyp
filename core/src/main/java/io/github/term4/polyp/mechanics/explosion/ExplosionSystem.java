@@ -235,7 +235,6 @@ public final class ExplosionSystem implements MechanicsModule {
             float damage = entity instanceof ItemEntity ? hit.damage() : !living ? 0f
                     : resolved.damageModel().amount(
                             new DamageModel.Hit(entity, distance, exposure, hit.damage()));
-            damage *= (float) resolved.damageScale(); // post-floor, so a scaled vanilla curve stays step-quantized (MineMen FBF)
             Vec push = kbTarget ? hit.knockback() : null; // a non-KB target (mob) still takes damage, no push
             targets.add(new ExplosionEvent.Target(entity, distance, exposure, push, damage));
         }

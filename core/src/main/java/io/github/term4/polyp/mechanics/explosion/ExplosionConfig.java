@@ -52,8 +52,6 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
     public final FieldValue<ExplosionContext, DamageModel> damageModel;
     /** Damage this blast deals to a DROPPED ITEM; unset = the same curve amount a player takes. */
     public final FieldValue<ExplosionContext, Double> itemDamage;
-    /** Scale on the final damage, applied AFTER the floor (MineMen Fireball-Fight = the vanilla floored curve × 0.05). Default 1.0. */
-    public final FieldValue<ExplosionContext, Double> damageScale;
     /** Mitigation the explosion damage skips (e.g. armor points only); {@code null} = normal mitigation. */
     public final @Nullable Bypass damageBypass;
     /** What this explosion does to blocks; {@code null} = breaks none. Resolved per blast, so one config can swap the
@@ -95,7 +93,6 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
         floorDamage = b.floorDamage;
         damageModel = b.damageModel;
         itemDamage = b.itemDamage;
-        damageScale = b.damageScale;
         damageBypass = b.damageBypass;
         blockBreaking = b.blockBreaking;
         breakRule = b.breakRule;

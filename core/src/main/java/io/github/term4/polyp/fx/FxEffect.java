@@ -68,7 +68,6 @@ public interface FxEffect {
      * Lives here, not on {@code Fx}, whose class init needs a running server.
      */
     static void registerFactories() {
-        FxAudiences.registerFactories();
         FieldFns.register(FxEffect.class, "sound(id, source, volume, pitch)", "a sound", args -> sound(
                 soundOf(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
         FieldFns.register(FxEffect.class, "particle(id, count, spread, speed)", "a particle burst", args -> particle(

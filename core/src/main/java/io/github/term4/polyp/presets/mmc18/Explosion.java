@@ -1,6 +1,7 @@
 package io.github.term4.polyp.presets.mmc18;
 
 import io.github.term4.polyp.mechanics.explosion.BlockBreaking;
+import io.github.term4.polyp.mechanics.explosion.DamageModel;
 import io.github.term4.polyp.mechanics.explosion.ExplosionConfig;
 import io.github.term4.polyp.mechanics.explosion.ExplosionExposure;
 import io.github.term4.polyp.mechanics.explosion.ExplosionSystem;
@@ -119,6 +120,6 @@ public final class Explosion {
      * overdamage-blocked.
      */
     public static ExplosionConfig fireballFight() {
-        return config().toBuilder().damageScale(FBF_DAMAGE_SCALE).build();
+        return config().toBuilder().damageModel(DamageModel.scaled(FBF_DAMAGE_SCALE, DamageModel.CURVE)).build();
     }
 }

@@ -80,9 +80,10 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
     @Test
     void flatMemberEditWithNoBaseMakesASparseConfig() {
         MechanicsProfile.Builder b = MechanicsProfile.builder();
-        PathEdits.apply(b, null, "explosion/damageScale", "0.5");
+        PathEdits.apply(b, null, "explosion/damageModel", "scale(0.5, curve)");
         ExplosionConfig cfg = b.build().get(MechanicsKeys.EXPLOSION);
-        assertEquals(0.5, cfg.damageScale.constantOrNull());
+        assertEquals(3.75f, cfg.damageModel.constantOrNull().amount(new DamageModel.Hit(dummy(), 2.0, 1.0f, 7.5f)), 1e-4,
+                "a scaled curve is a model, not a second knob");
     }
 
     /** Behaviour-typed values are built by named FACTORIES with arguments - open, not a fixed menu. */

@@ -9,7 +9,7 @@ import org.jetbrains.annotations.NotNull;
  * {@code BlockingBehavior} / {@code ConsumableBehavior} idiom). The vanilla curve and Hypixel's flat 2.0 are two
  * behaviors, not two config modes: a preset picks one, and a server can supply its own without touching polyp.
  *
- * <p>Set on {@link ExplosionConfig#damageModel}; {@link ExplosionConfig#damageScale} still scales whatever it returns.
+ * <p>Set on {@link ExplosionConfig#damageModel}; one axis, so a scaled curve is {@link #scaled}, not a second knob.
  */
 @FunctionalInterface
 public interface DamageModel {
@@ -27,10 +27,17 @@ public interface DamageModel {
         return hit -> (float) amount;
     }
 
+    /** {@code model} times {@code factor} - the vanilla floored curve at 5% is MineMen's fireball fight. */
+    static @NotNull DamageModel scaled(double factor, @NotNull DamageModel model) {
+        return hit -> (float) (model.amount(hit) * factor);
+    }
+
     /** Names these for data paths ({@code explosion/damageModel = flat(2.0)}); a server registers its own too. */
     static void registerFactories() {
         FieldFns.register(DamageModel.class, "curve", "vanilla distance + exposure falloff", args -> CURVE);
         FieldFns.register(DamageModel.class, "flat(amount)", "the same damage to everything in range",
                 args -> flat(args.arity(1).dbl(0)));
+        FieldFns.register(DamageModel.class, "scale(factor, model)", "another model, multiplied",
+                args -> scaled(args.arity(2).dbl(0), args.of(1, DamageModel.class)));
     }
 }
