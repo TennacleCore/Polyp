@@ -13,6 +13,7 @@ import io.github.term4.polyp.mechanics.attribute.defense.Bypass;
 import io.github.term4.polyp.mechanics.attribute.defense.MitigationRequest;
 import io.github.term4.polyp.mechanics.attribute.defense.ProtectionCategory;
 import io.github.term4.polyp.api.event.damage.DamageEvent;
+import io.github.term4.polyp.api.event.damage.FatalDamageEvent;
 import io.github.term4.polyp.api.event.damage.PreDamageEvent;
 import io.github.term4.polyp.api.event.damage.DamageAppliedEvent;
 import io.github.term4.polyp.mechanics.damage.DamageCalculator.DamageResult;
@@ -48,6 +49,7 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.entity.damage.Damage;
 import net.minestom.server.item.ItemStack;
+import net.minestom.server.network.packet.server.play.DamageEventPacket;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.ListenerHandle;
@@ -90,9 +92,10 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
     /** Fallback death-animation length when a scoped {@link DeathConfig#deathAnimationTicks} is unset (vanilla {@code deathTime} 20). */
     private static final int DEATH_ANIMATION_TICKS = 20;
 
-    // Pre/Applied fire only when listened to; main always fires
+    // Pre/Applied/Fatal fire only when listened to; main always fires
     private static final ListenerHandle<PreDamageEvent> PRE_DAMAGE = EventDispatcher.getHandle(PreDamageEvent.class);
     private static final ListenerHandle<DamageAppliedEvent> DAMAGE_APPLIED = EventDispatcher.getHandle(DamageAppliedEvent.class);
+    private static final ListenerHandle<FatalDamageEvent> FATAL_DAMAGE = EventDispatcher.getHandle(FatalDamageEvent.class);
     private static final AtomicBoolean CLOCK_RESET = new AtomicBoolean();
 
     private final DamageCalculator calc;
@@ -381,6 +384,14 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
     }
 
     private void applyDamage(LivingEntity living, DamageType type, DamageSnapshot snap, float amount, boolean silent) {
+        if (FATAL_DAMAGE.hasListener() && wouldKill(living, amount)) {
+            FatalDamageEvent fatal = new FatalDamageEvent(snap, amount, services);
+            EventDispatcher.call(fatal);
+            if (fatal.isCancelled()) {
+                hurtEffectsOnly(living, type, snap, amount);
+                return;
+            }
+        }
         // lethal hits fall through to living.damage() so Minestom handles death
         if (silent && living instanceof Player p) {
             // absorption absorbs first (Minestom's damage() does this; the silent path sets health directly, so replicate it)
@@ -396,6 +407,30 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         Entity source = snap.source();
         Damage damage = new Damage(type.minecraftType(), source, source, snap.point(), amount);
         living.damage(damage);
+    }
+
+    /** Mirrors Minestom's {@code damage()}: absorption hearts absorb first, then health. */
+    private static boolean wouldKill(LivingEntity living, float amount) {
+        float absorb = living instanceof Player p ? p.getAdditionalHearts() : 0f;
+        return amount >= living.getHealth() + absorb;
+    }
+
+    // a cancelled fatal still connected: hurt flash to everyone, hurt sound to viewers only (the victim's
+    // client predicts its own - see the EntityDamageEvent listener)
+    private void hurtEffectsOnly(LivingEntity living, DamageType type, DamageSnapshot snap, float amount) {
+        Entity source = snap.source();
+        Damage damage = new Damage(type.minecraftType(), source, source, snap.point(), amount);
+        living.sendPacketToViewersAndSelf(new DamageEventPacket(
+                living.getEntityId(), damage.getTypeId(),
+                source == null ? 0 : source.getEntityId() + 1,
+                source == null ? 0 : source.getEntityId() + 1,
+                damage.getSourcePosition()));
+        SoundEvent sound = damage.getSound(living);
+        if (sound == null) return;
+        Pos at = living.getPosition();
+        Sound.Source category = living instanceof Player ? Sound.Source.PLAYER : Sound.Source.HOSTILE;
+        living.sendPacketToViewers(AdventurePacketConvertor.createSoundPacket(
+                Sound.sound(sound, category, 1.0f, 1.0f), at.x(), at.y(), at.z()));
     }
 
     /**
