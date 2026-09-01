@@ -24,7 +24,27 @@ public final class ExplosionExposure {
      * block's real shape (rays pass over a slab, so 1.8 pushes off-flat); {@code LEGACY_1_8_FULL_CUBE} treats every
      * solid as a full cube (the Hypixel/MineMen divergence - an off-flat blast is fully occluded).
      */
-    public enum Rays { NONE, MODERN, LEGACY_1_8, LEGACY_1_8_FULL_CUBE }
+    /** How much of an entity the blast sees, 0..1 - the exposure model. */
+    @FunctionalInterface
+    public interface Rays {
+
+        float of(MechanicsWorld world, Point center, Entity entity);
+
+        /** No occlusion: everything in range counts as fully seen. */
+        Rays NONE = (world, center, entity) -> 1.0f;
+        Rays MODERN = ExplosionExposure::seenPercent;
+        /** Faithful 1.8 rayTraceBlocks against block-real shapes. */
+        Rays LEGACY_1_8 = ExplosionExposure::seenPercent18;
+        /** 1.8's march against full cubes - what servers gate off-flat blasts with. */
+        Rays LEGACY_1_8_FULL_CUBE = ExplosionExposure::seenPercent18FullCube;
+
+        static void registerFactories() {
+            io.github.term4.polyp.config.FieldFns.register(Rays.class, "none", "no occlusion", args -> NONE);
+            io.github.term4.polyp.config.FieldFns.register(Rays.class, "modern", "the 1.9+ sightline sample", args -> MODERN);
+            io.github.term4.polyp.config.FieldFns.register(Rays.class, "legacy-1.8", "1.8 rays against block shapes", args -> LEGACY_1_8);
+            io.github.term4.polyp.config.FieldFns.register(Rays.class, "legacy-1.8-full-cube", "1.8 rays against full cubes", args -> LEGACY_1_8_FULL_CUBE);
+        }
+    }
 
     // 1.8 Vec3D intermediate epsilon ((float) 1e-7 widened)
     private static final double EPSILON_1_8 = 1.0000000116860974E-7;

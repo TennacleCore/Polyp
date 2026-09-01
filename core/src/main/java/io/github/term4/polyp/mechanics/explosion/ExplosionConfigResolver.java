@@ -60,7 +60,7 @@ public final class ExplosionConfigResolver {
                 FieldValue.resolve(cfg != null ? cfg.exposure : null, ctx, ExplosionExposure.Rays.MODERN),
                 FieldValue.resolve(cfg != null ? cfg.knockbackImpactFloor : null, ctx),
                 FieldValue.resolve(cfg != null ? cfg.fire : null, ctx, false),
-                cfg != null && cfg.fireScope != null ? cfg.fireScope : ExplosionConfig.FireScope.SELECTED,
+                FieldValue.resolve(cfg != null ? cfg.fireScope : null, ctx, ExplosionConfig.FireScope.SELECTED),
                 FieldValue.resolve(cfg != null ? cfg.affectsSource : null, ctx, false),
                 cfg != null ? cfg.knockbackTargets : null,
                 cfg != null ? cfg.pushEye : null,

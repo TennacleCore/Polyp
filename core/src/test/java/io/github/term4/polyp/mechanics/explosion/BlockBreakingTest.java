@@ -399,8 +399,8 @@ class BlockBreakingTest extends HeadlessServerTest {
         // fireScope must survive builder(base) WITHOUT being re-set - the copy-ctor omission guard (bit twice before)
         ExplosionConfig base = ExplosionConfig.builder().fireScope(ExplosionConfig.FireScope.BROKEN).build();
         ExplosionConfig derived = ExplosionConfig.builder(base).power(5.0).build();
-        assertEquals(ExplosionConfig.FireScope.BROKEN, derived.fireScope, "builder(base) carries fireScope");
-        assertEquals(ExplosionConfig.FireScope.BROKEN, base.toBuilder().build().fireScope, "toBuilder carries fireScope");
+        assertEquals(ExplosionConfig.FireScope.BROKEN, derived.fireScope.constantOrNull(), "builder(base) carries fireScope");
+        assertEquals(ExplosionConfig.FireScope.BROKEN, base.toBuilder().build().fireScope.constantOrNull(), "toBuilder carries fireScope");
     }
 
     /**

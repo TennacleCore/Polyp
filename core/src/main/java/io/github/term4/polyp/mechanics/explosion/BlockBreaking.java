@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.explosion;
 
 import io.github.term4.polyp.mechanics.explosion.ExplosionConfigResolver.ExplosionContext;
+import io.github.term4.polyp.world.MechanicsWorld;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
@@ -27,55 +28,94 @@ import java.util.function.DoubleUnaryOperator;
 public final class BlockBreaking {
 
     /** How the destroyed set is chosen. Both rays are vanilla's 16³ shell; they differ only in what resists. */
-    public enum Model {
-        /** 1.8: resistance is the block's alone, and a ray never leaves the world. */
-        RAY_1_8,
-        /** 26.1: {@code max(block, fluid)} resistance, and a ray stops at the world border. */
-        RAY_MODERN,
-        /** Every breakable block within {@code power}; no ray, no shadowing. Cheap enough to spam. */
-        SPHERE
+    /** Which cells the blast reaches - the search itself. */
+    @FunctionalInterface
+    public interface Model {
+
+        @NotNull List<Point> select(@NotNull MechanicsWorld world, @NotNull Point center, float power,
+                                    @NotNull BlockBreaking cfg, @NotNull ExplosionContext ctx);
+
+        /** 1.8 rays: fluids do not resist, no world-bounds stop. */
+        Model RAY_1_8 = (world, center, power, cfg, ctx) -> ExplosionBlocks.rays(world, center, power, cfg, ctx, false);
+        /** Modern rays: fluids resist like stone, the ray stops at the world's floor and ceiling. */
+        Model RAY_MODERN = (world, center, power, cfg, ctx) -> ExplosionBlocks.rays(world, center, power, cfg, ctx, true);
+        /** Every breakable cell within {@code power} blocks - no rays, no shadowing. */
+        Model SPHERE = ExplosionBlocks::sphere;
     }
 
-    /** How a block's {@link Builder#charge} meets the ray. */
-    public enum Charging {
-        /** Vanilla: subtracted every 0.3 sample inside the block (~3.33x per block traversed). */
-        PER_STEP,
-        /** Subtracted once, on entering the block (MineMen TNT; ~3.33x deeper reach at equal resistance). */
-        PER_BLOCK,
-        /** A gate, not a cost: a block whose charge exceeds the ray's remaining intensity STOPS it (shielding whatever
-         *  is behind); anything weaker breaks and the ray flies on, spending only distance decay (MineMen fireball). */
-        THRESHOLD
+    /** How a ray pays for the cells it crosses. */
+    @FunctionalInterface
+    public interface Charging {
+
+        /** The ray's intensity after a cell costing {@code cost}; {@code newCell} on the first sample in it. {@link Float#NaN} stops the ray. */
+        float charge(float intensity, float cost, boolean newCell);
+
+        /** Every sample pays (vanilla: ~3.3 samples per cell). */
+        Charging PER_STEP = (intensity, cost, newCell) -> intensity - cost;
+        /** Each cell pays once, however many samples land in it. */
+        Charging PER_BLOCK = (intensity, cost, newCell) -> newCell ? intensity - cost : intensity;
+        /** A gate, not a cost: a cell dearer than the ray's intensity stops it and shields what is behind. */
+        Charging THRESHOLD = (intensity, cost, newCell) -> newCell && cost > intensity ? Float.NaN : intensity;
     }
 
-    /** How a rule-vetoed block protects what is behind it. Rays pass THROUGH it (its natural resistance still
-     *  applies); this only decides whether it casts a shadow. */
-    public enum Shielding {
-        /** Vanilla: nothing casts a shadow. A ray reaches whatever it reaches - straight through a blast-proof block
-         *  just the same - and every cell it selects breaks. */
-        NONE,
-        /** Hypixel (capture-verified): a blast-proof block casts a HARD shadow. A selected cell is dropped if the
-         *  straight line from the blast centre to its centre crosses one - the blast never wraps a glass corner. */
-        OCCLUSION
+    /** What a blast-proof block does to the cells behind it. */
+    @FunctionalInterface
+    public interface Shielding {
+
+        @NotNull List<Point> apply(@NotNull List<Point> hit, @NotNull MechanicsWorld world, @NotNull Point center,
+                                   float power, @NotNull BlockBreaking cfg, @NotNull ExplosionContext ctx);
+
+        /** The rays alone decide. */
+        Shielding NONE = (hit, world, center, power, cfg, ctx) -> hit;
+        /** Hard shadow (Hypixel): a selected cell is dropped when the line from the blast centre crosses a blast-proof block. */
+        Shielding OCCLUSION = ExplosionBlocks::occlude;
     }
 
-    /**
-     * What happens to a selected block - vanilla's {@code Explosion.BlockInteraction} plus the no-drops case it
-     * expresses per-block. Selection runs either way, so {@link #KEEP} is how you get FIRE without destruction.
-     */
-    public enum Interaction {
-        /** Selected but left standing. */
-        KEEP,
-        /** Destroyed, drops nothing. */
-        DESTROY_NO_DROPS,
-        /** Destroyed; each item survives with probability {@code 1/power} (vanilla TNT). */
-        DESTROY_WITH_DECAY,
-        /** Destroyed with full drops. */
-        DESTROY_WITH_DROPS;
+    /** What happens to a selected block. */
+    public interface Interaction {
 
-        boolean destroys() { return this != KEEP; }
+        boolean destroys();
+
+        /** The stacks that land, given the block's vanilla drops. */
+        @NotNull List<ItemStack> drops(@NotNull List<ItemStack> vanilla, float power, @NotNull ThreadLocalRandom rnd);
+
+        Interaction KEEP = of(false, (vanilla, power, rnd) -> List.of());
+        Interaction DESTROY_NO_DROPS = of(true, (vanilla, power, rnd) -> List.of());
+        /** Vanilla: each item survives at {@code 1/power}, rolled per item rather than per stack. */
+        Interaction DESTROY_WITH_DECAY = of(true, BlockBreaking::decayed);
+        Interaction DESTROY_WITH_DROPS = of(true, (vanilla, power, rnd) -> vanilla);
+
+        @FunctionalInterface
+        interface Drops {
+            @NotNull List<ItemStack> of(@NotNull List<ItemStack> vanilla, float power, @NotNull ThreadLocalRandom rnd);
+        }
+
+        static @NotNull Interaction of(boolean destroys, @NotNull Drops drops) {
+            return new Interaction() {
+                @Override public boolean destroys() { return destroys; }
+                @Override public @NotNull List<ItemStack> drops(@NotNull List<ItemStack> vanilla, float power, @NotNull ThreadLocalRandom rnd) {
+                    return drops.of(vanilla, power, rnd);
+                }
+            };
+        }
     }
 
-    /** Blast resistance of {@code block}, in vanilla units (stone 6, obsidian 1200). {@code Double.POSITIVE_INFINITY} = never breaks. */
+    static @NotNull List<ItemStack> decayed(@NotNull List<ItemStack> vanilla, float power, @NotNull ThreadLocalRandom rnd) {
+        List<ItemStack> out = new java.util.ArrayList<>(vanilla.size());
+        for (ItemStack stack : vanilla) {
+            int kept = survivors(stack.amount(), power, rnd);
+            if (kept > 0) out.add(stack.withAmount(kept));
+        }
+        return out;
+    }
+
+    static int survivors(int amount, float power, ThreadLocalRandom rnd) {
+        float chance = 1.0F / power;
+        int kept = 0;
+        for (int i = 0; i < amount; i++) if (rnd.nextFloat() <= chance) kept++;
+        return kept;
+    }
+
     @FunctionalInterface
     public interface Resistance {
         double of(@NotNull Block block, @NotNull ExplosionContext ctx);

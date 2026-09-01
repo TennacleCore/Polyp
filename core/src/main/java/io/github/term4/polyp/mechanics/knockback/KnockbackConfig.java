@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.knockback;
 
 import io.github.term4.polyp.codegen.GenerateBuilder;
+import io.github.term4.polyp.util.Directions;
 import io.github.term4.polyp.config.Config;
 import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.mechanics.knockback.KnockbackConfigResolver.KnockbackContext;
@@ -16,19 +17,95 @@ import java.util.function.Function;
 @GenerateBuilder
 public final class KnockbackConfig extends Config<KnockbackContext, KnockbackConfig> {
 
-    /** How the position-based and look-based direction inputs combine. */
-    public enum DirectionMode {
+    /**
+     * How the position-based and look-based direction inputs combine - at the direction stage, and again when
+     * base and extra add. A behaviour, not a switch: the two vanilla answers are constants here, and a server
+     * with a third combines the same way.
+     */
+    public interface DirectionMode {
+
+        /** A direction and the strength it carries. */
+        record Directed(Vec dir, double magnitude) {}
+
+        /** Direction stage, horizontal: the position-based and look-based unit directions at {@code magnitude}. */
+        Directed horizontal(Vec posH, Vec yaw, double magnitude, double yawWeight);
+
+        /** Direction stage, vertical: the pitch-based and height-based unit directions at {@code magnitude}. */
+        Directed vertical(Vec pitch, Vec posV, double magnitude, double pitchWeight, double heightWeight);
+
+        /** Combine stage: base plus extra, horizontal components ({@code y} of the result is 0). */
+        Vec combineHorizontal(Vec a, Vec b);
+
+        /** Combine stage: base plus extra, vertical. */
+        double combineVertical(Vec a, Vec b);
+
         /** Weighted blend of the unit directions, re-normalized; the strength stays the configured magnitude. */
-        SCALAR,
+        DirectionMode SCALAR = new DirectionMode() {
+            @Override public Directed horizontal(Vec posH, Vec yaw, double magnitude, double yawWeight) {
+                return new Directed(Directions.blend(posH, yaw, 1 - yawWeight, yawWeight, Directions::randomHorizontal), magnitude);
+            }
+            @Override public Directed vertical(Vec pitch, Vec posV, double magnitude, double pitchWeight, double heightWeight) {
+                return new Directed(Directions.blend(pitch, posV, pitchWeight, heightWeight, () -> Directions.UP), magnitude);
+            }
+            @Override public Vec combineHorizontal(Vec a, Vec b) {
+                double magA = Math.sqrt(a.x() * a.x() + a.z() * a.z());
+                double magB = Math.sqrt(b.x() * b.x() + b.z() * b.z());
+                double hNet = magA + magB;
+                if (hNet < Directions.EPSILON) return Vec.ZERO;
+                double sumX = a.x() + b.x(), sumZ = a.z() + b.z();
+                double len = Math.sqrt(sumX * sumX + sumZ * sumZ);
+                if (len < Directions.EPSILON) return Vec.ZERO;
+                double s = hNet / len;
+                return new Vec(sumX * s, 0, sumZ * s);
+            }
+            @Override public double combineVertical(Vec a, Vec b) {
+                double vNet = Math.abs(a.y()) + Math.abs(b.y());
+                return Math.max(-vNet, Math.min(vNet, a.y() + b.y()));
+            }
+        };
+
         /** Weighted vector sum; the resulting length IS the strength (vanilla 1.8 base+extra addition). */
-        VECTOR_ADDITION
+        DirectionMode VECTOR_ADDITION = new DirectionMode() {
+            @Override public Directed horizontal(Vec posH, Vec yaw, double magnitude, double yawWeight) {
+                double posMag = magnitude * (1 - yawWeight), lookMag = magnitude * yawWeight;
+                double cx = posH.x() * posMag + yaw.x() * lookMag;
+                double cz = posH.z() * posMag + yaw.z() * lookMag;
+                double len = Math.sqrt(cx * cx + cz * cz);
+                return len < Directions.EPSILON ? new Directed(yaw, magnitude) : new Directed(new Vec(cx / len, 0, cz / len), len);
+            }
+            @Override public Directed vertical(Vec pitch, Vec posV, double magnitude, double pitchWeight, double heightWeight) {
+                double cy = pitch.y() * magnitude * pitchWeight + posV.y() * magnitude * heightWeight;
+                double len = Math.abs(cy);
+                return len < Directions.EPSILON ? new Directed(Directions.UP, magnitude) : new Directed(new Vec(0, Math.signum(cy), 0), len);
+            }
+            @Override public Vec combineHorizontal(Vec a, Vec b) { return new Vec(a.x() + b.x(), 0, a.z() + b.z()); }
+            @Override public double combineVertical(Vec a, Vec b) { return a.y() + b.y(); }
+        };
+
+        static void registerFactories() {
+            io.github.term4.polyp.config.FieldFns.register(DirectionMode.class, "scalar",
+                    "blend the unit directions, keep the configured strength", args -> SCALAR);
+            io.github.term4.polyp.config.FieldFns.register(DirectionMode.class, "vector-addition",
+                    "weighted vector sum; its length is the strength (vanilla 1.8)", args -> VECTOR_ADDITION);
+        }
     }
-    /** How a friction value is applied to the reconstructed victim velocity in the friction term. */
-    public enum FrictionMode {
+
+    /** How a friction value applies to the reconstructed victim velocity: the coefficient {@code mot} is multiplied by. */
+    @FunctionalInterface
+    public interface FrictionMode {
+
+        double coefficient(double value);
+
         /** {@code mot / value} - the value is a divisor (default; vanilla-style). */
-        DIVISOR,
+        FrictionMode DIVISOR = value -> value > 0 ? 1.0 / value : 0;
+
         /** {@code mot * value} - the value is a multiplier, so coefficients (incl. negatives) read directly. */
-        FACTOR
+        FrictionMode FACTOR = value -> value;
+
+        static void registerFactories() {
+            io.github.term4.polyp.config.FieldFns.register(FrictionMode.class, "divisor", "mot / value (vanilla)", args -> DIVISOR);
+            io.github.term4.polyp.config.FieldFns.register(FrictionMode.class, "factor", "mot * value", args -> FACTOR);
+        }
     }
 
     /** Replaces the friction stage (default {@link KnockbackCalculator#vanillaFriction}: {@code kb + victimVel * coeff} per axis). All vectors b/t. */

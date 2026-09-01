@@ -54,6 +54,21 @@ public final class FieldFns {
         }
     }
 
+    /**
+     * The registered nullary name whose product IS {@code value}, or {@code null}: the reverse of {@link #parse}
+     * for constants, so a behaviour can be written to NBT by the name it was built from.
+     */
+    public static <T> @Nullable String nameOf(@NotNull Class<T> type, @NotNull T value) {
+        Vocabulary.ensure();
+        Map<String, Entry<?>> named = BY_TYPE.get(type);
+        if (named == null) return null;
+        for (Entry<?> e : named.values()) {
+            if (e.signature().contains("(")) continue;
+            if (e.factory().create(new Args(e.signature(), List.of(), "nameOf")) == value) return e.name();
+        }
+        return null;
+    }
+
     /** Removes {@code name} for {@code type}; {@code false} when it was not registered. Tests and re-installs use this. */
     public static boolean unregister(@NotNull Class<?> type, @NotNull String name) {
         Map<String, Entry<?>> named = BY_TYPE.get(type);

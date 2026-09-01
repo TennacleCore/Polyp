@@ -1,6 +1,7 @@
 package io.github.term4.polyp.entity;
 
 import io.github.term4.polyp.util.tick.TickScaler;
+import io.github.term4.polyp.config.FieldFns;
 import io.github.term4.polyp.world.ExternallyTickable;
 import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
 import io.github.term4.polyp.world.MechanicsWorld;
@@ -64,7 +65,23 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
         super.tick(time);
     }
 
-    public enum Model { LEGACY, MODERN }
+    /** The item's per-tick physics; resolved once per item from {@code MechanicsKeys.ITEM_PHYSICS}. */
+    @FunctionalInterface
+    public interface Model {
+
+        /** @param velocity this tick's velocity in blocks/tick, after Minestom's own gravity and drag */
+        Vec tick(@NotNull DroppedItemEntity item, @NotNull MechanicsWorld world, @NotNull Pos pos, @NotNull Vec velocity);
+
+        /** 1.8: float in water, sink in lava, no buoyancy lift. */
+        Model LEGACY = (item, world, pos, v) -> item.legacyTick(world, pos, v);
+        /** 26.1: buoyancy, fluid-height float gate, flow push. */
+        Model MODERN = (item, world, pos, v) -> item.modernTick(world, pos, v);
+
+        static void registerFactories() {
+            io.github.term4.polyp.config.FieldFns.register(Model.class, "legacy", "1.8 item physics", args -> LEGACY);
+            io.github.term4.polyp.config.FieldFns.register(Model.class, "modern", "26.1 item physics", args -> MODERN);
+        }
+    }
 
     private static final double WATER_DRAG_MODERN = 0.99;
     private static final double LAVA_DRAG_MODERN = 0.95;
@@ -105,7 +122,8 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
                             .add(DoubleBinaryTag.doubleBinaryTag(vel.x()))
                             .add(DoubleBinaryTag.doubleBinaryTag(vel.y()))
                             .add(DoubleBinaryTag.doubleBinaryTag(vel.z())).build());
-            if (this.model != null) out.putString("model", this.model.name());
+            String modelName = this.model != null ? FieldFns.nameOf(Model.class, this.model) : null;
+            if (modelName != null) out.putString("model", modelName); // a custom lambda has no name: re-resolved from the profile on load
             return out.build();
         });
     }
@@ -115,7 +133,7 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
         String model = data.getString("model");
         DroppedItemEntity item = new DroppedItemEntity(
                 ItemStack.CODEC.decode(Transcoder.NBT, data.get("item")).orElseThrow(),
-                model.isEmpty() ? null : Model.valueOf(model));
+                model.isEmpty() ? null : FieldFns.parse(Model.class, model, "dropped item nbt"));
         ListBinaryTag vel = data.getList("vel", BinaryTagTypes.DOUBLE);
         if (vel.size() == 3) item.setVelocity(new Vec(vel.getDouble(0), vel.getDouble(1), vel.getDouble(2)));
         return item;
@@ -177,7 +195,7 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
         Vec v0 = getVelocity().div(TPS); // b/t; Minestom already applied gravity + drag this tick
 
         MechanicsWorld world = MechanicsWorld.of(this);
-        Vec v = effectiveModel() == Model.LEGACY ? legacyTick(world, pos, v0) : modernTick(world, pos, v0);
+        Vec v = effectiveModel().tick(this, world, pos, v0);
         if (buried(world, pos)) v = pushOutOfBlocks(world, pos, v);
 
         // silent: setVelocity broadcasts, fighting the client's own item sim

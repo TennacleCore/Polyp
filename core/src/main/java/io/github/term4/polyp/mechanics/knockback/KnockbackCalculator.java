@@ -142,34 +142,9 @@ public final class KnockbackCalculator {
         double pw = extra ? cfg.extraPitchWeight() : cfg.pitchWeight();
         double hw = extra ? cfg.extraHeightDelta() : cfg.heightDelta();
 
-        Vec dirH; Vec dirV; double magH = h; double magV = v;
-
-        if (cfg.horizontalCombine() == KnockbackConfig.DirectionMode.VECTOR_ADDITION) {
-            double posMag = h * (1 - yw);
-            double lookMag = h * yw;
-            double cx = raw.posH().x() * posMag + raw.yaw().x() * lookMag;
-            double cz = raw.posH().z() * posMag + raw.yaw().z() * lookMag;
-            double len = Math.sqrt(cx * cx + cz * cz);
-            dirH = len < Directions.EPSILON ? raw.yaw() : new Vec(cx / len, 0, cz / len);
-            magH = len < Directions.EPSILON ? h : len;
-        } else {
-            dirH = Directions.blend(raw.posH(), raw.yaw(), 1 - yw, yw, Directions::randomHorizontal);
-        }
-
-        if (cfg.verticalCombine() == KnockbackConfig.DirectionMode.VECTOR_ADDITION) {
-            double heightMag = v * hw;
-            double pitchMag = v * pw;
-            double cy = raw.pitch().y() * pitchMag + raw.posV().y() * heightMag;
-            double len = Math.abs(cy);
-            dirV = len < Directions.EPSILON ? Directions.UP : new Vec(0, Math.signum(cy), 0);
-            magV = len < Directions.EPSILON ? v : len;
-        } else {
-            dirV = Directions.blend(raw.pitch(), raw.posV(), pw, hw, () -> Directions.UP);
-        }
-
-        Vec dir3D = new Vec(dirH.x(), dirV.y(), dirH.z());
-
-        return new DirAndStrength(dir3D, magH, magV);
+        KnockbackConfig.DirectionMode.Directed dh = cfg.horizontalCombine().horizontal(raw.posH(), raw.yaw(), h, yw);
+        KnockbackConfig.DirectionMode.Directed dv = cfg.verticalCombine().vertical(raw.pitch(), raw.posV(), v, pw, hw);
+        return new DirAndStrength(new Vec(dh.dir().x(), dv.dir().y(), dh.dir().z()), dh.magnitude(), dv.magnitude());
     }
 
     /** Vanilla friction stage: {@code kb + victimVel * coeff} per axis ({@link #frictionCoeff}). All b/t. */
@@ -207,49 +182,12 @@ public final class KnockbackCalculator {
 
     /** Vanilla combine stage: base+extra per the config's {@link KnockbackConfig.DirectionMode}s (vector addition or magnitude-preserving blend). */
     public static Vec vanillaCombine(Vec a, Vec b, KnockbackConfigResolver.ResolvedKnockbackConfig cfg) {
-        boolean hAdd = cfg.horizontalCombine() == KnockbackConfig.DirectionMode.VECTOR_ADDITION;
-        boolean vAdd = cfg.verticalCombine() == KnockbackConfig.DirectionMode.VECTOR_ADDITION;
-
-        double resX, resZ, resY;
-
-        if (hAdd) {
-            resX = a.x() + b.x();
-            resZ = a.z() + b.z();
-        } else {
-            double magA = Math.sqrt(a.x() * a.x() + a.z() * a.z());
-            double magB = Math.sqrt(b.x() * b.x() + b.z() * b.z());
-            double hNet = magA + magB;
-
-            if (hNet < Directions.EPSILON) {
-                resX = resZ = 0;
-            } else {
-                double sumX = a.x() + b.x();
-                double sumZ = a.z() + b.z();
-                double len = Math.sqrt(sumX * sumX + sumZ * sumZ);
-                if (len < Directions.EPSILON) {
-                    resX = resZ = 0;
-                } else {
-                    double s = hNet / len;
-                    resX = sumX * s;
-                    resZ = sumZ * s;
-                }
-            }
-        }
-
-        if (vAdd) {
-            resY = a.y() + b.y();
-        } else {
-            double vNet = Math.abs(a.y()) + Math.abs(b.y());
-            double blendY = a.y() + b.y();
-            resY = Math.max(-vNet, Math.min(vNet, blendY));
-        }
-
-        return new Vec(resX, resY, resZ);
+        Vec horizontal = cfg.horizontalCombine().combineHorizontal(a, b);
+        return new Vec(horizontal.x(), cfg.verticalCombine().combineVertical(a, b), horizontal.z());
     }
 
     /** Friction term coefficient: {@code FACTOR} multiplies mot by the value directly; {@code DIVISOR} (default, incl. null) uses {@code 1/value}. */
     private static double frictionCoeff(double f, @Nullable KnockbackConfig.FrictionMode mode) {
-        if (mode == KnockbackConfig.FrictionMode.FACTOR) return f;
-        return f > 0 ? 1.0 / f : 0;
+        return (mode != null ? mode : KnockbackConfig.FrictionMode.DIVISOR).coefficient(f);
     }
 }

@@ -57,9 +57,14 @@ final class ExplosionBlocks {
     static @NotNull List<Point> select(MechanicsWorld world, Point blastCenter, float power,
                                        BlockBreaking cfg, ExplosionContext ctx) {
         Point center = cfg.originLift() != 0 ? blastCenter.add(0, cfg.originLift(), 0) : blastCenter;
-        if (cfg.model() == BlockBreaking.Model.SPHERE) return sphere(world, center, power, cfg, ctx);
-        List<Point> hit = rays(world, center, power, cfg, ctx);
-        if (cfg.shielding() == BlockBreaking.Shielding.OCCLUSION) {
+        List<Point> hit = cfg.model().select(world, center, power, cfg, ctx);
+        return cfg.shielding().apply(hit, world, center, power, cfg, ctx);
+    }
+
+    static @NotNull List<Point> occlude(@NotNull List<Point> selected, MechanicsWorld world, Point center, float power,
+                                        BlockBreaking cfg, ExplosionContext ctx) {
+        List<Point> hit = new ArrayList<>(selected);
+        {
             // hard shadow (Hypixel): drop a selected cell if the line from the blast centre to its centre crosses a
             // blast-proof block. The ray itself is untouched - it passes straight through glass; only this line sees it.
             Seal seal = scanSeals(world, center, power, cfg, ctx);
@@ -117,10 +122,8 @@ final class ExplosionBlocks {
         });
     }
 
-    private static List<Point> rays(MechanicsWorld world, Point center, float power,
-                                    BlockBreaking cfg, ExplosionContext ctx) {
-        boolean modern = cfg.model() == BlockBreaking.Model.RAY_MODERN;
-        boolean perStep = cfg.charging() == BlockBreaking.Charging.PER_STEP;
+    static List<Point> rays(MechanicsWorld world, Point center, float power,
+                            BlockBreaking cfg, ExplosionContext ctx, boolean modern) {
         Set<Point> hit = new HashSet<>();
         var rnd = ThreadLocalRandom.current();
         Lattice lat = lattice(cfg.rayGrid());
@@ -160,14 +163,10 @@ final class ExplosionBlocks {
                     breakable = cfg.canBreak(block, pos, ctx);
                     uncharged = true;
                 }
-                if (resistance >= 0 && (perStep || uncharged)) {
-                    if (cfg.charging() == BlockBreaking.Charging.THRESHOLD) {
-                        // gate, not a cost: a stronger block stops the ray (shields what is behind); the per-ray roll
-                        // keeps the reach continuous - under a FIXED intensity the 0.3 sampling quantizes it to rungs
-                        if (cfg.charge(resistance) > intensity) break;
-                    } else {
-                        intensity -= (float) cfg.charge(resistance);
-                    }
+                if (resistance >= 0) {
+                    float next = cfg.charging().charge(intensity, (float) cfg.charge(resistance), uncharged);
+                    if (Float.isNaN(next)) break;
+                    intensity = next;
                     uncharged = false;
                 }
                 if (intensity > 0.0F && breakable) hit.add(pos);
@@ -228,8 +227,8 @@ final class ExplosionBlocks {
     }
 
     /** No shadowing: every breakable block whose centre is within {@code power}. */
-    private static List<Point> sphere(MechanicsWorld world, Point center, float power,
-                                      BlockBreaking cfg, ExplosionContext ctx) {
+    static List<Point> sphere(MechanicsWorld world, Point center, float power,
+                              BlockBreaking cfg, ExplosionContext ctx) {
         List<Point> hit = new ArrayList<>();
         int r = (int) Math.ceil(power);
         double rSq = power * power;
@@ -286,13 +285,8 @@ final class ExplosionBlocks {
                 broken.add(pos);
                 continue;
             }
-            if (cfg.interaction() != BlockBreaking.Interaction.DESTROY_NO_DROPS) {
-                for (ItemStack stack : BlockBreaking.dropsOf(block)) {
-                    // vanilla decay is a per-ITEM roll at 1/power, not one roll for the stack
-                    int kept = cfg.interaction() == BlockBreaking.Interaction.DESTROY_WITH_DROPS
-                            ? stack.amount() : survivors(stack.amount(), power, rnd);
-                    if (kept > 0) drop(world, pos, stack.withAmount(kept));
-                }
+            for (ItemStack stack : cfg.interaction().drops(BlockBreaking.dropsOf(block), power, rnd)) {
+                drop(world, pos, stack);
             }
             world.setBlock(pos, Block.AIR);
             world.applyPhysics(pos);
@@ -336,12 +330,6 @@ final class ExplosionBlocks {
         }
     }
 
-    private static int survivors(int amount, float power, ThreadLocalRandom rnd) {
-        float chance = 1.0F / power;
-        int kept = 0;
-        for (int i = 0; i < amount; i++) if (rnd.nextFloat() <= chance) kept++;
-        return kept;
-    }
 
     private static void drop(MechanicsWorld world, Point pos, ItemStack stack) {
         DroppedItemEntity.spawn(world, new Pos(pos.blockX() + 0.5, pos.blockY() + 0.5, pos.blockZ() + 0.5),

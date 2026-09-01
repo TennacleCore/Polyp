@@ -1,6 +1,8 @@
 package io.github.term4.polyp.mechanics.explosion;
 
 import io.github.term4.polyp.codegen.GenerateBuilder;
+import net.minestom.server.coordinate.Point;
+import java.util.List;
 import io.github.term4.polyp.config.Config;
 import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.mechanics.attribute.defense.Bypass;
@@ -23,11 +25,21 @@ import java.util.function.Predicate;
 public final class ExplosionConfig extends Config<ExplosionContext, ExplosionConfig> {
 
     /** Which cells the incendiary pass may light. */
-    public enum FireScope {
+    @FunctionalInterface
+    public interface FireScope {
+
+        /** @param selected every cell the blast reached; {@code broken} the ones a block was actually removed from */
+        List<Point> cells(List<Point> selected, List<Point> broken);
+
         /** Every selected cell (vanilla) - fire can land on intact surfaces the blast merely reached. */
-        SELECTED,
+        FireScope SELECTED = (selected, broken) -> selected;
         /** Only cells a block was actually broken in (Hypixel fireballs) - a blast on unbroken ground lights nothing. */
-        BROKEN
+        FireScope BROKEN = (selected, broken) -> broken;
+
+        static void registerFactories() {
+            io.github.term4.polyp.config.FieldFns.register(FireScope.class, "selected", "any cell the blast reached (vanilla)", args -> SELECTED);
+            io.github.term4.polyp.config.FieldFns.register(FireScope.class, "broken", "only cells a block was broken in", args -> BROKEN);
+        }
     }
 
     /** Default radius for the no-power {@code explode} overloads; an explicit call power wins. */
@@ -68,7 +80,7 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
     /** Carried on {@code ExplosionEvent} for a block/fire listener; the library itself never sets fire. */
     public final FieldValue<ExplosionContext, Boolean> fire;
     /** Where {@link #fire} lands; {@code null} = {@link FireScope#SELECTED} (vanilla). */
-    public final @Nullable FireScope fireScope;
+    public final FieldValue<ExplosionContext, FireScope> fireScope;
     /** Whether the source entity is hit by its own explosion (vanilla excludes it). */
     public final FieldValue<ExplosionContext, Boolean> affectsSource;
     /** Which entities the explosion knocks back. {@code null} = players + non-living physics entities (TNT etc.); e.g. {@code e -> e instanceof Player} restores player-only. */
@@ -110,7 +122,6 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
                 .subConfig(subConfig != null ? subConfig : base.subConfig)
                 .damageBypass(damageBypass != null ? damageBypass : base.damageBypass)
                 .baseScale(baseScale != null ? baseScale : base.baseScale)
-                .fireScope(fireScope != null ? fireScope : base.fireScope)
                 .damageKnockback(damageKnockback != null ? damageKnockback : base.damageKnockback)
                 .knockbackTargets(knockbackTargets != null ? knockbackTargets : base.knockbackTargets)
                 .pushEye(pushEye != null ? pushEye : base.pushEye)
@@ -131,7 +142,6 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
         private Function<ExplosionContext, ExplosionConfig> subConfig;
         private Bypass damageBypass;
         private RadialScale baseScale;
-        private FireScope fireScope;
         private KnockbackConfig damageKnockback;
         private Predicate<Entity> knockbackTargets;
         private Function<Entity, Double> pushEye;
@@ -143,7 +153,6 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
             subConfig = c.subConfig;
             damageBypass = c.damageBypass;
             baseScale = c.baseScale;
-            fireScope = c.fireScope;
             damageKnockback = c.damageKnockback;
             knockbackTargets = c.knockbackTargets;
             pushEye = c.pushEye;
@@ -152,7 +161,6 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
         public Builder subConfig(Function<ExplosionContext, ExplosionConfig> fn) { subConfig = fn; return this; }
         public Builder damageBypass(Bypass v) { damageBypass = v; return this; }
         public Builder baseScale(RadialScale v) { baseScale = v; return this; }
-        public Builder fireScope(FireScope v) { fireScope = v; return this; }
         public Builder damageKnockback(KnockbackConfig v) { damageKnockback = v; return this; }
         public Builder knockbackTargets(Predicate<Entity> v) { knockbackTargets = v; return this; }
         public Builder pushEye(Function<Entity, Double> v) { pushEye = v; return this; }

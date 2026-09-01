@@ -152,8 +152,7 @@ public final class ExplosionSystem implements MechanicsModule {
         if (resolved.blockBreaking() != null && !event.blocks().isEmpty()) {
             List<Point> broken = ExplosionBlocks.destroy(world, event.blocks(), power, resolved.blockBreaking(), source);
             // BROKEN (Hypixel) lights only vacated cells; SELECTED (vanilla) may light any cell the blast reached
-            if (resolved.fire()) ExplosionBlocks.placeFire(world,
-                    resolved.fireScope() == ExplosionConfig.FireScope.BROKEN ? broken : event.blocks());
+            if (resolved.fire()) ExplosionBlocks.placeFire(world, resolved.fireScope().cells(event.blocks(), broken));
         }
     }
 
@@ -226,12 +225,7 @@ public final class ExplosionSystem implements MechanicsModule {
                     : resolved.pushEye() != null ? resolved.pushEye().apply(entity)
                     : entity.getEntityType().eyeHeight();
             Point eyeOrigin = entity.getPosition().add(0, headHeight, 0);
-            float exposure = switch (resolved.exposure()) {
-                case NONE -> 1.0f;
-                case MODERN -> ExplosionExposure.seenPercent(world, center, entity);
-                case LEGACY_1_8 -> ExplosionExposure.seenPercent18(world, center, entity);
-                case LEGACY_1_8_FULL_CUBE -> ExplosionExposure.seenPercent18FullCube(world, center, entity);
-            };
+            float exposure = resolved.exposure().of(world, center, entity);
             // TODO knockback reduction (Blast Protection / KB resistance) via the attribute layer
             ExplosionCalculator.Hit hit = ExplosionCalculator.compute(center, power, eyeOrigin, distance, exposure,
                     resolved.damageConstant(), resolved.floorDamage(), resolved.knockbackMultiplier());

@@ -19,5 +19,10 @@ public final class Vocabulary {
         KeySet.registerFactories();
         io.github.term4.polyp.mechanics.projectile.shootables.DrawPower.registerFactories();
         io.github.term4.polyp.fx.FxEffect.registerFactories();
+        io.github.term4.polyp.mechanics.knockback.KnockbackConfig.DirectionMode.registerFactories();
+        io.github.term4.polyp.mechanics.knockback.KnockbackConfig.FrictionMode.registerFactories();
+        io.github.term4.polyp.mechanics.explosion.ExplosionConfig.FireScope.registerFactories();
+        io.github.term4.polyp.mechanics.explosion.ExplosionExposure.Rays.registerFactories();
+        io.github.term4.polyp.entity.DroppedItemEntity.Model.registerFactories();
     }
 }
