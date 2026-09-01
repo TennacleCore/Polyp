@@ -1,6 +1,7 @@
 package io.github.term4.polyp.fx;
 
 import io.github.term4.polyp.config.FieldFns;
+import io.github.term4.polyp.world.Recipients;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.minestom.server.coordinate.Point;
@@ -13,11 +14,11 @@ import net.minestom.server.sound.SoundEvent;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * <em>What</em> one recipient perceives, at the anchor {@link FxAudience} hands it - the other half of an
+ * <em>What</em> one recipient perceives, at the anchor {@link Recipients} hands it - the other half of an
  * {@link FxHandler}. Pairing any effect with any audience is what keeps the two vocabularies additive rather
  * than a grid of prebuilt combinations.
  *
- * @see FxHandler#of(FxAudience, FxEffect)
+ * @see FxHandler#of(Recipients, FxEffect)
  */
 @FunctionalInterface
 public interface FxEffect {
@@ -49,14 +50,14 @@ public interface FxEffect {
     }
 
     /**
-     * The data vocabulary: EFFECTS here and AUDIENCES in {@link FxAudience}, composed by {@code to(audience,
+     * The data vocabulary: EFFECTS here and AUDIENCES in {@link Recipients}, composed by {@code to(audience,
      * effect)} - a new audience works with every effect and vice versa, so the two never multiply out. A bare
      * effect keeps the vanilla shard audience:
      * <pre>fx/polyp:pearl_teleport = to(everywhere, sound(entity.player.teleport, player, 1, 1))</pre>
      * Lives here, not on {@code Fx}, whose class init needs a running server.
      */
     static void registerFactories() {
-        FxAudience.registerFactories();
+        FxAudiences.registerFactories();
         FieldFns.register(FxEffect.class, "sound(id, source, volume, pitch)", "a sound", args -> sound(
                 soundOf(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
         FieldFns.register(FxEffect.class, "particle(id, count, spread, speed)", "a particle burst", args -> particle(
@@ -68,12 +69,12 @@ public interface FxEffect {
 
         FieldFns.register(FxHandler.class, "none", "plays nothing - silences this key", args -> FxHandler.NONE);
         FieldFns.register(FxHandler.class, "to(audience, effect)", "an effect delivered to an audience",
-                args -> FxHandler.of(args.arity(2).of(0, FxAudience.class), args.of(1, FxEffect.class)));
+                args -> FxHandler.of(args.arity(2).of(0, Recipients.class), args.of(1, FxEffect.class)));
         // a bare effect is the default audience, so the common case stays short
         for (String effect : FieldFns.names(FxEffect.class)) {
             // the signature keeps its parens: these forward their arguments to the effect factory
             FieldFns.register(FxHandler.class, effect + "(...)", "shorthand for to(watchers, " + effect + "(...))",
-                    args -> FxHandler.of(FxAudience.WATCHERS, FieldFns.build(FxEffect.class, effect, args)));
+                    args -> FxHandler.of(Recipients.WATCHERS, FieldFns.build(FxEffect.class, effect, args)));
         }
     }
 

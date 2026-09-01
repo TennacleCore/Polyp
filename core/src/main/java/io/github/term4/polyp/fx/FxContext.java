@@ -1,6 +1,7 @@
 package io.github.term4.polyp.fx;
 
 import io.github.term4.polyp.world.MechanicsWorld;
+import io.github.term4.polyp.world.Recipients;
 import net.kyori.adventure.sound.Sound;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Entity;
@@ -81,13 +82,13 @@ public final class FxContext {
     }
 
     /** Delivers {@code effect} to {@code audience} from this context - the one route every helper below takes. */
-    public void emit(@NotNull FxAudience audience, @NotNull FxEffect effect) {
+    public void emit(@NotNull Recipients audience, @NotNull FxEffect effect) {
         FxHandler.of(audience, effect).play(this);
     }
 
     /** A positional sound at {@link #position()} to everyone rendering the world. */
     public void sound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
-        emit(FxAudience.WATCHERS, FxEffect.sound(sound, src, volume, pitch));
+        emit(Recipients.WATCHERS, FxEffect.sound(sound, src, volume, pitch));
     }
 
     /**
@@ -95,7 +96,7 @@ public final class FxContext {
      * {@link #hitAnimation}: the doer's own client predicts it, so echoing it would double it.
      */
     public void viewerSound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
-        emit(FxAudience.VIEWERS, FxEffect.sound(sound, src, volume, pitch));
+        emit(Recipients.VIEWERS, FxEffect.sound(sound, src, volume, pitch));
     }
 
     /**
@@ -103,12 +104,12 @@ public final class FxContext {
      * their own world sounds locally; 1.8's local sound sinks are empty stubs, so the doer needs the packet.
      */
     public void predictedSound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
-        emit(FxAudience.PREDICTED, FxEffect.sound(sound, src, volume, pitch));
+        emit(FxAudiences.PREDICTED, FxEffect.sound(sound, src, volume, pitch));
     }
 
     /** A sound to the {@code source} entity ONLY, anchored on it, if it's a player (the arrow hit-marker "ding"). */
     public void sourceSound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
-        emit(FxAudience.SOURCE, FxEffect.sound(sound, src, volume, pitch));
+        emit(Recipients.SOURCE, FxEffect.sound(sound, src, volume, pitch));
     }
 
     /**
@@ -116,7 +117,7 @@ public final class FxContext {
      * One shared seed, so variant-picking sounds pick the same variant for everyone.
      */
     public void globalSound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
-        emit(FxAudience.atListener(FxAudience.WATCHERS), FxEffect.sound(sound, src, volume, pitch));
+        emit(Recipients.atListener(Recipients.WATCHERS), FxEffect.sound(sound, src, volume, pitch));
     }
 
     /** A particle burst at {@link #position()} to the shard audience. */

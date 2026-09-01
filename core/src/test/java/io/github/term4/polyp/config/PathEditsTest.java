@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -177,7 +178,7 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
         assertTrue(message.contains("to") && message.contains("none"), message);
         String audience = assertThrows(IllegalArgumentException.class,
                 () -> PathEdits.apply(b, null, "fx/polyp:pearl_teleport", "to(elsewhere, sound(entity.player.teleport, player, 1, 1))")).getMessage();
-        assertTrue(audience.contains("no FxAudience named"), audience);
+        assertTrue(audience.contains("no Recipients named"), audience);
     }
 
     /** A @GenerateKnobs config: plain values, no FieldValue, and an edit keeps every other field. */
@@ -244,6 +245,15 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
         assertNotNull(apple);
         assertEquals(custom, apple.behavior.constantOrNull(), "the named behaviour, not a rebuilt one");
         assertNotNull(apple.canConsume, "the preset's 1.8 edibility gate rides along");
+    }
+
+    /** The dry run a server can sweep its rulesets with at boot - same checks, nothing written. */
+    @Test
+    void validateReportsTheReasonWithoutApplying() {
+        assertNull(PathEdits.validate(base(), "projectiles/minecraft:arrow/critDamage", "false"));
+        String bad = PathEdits.validate(base(), "consumables/minecraft:golden_apple/behavior", "heel-apple");
+        assertNotNull(bad);
+        assertTrue(bad.contains("no ConsumableBehavior named"), bad);
     }
 
     @Test

@@ -100,6 +100,22 @@ public final class PathEdits {
     public static java.util.Set<String> members() { return MEMBERS.keySet(); }
 
     /**
+     * Checks that {@code path = rawValue} would apply, without touching anything: same parse, same member
+     * and knob lookup, same value decode. Returns the reason it would fail, or {@code null} when it is fine.
+     *
+     * <p>Polyp cannot know WHEN to run this - a name like {@code heal-apple} is registered while a mode
+     * installs, so anything eager would report false errors. The server owns the moment; this owns the check.
+     */
+    public static @Nullable String validate(@Nullable MechanicsProfile fallback, String path, String rawValue) {
+        try {
+            apply(MechanicsProfile.builder(), fallback, path, rawValue);
+            return null;
+        } catch (RuntimeException e) {
+            return e.getMessage();
+        }
+    }
+
+    /**
      * Applies {@code path = rawValue} onto {@code b}. The edited base is the builder's current member,
      * else {@code fallback}'s (the resolved global profile) - so a ruleset layers over the preset it runs on.
      */

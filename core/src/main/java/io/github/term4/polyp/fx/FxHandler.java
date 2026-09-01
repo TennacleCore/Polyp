@@ -1,5 +1,6 @@
 package io.github.term4.polyp.fx;
 
+import io.github.term4.polyp.world.Recipients;
 import net.kyori.adventure.sound.Sound;
 import net.minestom.server.network.packet.server.play.EntityAnimationPacket;
 import net.minestom.server.particle.Particle;
@@ -20,24 +21,25 @@ public interface FxHandler {
     FxHandler NONE = ctx -> {};
 
     /**
-     * The composition point: any {@link FxEffect} delivered to any {@link FxAudience}. One seed per play is
+     * The composition point: any {@link FxEffect} delivered to any {@link Recipients}. One seed per play is
      * shared across recipients, so a variant sound picks the same variant for everyone.
      */
-    static @NotNull FxHandler of(@NotNull FxAudience audience, @NotNull FxEffect effect) {
+    static @NotNull FxHandler of(@NotNull Recipients audience, @NotNull FxEffect effect) {
         return ctx -> {
             long seed = java.util.concurrent.ThreadLocalRandom.current().nextLong();
-            audience.each(ctx, (player, at) -> effect.send(ctx, player, at, seed));
+            audience.each(ctx.world(), ctx.position(), ctx.source(),
+                    (player, at) -> effect.send(ctx, player, at, seed));
         };
     }
 
-    /** A positional sound at the context position, to everyone rendering the world ({@link FxAudience#WATCHERS}). */
+    /** A positional sound at the context position, to everyone rendering the world ({@link Recipients#WATCHERS}). */
     static @NotNull FxHandler sound(@NotNull SoundEvent sound, @NotNull Sound.Source source, float volume, float pitch) {
-        return of(FxAudience.WATCHERS, FxEffect.sound(sound, source, volume, pitch));
+        return of(Recipients.WATCHERS, FxEffect.sound(sound, source, volume, pitch));
     }
 
     /** A symmetric particle burst at the context position, to everyone rendering the world. */
     static @NotNull FxHandler particle(@NotNull Particle particle, int count, double spread, float speed) {
-        return of(FxAudience.WATCHERS, FxEffect.particle(particle, count, spread, speed));
+        return of(Recipients.WATCHERS, FxEffect.particle(particle, count, spread, speed));
     }
 
     /** An entity animation on the context source, to its viewers + itself. */
