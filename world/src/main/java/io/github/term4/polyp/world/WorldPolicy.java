@@ -33,7 +33,8 @@ public interface WorldPolicy {
 
     /** Whether {@code viewer}'s client renders {@code world}'s BLOCKS - the filter for block-anchored FX. */
     default boolean seesBlocksOf(@NotNull Player viewer, @NotNull MechanicsWorld world) {
-        return MechanicsWorld.binding(viewer) == null && viewer.getInstance() == world.instance();
+        MechanicsWorld bound = MechanicsWorld.binding(viewer);
+        return bound == world || (bound == null && viewer.getInstance() == world.instance());
     }
 
     static boolean canAffect(@NotNull Entity actor, @NotNull Entity target) {

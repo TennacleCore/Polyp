@@ -255,6 +255,9 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
     @Test
     void validateReportsTheReasonWithoutApplying() {
         assertNull(PathEdits.validate(base(), "projectiles/minecraft:arrow/critDamage", "false"));
+        String slash = PathEdits.validate(base(), "/hunger/enabled", "false");
+        assertNotNull(slash);
+        assertTrue(slash.contains("unknown member"), slash);
         String bad = PathEdits.validate(base(), "consumables/minecraft:golden_apple/behavior", "heel-apple");
         assertNotNull(bad);
         assertTrue(bad.contains("no ConsumableBehavior named"), bad);

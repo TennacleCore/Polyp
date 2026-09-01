@@ -231,7 +231,7 @@ public final class PathEdits {
             apply(MechanicsProfile.builder(), fallback, path, rawValue);
             return null;
         } catch (RuntimeException e) {
-            return e.getMessage();
+            return e.getMessage() != null ? e.getMessage() : e.toString();
         }
     }
 
@@ -253,7 +253,8 @@ public final class PathEdits {
         String[] parts = path.split("/");
         Member member = parts.length > 0 ? MEMBERS.get(parts[0]) : null;
         if (member == null) {
-            throw new IllegalArgumentException("unknown member '" + parts[0] + "' in " + path + " (members: " + members() + ")");
+            String head = parts.length > 0 ? parts[0] : "";
+            throw new IllegalArgumentException("unknown member '" + head + "' in '" + path + "' (members: " + members() + ")");
         }
         @SuppressWarnings("unchecked")
         ConfigKey<Object> key = (ConfigKey<Object>) member.key();
