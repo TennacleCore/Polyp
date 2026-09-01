@@ -1,19 +1,25 @@
 package io.github.term4.polyp.mechanics.attack;
 
-import io.github.term4.polyp.MechanicsProfiles;
 import io.github.term4.polyp.MechanicsKeys;
-import io.github.term4.polyp.ScopedSystem;
+import io.github.term4.polyp.MechanicsProfiles;
 import io.github.term4.polyp.Polyp;
+import io.github.term4.polyp.ScopedSystem;
 import io.github.term4.polyp.Services;
-import io.github.term4.polyp.api.event.attack.AttackEvent;
 import io.github.term4.polyp.api.event.attack.AttackAppliedEvent;
+import io.github.term4.polyp.api.event.attack.AttackEvent;
 import io.github.term4.polyp.api.event.attack.PreAttackEvent;
 import net.kyori.adventure.key.Key;
+import net.minestom.server.collision.BoundingBox;
+import net.minestom.server.coordinate.Pos;
+import net.minestom.server.entity.Entity;
+import net.minestom.server.entity.Player;
+import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.ListenerHandle;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Attack pipeline: {@link HitDetection} turns raw input into snapshots, then the system fires the {@link AttackEvent}
@@ -68,6 +74,7 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
         if (snap.config() == null) snap = snap.withConfig(effective);
 
         AttackEvent api = new AttackEvent(snap, services);
+        if (!withinReach(snap, api.resolvedConfig().reachPadding())) return;
         EventDispatcher.call(api);
         // enabled read live: a listener can swap in an enabled config to let the hit through
         if (api.isCancelled() || !api.process() || !api.resolvedConfig().enabled()) return;
@@ -81,6 +88,23 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
     }
 
     /** Installs inert (no install-level config): a detected hit with no scoped or snapshot config is dropped. Pass an empty config to process at the vanilla floor. */
+    // vanilla's server gate: 1.8 takes 6 blocks centre to centre, modern range + 3 from the eye to the box
+    private static boolean withinReach(AttackSnapshot snap, @Nullable Double padding) {
+        if (padding == null || padding < 0 || snap.target() == null || !(snap.attacker() instanceof Player p)) return true;
+        double max = p.getAttributeValue(Attribute.ENTITY_INTERACTION_RANGE) + padding;
+        return eyeToBoxSquared(p, snap.target()) < max * max;
+    }
+
+    private static double eyeToBoxSquared(Player from, Entity to) {
+        Pos eye = from.getPosition().add(0, from.getEyeHeight(), 0);
+        Pos at = to.getPosition();
+        BoundingBox box = to.getBoundingBox();
+        double dx = eye.x() - Math.clamp(eye.x(), at.x() + box.minX(), at.x() + box.maxX());
+        double dy = eye.y() - Math.clamp(eye.y(), at.y() + box.minY(), at.y() + box.maxY());
+        double dz = eye.z() - Math.clamp(eye.z(), at.z() + box.minZ(), at.z() + box.maxZ());
+        return dx * dx + dy * dy + dz * dz;
+    }
+
     public static AttackSystem install(Polyp polyp, HitDetection... detection) {
         return install(polyp, (AttackConfig) null, detection);
     }

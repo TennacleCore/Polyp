@@ -19,6 +19,7 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
 
     /** Vanilla 1.8 attacker self-slowdown on a landed sprint/enchant hit ({@code motX/motZ *= 0.6}). */
     public static final double VANILLA_FULL_HIT_SCALE = 0.6;
+    public static final double VANILLA_REACH_PADDING = 3.0;
 
     public final FieldValue<AttackContext, Boolean> enabled;
     public final FieldValue<AttackContext, AttackEvent.AttackRule.Ruleset> ruleset;
@@ -30,6 +31,8 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
      * fold, never the damage/KB dealt. {@code 1.0} = none; vanilla {@link #VANILLA_FULL_HIT_SCALE}.
      */
     public final FieldValue<AttackContext, Double> fullHitScale;
+    /** Vanilla's server gate: eye to the target's box within {@code entity_interaction_range + padding} (modern 3.0; 1.8's 6-block rule lands the same). {@code null}/negative = off. */
+    public final @Nullable FieldValue<AttackContext, Double> reachPadding;
 
     private AttackConfig(Builder b) {
         super(b.subConfig);
@@ -38,6 +41,7 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
         criticalRule = b.criticalRule;
         fakeHits = b.fakeHits;
         fullHitScale = b.fullHitScale;
+        reachPadding = b.reachPadding;
     }
 
     /** Merges this config over base. */
@@ -70,6 +74,7 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
             ruleset = FieldValue.constant(Attack.ruleset());
             criticalRule = null;
             fullHitScale = FieldValue.constant(VANILLA_FULL_HIT_SCALE);
+            reachPadding = FieldValue.constant(VANILLA_REACH_PADDING);
         }
 
         Builder(AttackConfig c) {

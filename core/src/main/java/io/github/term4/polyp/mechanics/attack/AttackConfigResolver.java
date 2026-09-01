@@ -34,7 +34,8 @@ public final class AttackConfigResolver {
                 FieldValue.resolve(cfg.enabled, ctx, true),
                 FieldValue.resolve(cfg.ruleset, ctx, Attack.ruleset()),
                 cfg.criticalRule != null ? cfg.criticalRule : AttackEvent.CriticalRule.DEFAULT,
-                FieldValue.resolve(cfg.fullHitScale, ctx, AttackConfig.VANILLA_FULL_HIT_SCALE)
+                FieldValue.resolve(cfg.fullHitScale, ctx, AttackConfig.VANILLA_FULL_HIT_SCALE),
+                FieldValue.resolve(cfg.reachPadding, ctx)
         );
     }
 
@@ -42,14 +43,16 @@ public final class AttackConfigResolver {
             boolean enabled,
             @Nullable AttackEvent.AttackRule.Ruleset ruleset,
             @Nullable AttackEvent.CriticalRule criticalRule,
-            double fullHitScale
+            double fullHitScale,
+            @Nullable Double reachPadding
     ) {
         public static ResolvedAttackConfig defaults() {
             return new ResolvedAttackConfig(
                     true,
                     Attack.ruleset(),
                     AttackEvent.CriticalRule.DEFAULT,
-                    AttackConfig.VANILLA_FULL_HIT_SCALE
+                    AttackConfig.VANILLA_FULL_HIT_SCALE,
+                    AttackConfig.VANILLA_REACH_PADDING
             );
         }
     }
