@@ -83,7 +83,7 @@ class Mmc18WireFloorTest extends HeadlessServerTest {
 
     @Test
     void theFloorIsAuthoredOnceOnTheProfile() {
-        assertEquals(0.05, Mmc18.profile().get(MechanicsKeys.VELOCITY).reconstructionConfig().wireFloorY(), 1e-9);
-        assertNull(Vanilla18.profile().get(MechanicsKeys.VELOCITY).reconstructionConfig().wireFloorY());
+        assertEquals(0.05, io.github.term4.polyp.config.FieldValue.resolve(Mmc18.profile().get(MechanicsKeys.VELOCITY).reconstructionConfig().wireFloorY, null), 1e-9);
+        assertNull(Vanilla18.profile().get(MechanicsKeys.VELOCITY).reconstructionConfig().wireFloorY);
     }
 }

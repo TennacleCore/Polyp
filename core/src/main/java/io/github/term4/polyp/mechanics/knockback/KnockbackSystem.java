@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.knockback;
 
 import io.github.term4.polyp.MechanicsProfiles;
+import io.github.term4.polyp.tracking.motion.VelocityContext;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.ScopedSystem;
 import io.github.term4.polyp.Polyp;
@@ -127,7 +128,8 @@ public final class KnockbackSystem extends ScopedSystem<KnockbackConfig> {
             // scope-only, NOT the effectiveVelocity chain: the floor is the victim network's tracker law, so a
             // config-pinned estimate rule must not shadow it
             VelocityRule rule = profiles.resolve(target, MechanicsKeys.VELOCITY);
-            if (VelocityRule.wireFloored(rule)) wire = bt -> VelocityRule.wireFloor(rule, bt);
+            VelocityContext vctx = VelocityContext.of(target);
+            if (VelocityRule.wireFloored(rule, vctx)) wire = bt -> VelocityRule.wireFloor(rule, vctx, bt);
         }
         // before the fold: the tracker must see what the client will receive
         if (wire != null) velocity = wire.apply(velocity.div(tps)).mul(tps);

@@ -180,7 +180,7 @@ public final class MotionTracker implements Tracker {
             p.removeTag(MOVE_PREV);
             // 26 zeroes an absolute teleport's delta (teleportSetPosition); 1.8 freezes at the teleport
             // (checkMovement=false gates l()) and carries mot into the confirming packet's step
-            if (!VelocityRule.motYOnMovePacketEnabled(profiles.resolve(p, MechanicsKeys.VELOCITY))) {
+            if (!VelocityRule.motYOnMovePacketEnabled(profiles.resolve(p, MechanicsKeys.VELOCITY), VelocityContext.of(p))) {
                 VertSim sim = p.getTag(VERT_SIM);
                 if (sim != null) {
                     Arrays.fill(sim.zeroed, 0);
@@ -349,38 +349,39 @@ public final class MotionTracker implements Tracker {
                 p.removeTag(LAUNCHED);
             }
             VelocityRule rule = profiles.resolve(p, MechanicsKeys.VELOCITY);
-            ClimbModel climbModel = VelocityRule.climbModel(rule);
-            boolean modernBlocks = VelocityRule.modernBlockPhysicsEnabled(rule);
-            FluidFlow.Model flowModel = VelocityRule.flowModel(rule);
+            VelocityContext vctx = VelocityContext.of(p);
+            ClimbModel climbModel = VelocityRule.climbModel(rule, vctx);
+            boolean modernBlocks = VelocityRule.modernBlockPhysicsEnabled(rule, vctx);
+            FluidFlow.Model flowModel = VelocityRule.flowModel(rule, vctx);
             p.setTag(FLOW_MODEL, flowModel);
             Integer moved = p.getTag(MOVE_PACKETS);
             if (moved != null) p.removeTag(MOVE_PACKETS);
             // 1.8 runs the whole living update once per flying packet (PlayerConnection.a -> l() -> m());
             // a flag-only C03 never surfaces as a move event, but a grounded flag is proof the stream flows
             // - a frozen client's last packet rode mid-air. 26 steps once per server tick, packets or not.
-            int steps = !VelocityRule.motYOnMovePacketEnabled(rule) ? 1
+            int steps = !VelocityRule.motYOnMovePacketEnabled(rule, vctx) ? 1
                     : moved != null ? Math.min(moved, STEP_CAP)
                     : p.isOnGround() ? 1 : 0;
             if (steps == 0) {
                 // its own update is frozen, but neighbors' collide() still shoves both parties - accrued unbled
-                if (VelocityRule.entityPushEnabled(rule)) accruePushFrozen(p);
+                if (VelocityRule.entityPushEnabled(rule, vctx)) accruePushFrozen(p);
                 continue;
             }
             // detect the env before the sim so friction/gravity match
             Env env = tickEnvironment(p, physTicks(p), environmentOf(p,
-                    VelocityRule.fluidPhysicsEnabled(rule),
-                    VelocityRule.climbPhysicsEnabled(rule),
-                    VelocityRule.webPhysicsEnabled(rule),
+                    VelocityRule.fluidPhysicsEnabled(rule, vctx),
+                    VelocityRule.climbPhysicsEnabled(rule, vctx),
+                    VelocityRule.webPhysicsEnabled(rule, vctx),
                     climbModel, modernBlocks));
             // vanilla order: clamp, move, gravity, then entity push
             for (int i = 0; i < steps; i++) {
                 tickVertSim(p, env, climbModel, modernBlocks, flowModel);
                 // web zeroes everything, push included
-                if (env == Env.WEB || !VelocityRule.entityPushEnabled(rule)) p.removeTag(ENTITY_PUSH);
+                if (env == Env.WEB || !VelocityRule.entityPushEnabled(rule, vctx)) p.removeTag(ENTITY_PUSH);
                 else tickEntityPush(p);
                 // ticked even out of water so the residual bleeds out
-                if (VelocityRule.flowPushEnabled(rule))
-                    tickFlowPush(p, env, flowModel, VelocityRule.flowLavaEnabled(rule));
+                if (VelocityRule.flowPushEnabled(rule, vctx))
+                    tickFlowPush(p, env, flowModel, VelocityRule.flowLavaEnabled(rule, vctx));
                 else p.removeTag(FLOW_PUSH);
             }
             p.setTag(PHYS_TICKS, physTicks(p) + steps);

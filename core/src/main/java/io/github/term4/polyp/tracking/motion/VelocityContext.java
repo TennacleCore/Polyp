@@ -1,6 +1,7 @@
 package io.github.term4.polyp.tracking.motion;
 
 import io.github.term4.polyp.tracking.SprintTracker;
+import io.github.term4.polyp.config.SubjectContext;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import org.jetbrains.annotations.Nullable;
@@ -9,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
  * Input a {@link VelocityRule} composes - bundles the entity and the {@link MotionTracker} reads (air-time, launch,
  * position-delta, ground state) so a rule written outside the library has the same primitives the built-ins use.
  */
-public final class VelocityContext {
+public final class VelocityContext implements SubjectContext {
 
     private final Entity entity;
     private final @Nullable SprintTracker sprintTracker;
@@ -29,6 +30,8 @@ public final class VelocityContext {
     }
 
     public Entity entity() { return entity; }
+
+    @Override public @Nullable Entity subject() { return entity; }
 
     public @Nullable SprintTracker sprintTracker() { return sprintTracker; }
 

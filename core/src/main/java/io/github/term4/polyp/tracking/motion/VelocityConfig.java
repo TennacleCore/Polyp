@@ -1,146 +1,111 @@
 package io.github.term4.polyp.tracking.motion;
 
+import io.github.term4.polyp.codegen.GenerateBuilder;
+import io.github.term4.polyp.config.FieldValue;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Knobs for the {@link VelocityRule#simulated(VelocityConfig) simulated} server-tracked velocity. Plain values
- * (per-context conditionality lives one level up). Gravity/drag/friction are read live from the entity, not here.
- * Build with {@link #builder()}.
- *
- * @param seed            fallback takeoff motY; the ticked sim always uses {@link #JUMP_VELOCITY}.
- * @param launchOffset    arc phase correction; debug knob.
- * @param zeroBelowY      vanilla's living-tick zeroing: {@code |motY|} under it becomes 0 (the apex reseed); {@code 0} = off.
- * @param groundTicks     fall-prediction depth for {@link MotionTracker#onGround} ({@code 0} = raw client flag).
- * @param maxAirTicks     fallback only: caps the air clock; {@code null} = unbounded.
- * @param entityPush      fold the {@code Entity.collide} push residual; disable where player collision is off.
- * @param fluidPhysics    water/lava drag + buoyancy; off also disables {@link #flowPush}.
- * @param webPhysics      cobweb handling - zeroes motion.
- * @param flowPush        fold the water-flow current residual (simulated rules only).
- * @param flowLava        whether MODERN flow also pushes in lava (26 yes, Hypixel no); no effect on LEGACY.
- * @param modernBlockPhysics 26-only block velocity (sweet-berry/powder-snow stuck + bed bounce).
- * @param motYOnMovePacket advance the motY sim only on ticks with a client move packet, so a lag-frozen victim's
- *                         motY holds until its next move - the 1.8 server law ({@code PlayerConnection} drives the
- *                         player's living tick per flying packet); off = every server tick (1.9+/Hypixel).
- * @param wireFloorY      broadcast-only magnitude floor: a wire vy under it goes out as {@code sign*floor} (0 up);
- *                        {@code null} = off. Read from scope by knockback, projectile and TNT sends alike; the sim
- *                        is untouched. X/Z: the same law per axis.
+ * Knobs for the {@link VelocityRule#simulated(VelocityConfig) simulated} server-tracked velocity, resolved per
+ * entity through {@link VelocityContext} - so a scope, or a targeted entry, can change one of them. Unset
+ * knobs take the vanilla defaults below.
  */
-public record VelocityConfig(
-        double seed,
-        int launchOffset,
-        double zeroBelowX,
-        double zeroBelowY,
-        double zeroBelowZ,
-        int groundTicks,
-        @Nullable Integer maxAirTicks,
-        boolean entityPush,
-        boolean fluidPhysics,
-        boolean climbPhysics,
-        boolean webPhysics,
-        boolean flowPush,
-        FluidFlow.Model flowModel,
-        boolean flowLava,
-        ClimbModel climbModel,
-        boolean modernBlockPhysics,
-        boolean motYOnMovePacket,
-        @Nullable Double wireFloorX,
-        @Nullable Double wireFloorY,
-        @Nullable Double wireFloorZ
-) {
+@GenerateBuilder
+public final class VelocityConfig {
 
-    /** Vanilla {@code motY -= 0.08} (b/t^2). */
     public static final double GRAVITY = 0.08;
-    /** Vanilla {@code motY *= 0.98}. */
     public static final double DRAG_V = 0.98;
-    /** Vanilla {@code motX/motZ *= 0.91} airborne. */
     public static final double DRAG_H = 0.91;
-    /** {@code bF()}'s {@code 0.42F} widened to double - float-exact for the hurt-broadcast wire short. */
     public static final double JUMP_VELOCITY = 0.41999998688697815;
-    /** Vanilla {@code m()} zeroes {@code |mot| < 0.005} each tick. */
     public static final double ZERO_BELOW = 0.005;
-
-    /** The hit packet is processed one tick before the victim's move, so the fold reads {@code ticksInAir - 1}. */
     public static final int DEFAULT_LAUNCH_OFFSET = -1;
 
+    public final @Nullable FieldValue<VelocityContext, Double> seed;
+    public final @Nullable FieldValue<VelocityContext, Integer> launchOffset;
+    public final @Nullable FieldValue<VelocityContext, Double> zeroBelowX;
+    public final @Nullable FieldValue<VelocityContext, Double> zeroBelowY;
+    public final @Nullable FieldValue<VelocityContext, Double> zeroBelowZ;
+    public final @Nullable FieldValue<VelocityContext, Integer> groundTicks;
+    public final @Nullable FieldValue<VelocityContext, Integer> maxAirTicks;
+    public final @Nullable FieldValue<VelocityContext, Boolean> entityPush;
+    public final @Nullable FieldValue<VelocityContext, Boolean> fluidPhysics;
+    public final @Nullable FieldValue<VelocityContext, Boolean> climbPhysics;
+    public final @Nullable FieldValue<VelocityContext, Boolean> webPhysics;
+    public final @Nullable FieldValue<VelocityContext, Boolean> flowPush;
+    public final @Nullable FieldValue<VelocityContext, FluidFlow.Model> flowModel;
+    public final @Nullable FieldValue<VelocityContext, Boolean> flowLava;
+    public final @Nullable FieldValue<VelocityContext, ClimbModel> climbModel;
+    public final @Nullable FieldValue<VelocityContext, Boolean> modernBlockPhysics;
+    public final @Nullable FieldValue<VelocityContext, Boolean> motYOnMovePacket;
+    public final @Nullable FieldValue<VelocityContext, Double> wireFloorX;
+    public final @Nullable FieldValue<VelocityContext, Double> wireFloorY;
+    public final @Nullable FieldValue<VelocityContext, Double> wireFloorZ;
+
+    private VelocityConfig(Builder b) {
+        seed = b.seed;
+        launchOffset = b.launchOffset;
+        zeroBelowX = b.zeroBelowX;
+        zeroBelowY = b.zeroBelowY;
+        zeroBelowZ = b.zeroBelowZ;
+        groundTicks = b.groundTicks;
+        maxAirTicks = b.maxAirTicks;
+        entityPush = b.entityPush;
+        fluidPhysics = b.fluidPhysics;
+        climbPhysics = b.climbPhysics;
+        webPhysics = b.webPhysics;
+        flowPush = b.flowPush;
+        flowModel = b.flowModel;
+        flowLava = b.flowLava;
+        climbModel = b.climbModel;
+        modernBlockPhysics = b.modernBlockPhysics;
+        motYOnMovePacket = b.motYOnMovePacket;
+        wireFloorX = b.wireFloorX;
+        wireFloorY = b.wireFloorY;
+        wireFloorZ = b.wireFloorZ;
+    }
+
+    public double seed(VelocityContext ctx) { return FieldValue.resolve(seed, ctx, JUMP_VELOCITY); }
+    public int launchOffset(VelocityContext ctx) { return FieldValue.resolve(launchOffset, ctx, DEFAULT_LAUNCH_OFFSET); }
+    public double zeroBelowX(VelocityContext ctx) { return FieldValue.resolve(zeroBelowX, ctx, ZERO_BELOW); }
+    public double zeroBelowY(VelocityContext ctx) { return FieldValue.resolve(zeroBelowY, ctx, ZERO_BELOW); }
+    public double zeroBelowZ(VelocityContext ctx) { return FieldValue.resolve(zeroBelowZ, ctx, ZERO_BELOW); }
+    public int groundTicks(VelocityContext ctx) { return FieldValue.resolve(groundTicks, ctx, 1); }
+    public @Nullable Integer maxAirTicks(VelocityContext ctx) { return FieldValue.resolve(maxAirTicks, ctx); }
+    public boolean entityPush(VelocityContext ctx) { return FieldValue.resolve(entityPush, ctx, true); }
+    public boolean fluidPhysics(VelocityContext ctx) { return FieldValue.resolve(fluidPhysics, ctx, true); }
+    public boolean climbPhysics(VelocityContext ctx) { return FieldValue.resolve(climbPhysics, ctx, true); }
+    public boolean webPhysics(VelocityContext ctx) { return FieldValue.resolve(webPhysics, ctx, true); }
+    public boolean flowPush(VelocityContext ctx) { return FieldValue.resolve(flowPush, ctx, true); }
+    public FluidFlow.Model flowModel(VelocityContext ctx) { return FieldValue.resolve(flowModel, ctx, FluidFlow.Model.LEGACY); }
+    public boolean flowLava(VelocityContext ctx) { return FieldValue.resolve(flowLava, ctx, true); }
+    public ClimbModel climbModel(VelocityContext ctx) { return FieldValue.resolve(climbModel, ctx, ClimbModel.LEGACY); }
+    public boolean modernBlockPhysics(VelocityContext ctx) { return FieldValue.resolve(modernBlockPhysics, ctx, false); }
+    public boolean motYOnMovePacket(VelocityContext ctx) { return FieldValue.resolve(motYOnMovePacket, ctx, false); }
+    public @Nullable Double wireFloorX(VelocityContext ctx) { return FieldValue.resolve(wireFloorX, ctx); }
+    public @Nullable Double wireFloorY(VelocityContext ctx) { return FieldValue.resolve(wireFloorY, ctx); }
+    public @Nullable Double wireFloorZ(VelocityContext ctx) { return FieldValue.resolve(wireFloorZ, ctx); }
+
     public static VelocityConfig defaults() { return builder().build(); }
+
+    public VelocityConfig fromBase(VelocityConfig base) {
+        Builder b = new Builder();
+        b.mergeKnobs(this, base);
+        return b.build();
+    }
 
     public Builder toBuilder() { return new Builder(this); }
     public static Builder builder() { return new Builder(); }
 
-    public static final class Builder {
-        private double seed = JUMP_VELOCITY;
-        private int launchOffset = DEFAULT_LAUNCH_OFFSET;
-        private double zeroBelowX = ZERO_BELOW;
-        private double zeroBelowY = ZERO_BELOW;
-        private double zeroBelowZ = ZERO_BELOW;
-        private int groundTicks = 1;
-        private @Nullable Integer maxAirTicks;
-        private boolean entityPush = true;
-        private boolean fluidPhysics = true;
-        private boolean climbPhysics = true;
-        private boolean webPhysics = true;
-        private boolean flowPush = true;
-        private FluidFlow.Model flowModel = FluidFlow.Model.LEGACY; // Vanilla(26) sets MODERN
-        private boolean flowLava = true;    // MODERN only; Hypixel sets false
-        private ClimbModel climbModel = ClimbModel.LEGACY; // Vanilla(26) sets MODERN
-        private boolean modernBlockPhysics = false; // Vanilla(26) sets true
-        private boolean motYOnMovePacket = false;   // 1.8-faithful presets set true; off = the 1.9+ server-tick law
-        private @Nullable Double wireFloorX;
-        private @Nullable Double wireFloorY;        // mmc18 sets 0.05
-        private @Nullable Double wireFloorZ;
+    public static final class Builder extends VelocityConfigBuilderBase<Builder> {
+
+        @Override protected Builder self() { return this; }
 
         Builder() {}
+        Builder(VelocityConfig c) { super(c); }
 
-        Builder(VelocityConfig c) {
-            seed = c.seed;
-            launchOffset = c.launchOffset;
-            zeroBelowX = c.zeroBelowX;
-            zeroBelowY = c.zeroBelowY;
-            zeroBelowZ = c.zeroBelowZ;
-            groundTicks = c.groundTicks;
-            maxAirTicks = c.maxAirTicks;
-            entityPush = c.entityPush;
-            fluidPhysics = c.fluidPhysics;
-            climbPhysics = c.climbPhysics;
-            webPhysics = c.webPhysics;
-            flowPush = c.flowPush;
-            flowModel = c.flowModel;
-            flowLava = c.flowLava;
-            climbModel = c.climbModel;
-            modernBlockPhysics = c.modernBlockPhysics;
-            motYOnMovePacket = c.motYOnMovePacket;
-            wireFloorX = c.wireFloorX;
-            wireFloorY = c.wireFloorY;
-            wireFloorZ = c.wireFloorZ;
-        }
-
-        public Builder seed(double v) { seed = v; return this; }
-        public Builder launchOffset(int v) { launchOffset = v; return this; }
-        public Builder zeroBelow(double all) { zeroBelowX = all; zeroBelowY = all; zeroBelowZ = all; return this; }
-        public Builder zeroBelowX(double v) { zeroBelowX = v; return this; }
-        public Builder zeroBelowY(double v) { zeroBelowY = v; return this; }
-        public Builder zeroBelowZ(double v) { zeroBelowZ = v; return this; }
-        public Builder groundTicks(int v) { groundTicks = v; return this; }
-        public Builder maxAirTicks(@Nullable Integer v) { maxAirTicks = v; return this; }
-        public Builder entityPush(boolean v) { entityPush = v; return this; }
-        public Builder fluidPhysics(boolean v) { fluidPhysics = v; return this; }
-        public Builder climbPhysics(boolean v) { climbPhysics = v; return this; }
-        public Builder webPhysics(boolean v) { webPhysics = v; return this; }
-        public Builder flowPush(boolean v) { flowPush = v; return this; }
-        public Builder flowModel(FluidFlow.Model v) { flowModel = v; return this; }
-        public Builder flowLava(boolean v) { flowLava = v; return this; }
-        public Builder climbModel(ClimbModel v) { climbModel = v; return this; }
-        public Builder modernBlockPhysics(boolean v) { modernBlockPhysics = v; return this; }
-        public Builder motYOnMovePacket(boolean v) { motYOnMovePacket = v; return this; }
-        public Builder wireFloorX(@Nullable Double v) { wireFloorX = v; return this; }
-        public Builder wireFloorY(@Nullable Double v) { wireFloorY = v; return this; }
-        public Builder wireFloorZ(@Nullable Double v) { wireFloorZ = v; return this; }
+        /** All three axes at once. */
+        public Builder zeroBelow(double all) { return zeroBelowX(all).zeroBelowY(all).zeroBelowZ(all); }
 
         // the attacker self-slowdown lives on AttackConfig.fullHitScale (an attack-time mutation), not here
-
-        public VelocityConfig build() {
-            return new VelocityConfig(seed, launchOffset,
-                    zeroBelowX, zeroBelowY, zeroBelowZ, groundTicks, maxAirTicks, entityPush, fluidPhysics, climbPhysics, webPhysics, flowPush, flowModel, flowLava, climbModel, modernBlockPhysics, motYOnMovePacket, wireFloorX, wireFloorY, wireFloorZ);
-        }
+        public VelocityConfig build() { return new VelocityConfig(this); }
     }
 }

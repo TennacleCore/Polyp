@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.projectile.entities;
 
 import io.github.term4.polyp.Polyp;
+import io.github.term4.polyp.tracking.motion.VelocityContext;
 import io.github.term4.polyp.entity.MechanicsEntity;
 import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.world.WorldPolicy;
@@ -671,7 +672,9 @@ public abstract class ProjectileEntity extends MechanicsEntity {
     // the scope's broadcast floor; a fully-zero broadcast passes raw, and the sim flies the true arc regardless
     private Vec wireFloor(Vec v) {
         VelocityRule rule = VelocityRule.scoped(scopeSubject());
-        return v.isZero() || !VelocityRule.wireFloored(rule) ? v : VelocityRule.wireFloor(rule, v);
+        if (v.isZero() || scopeSubject() == null) return v;
+        VelocityContext vctx = VelocityContext.of(scopeSubject());
+        return VelocityRule.wireFloored(rule, vctx) ? VelocityRule.wireFloor(rule, vctx, v) : v;
     }
 
     /** MODERN scope-rated wire velocity (ZERO while stuck); a 1.8 client needs {@link #legacyVelocityForPacket}. */

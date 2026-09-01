@@ -1,6 +1,7 @@
 package io.github.term4.polyp.entity;
 
 import io.github.term4.polyp.Polyp;
+import io.github.term4.polyp.tracking.motion.VelocityContext;
 import io.github.term4.polyp.api.event.explosion.ExplosionEvent;
 import io.github.term4.polyp.api.event.explosion.TntPrimeEvent;
 import io.github.term4.polyp.fx.Fx;
@@ -362,7 +363,8 @@ public final class PrimedTnt extends MechanicsEntity {
     protected Vec getVelocityForPacket() {
         if (rawBroadcast || !isOnGround()) return motion;
         VelocityRule rule = VelocityRule.scoped(this);
-        return VelocityRule.wireFloored(rule) ? VelocityRule.wireFloor(rule, motion) : motion;
+        VelocityContext vctx = VelocityContext.of(this);
+        return VelocityRule.wireFloored(rule, vctx) ? VelocityRule.wireFloor(rule, vctx, motion) : motion;
     }
 
     // A TNT source rescales its blast on OTHER primed TNT to config.tntVictimScale (absolute, feet-radial), overriding

@@ -48,69 +48,69 @@ public interface VelocityRule {
     }
 
     /** On without a config. */
-    static boolean fluidPhysicsEnabled(@Nullable VelocityRule rule) {
+    static boolean fluidPhysicsEnabled(@Nullable VelocityRule rule, VelocityContext ctx) {
         VelocityConfig c = configOf(rule);
-        return c == null || c.fluidPhysics();
+        return c == null || c.fluidPhysics(ctx);
     }
 
     /** On without a config. */
-    static boolean climbPhysicsEnabled(@Nullable VelocityRule rule) {
+    static boolean climbPhysicsEnabled(@Nullable VelocityRule rule, VelocityContext ctx) {
         VelocityConfig c = configOf(rule);
-        return c == null || c.climbPhysics();
+        return c == null || c.climbPhysics(ctx);
     }
 
     /** On without a config. */
-    static boolean webPhysicsEnabled(@Nullable VelocityRule rule) {
+    static boolean webPhysicsEnabled(@Nullable VelocityRule rule, VelocityContext ctx) {
         VelocityConfig c = configOf(rule);
-        return c == null || c.webPhysics();
+        return c == null || c.webPhysics(ctx);
     }
 
     /** Off without a config: a from-scratch rule never inherits the flow residual. */
-    static boolean flowPushEnabled(@Nullable VelocityRule rule) {
+    static boolean flowPushEnabled(@Nullable VelocityRule rule, VelocityContext ctx) {
         VelocityConfig c = configOf(rule);
-        return c != null && c.flowPush();
+        return c != null && c.flowPush(ctx);
     }
 
     /** On without a config: a config-less rule reads it through the context. */
-    static boolean entityPushEnabled(@Nullable VelocityRule rule) {
+    static boolean entityPushEnabled(@Nullable VelocityRule rule, VelocityContext ctx) {
         VelocityConfig c = configOf(rule);
-        return c == null || c.entityPush();
+        return c == null || c.entityPush(ctx);
     }
 
     /** {@code LEGACY} without a config. */
-    static FluidFlow.Model flowModel(@Nullable VelocityRule rule) {
+    static FluidFlow.Model flowModel(@Nullable VelocityRule rule, VelocityContext ctx) {
         VelocityConfig c = configOf(rule);
-        return c != null ? c.flowModel() : FluidFlow.Model.LEGACY;
+        return c != null ? c.flowModel(ctx) : FluidFlow.Model.LEGACY;
     }
 
     /** {@code LEGACY} without a config. Read once per tick. */
-    static ClimbModel climbModel(@Nullable VelocityRule rule) {
+    static ClimbModel climbModel(@Nullable VelocityRule rule, VelocityContext ctx) {
         VelocityConfig c = configOf(rule);
-        return c != null ? c.climbModel() : ClimbModel.LEGACY;
+        return c != null ? c.climbModel(ctx) : ClimbModel.LEGACY;
     }
 
     /** Off (1.8) without a config. */
-    static boolean modernBlockPhysicsEnabled(@Nullable VelocityRule rule) {
+    static boolean modernBlockPhysicsEnabled(@Nullable VelocityRule rule, VelocityContext ctx) {
         VelocityConfig c = configOf(rule);
-        return c != null && c.modernBlockPhysics();
+        return c != null && c.modernBlockPhysics(ctx);
     }
 
     /** Off without a config. */
-    static boolean flowLavaEnabled(@Nullable VelocityRule rule) {
+    static boolean flowLavaEnabled(@Nullable VelocityRule rule, VelocityContext ctx) {
         VelocityConfig c = configOf(rule);
-        return c != null && c.flowLava();
+        return c != null && c.flowLava(ctx);
     }
 
     /** Off without a config. */
-    static boolean motYOnMovePacketEnabled(@Nullable VelocityRule rule) {
+    static boolean motYOnMovePacketEnabled(@Nullable VelocityRule rule, VelocityContext ctx) {
         VelocityConfig c = configOf(rule);
-        return c != null && c.motYOnMovePacket();
+        return c != null && c.motYOnMovePacket(ctx);
     }
 
     /** Whether any {@link VelocityConfig#wireFloorY() broadcast floor} axis is set; off without a config. */
-    static boolean wireFloored(@Nullable VelocityRule rule) {
+    static boolean wireFloored(@Nullable VelocityRule rule, VelocityContext ctx) {
         VelocityConfig c = configOf(rule);
-        return c != null && (c.wireFloorX() != null || c.wireFloorY() != null || c.wireFloorZ() != null);
+        return c != null && (c.wireFloorX(ctx) != null || c.wireFloorY(ctx) != null || c.wireFloorZ(ctx) != null);
     }
 
     /** The scope's velocity rule for {@code subject}, or {@code null}. */
@@ -120,10 +120,10 @@ public interface VelocityRule {
     }
 
     /** The broadcast magnitude floor: per set axis, {@code |v|} under the floor goes out as {@code sign*floor}, 0 up. */
-    static Vec wireFloor(@Nullable VelocityRule rule, Vec bt) {
+    static Vec wireFloor(@Nullable VelocityRule rule, VelocityContext ctx, Vec bt) {
         VelocityConfig c = configOf(rule);
         if (c == null) return bt;
-        return new Vec(floorAxis(bt.x(), c.wireFloorX()), floorAxis(bt.y(), c.wireFloorY()), floorAxis(bt.z(), c.wireFloorZ()));
+        return new Vec(floorAxis(bt.x(), c.wireFloorX(ctx)), floorAxis(bt.y(), c.wireFloorY(ctx)), floorAxis(bt.z(), c.wireFloorZ(ctx)));
     }
 
     private static double floorAxis(double v, @Nullable Double floor) {
@@ -159,41 +159,41 @@ public interface VelocityRule {
     private static Vec arc(VelocityContext ctx, VelocityConfig cfg) {
         // non-players are server-simulated already
         if (!(ctx.entity() instanceof Player)) {
-            return zeroBelow(ctx.positionDelta(), cfg.zeroBelowX(), cfg.zeroBelowY(), cfg.zeroBelowZ());
+            return zeroBelow(ctx.positionDelta(), cfg.zeroBelowX(ctx), cfg.zeroBelowY(ctx), cfg.zeroBelowZ(ctx));
         }
-        Vec hMot = MotionTracker.horizontalMot(ctx.entity(), cfg.launchOffset());
+        Vec hMot = MotionTracker.horizontalMot(ctx.entity(), cfg.launchOffset(ctx));
         Vec out = new Vec(hMot.x(), verticalMot(ctx, cfg), hMot.z());
-        if (cfg.entityPush()) {
+        if (cfg.entityPush(ctx)) {
             Vec push = MotionTracker.entityPush(ctx.entity());
             out = out.add(push.x(), 0, push.z());
         }
-        if (cfg.flowPush()) {
+        if (cfg.flowPush(ctx)) {
             Vec flow = MotionTracker.flowPush(ctx.entity()); // 3D: x/z current + the Y down-term
             out = out.add(flow.x(), flow.y(), flow.z());
         }
         // wall-pinned mot reads 0 on the blocked axis (vanilla move() zeroing, measured)
         out = MotionTracker.zeroBlockedAxes(ctx.entity(), out);
-        return zeroBelow(out, cfg.zeroBelowX(), cfg.zeroBelowY(), cfg.zeroBelowZ());
+        return zeroBelow(out, cfg.zeroBelowX(ctx), cfg.zeroBelowY(ctx), cfg.zeroBelowZ(ctx));
     }
 
     /** The live ticked sim, falling back to the air clock before it has ticked. */
     private static double verticalMot(VelocityContext ctx, VelocityConfig cfg) {
         Double simY = MotionTracker.serverMotY(ctx.entity(),
-                VelocityConfig.DEFAULT_LAUNCH_OFFSET - cfg.launchOffset(), cfg.zeroBelowY() > 0);
+                VelocityConfig.DEFAULT_LAUNCH_OFFSET - cfg.launchOffset(ctx), cfg.zeroBelowY(ctx) > 0);
         return simY != null ? simY : reconstructedVy(ctx, cfg);
     }
 
     /** Seeds at launch and steps the air ticks, gated on ground state. */
     private static double reconstructedVy(VelocityContext ctx, VelocityConfig cfg) {
-        boolean grounded = ctx.onGround(cfg.groundTicks());
+        boolean grounded = ctx.onGround(cfg.groundTicks(ctx));
         boolean launched = !grounded && ctx.launched();
         int air = grounded ? 0 : ctx.ticksInAir();
-        if (cfg.maxAirTicks() != null) air = Math.min(air, cfg.maxAirTicks());
-        int ticks = launched ? air + cfg.launchOffset() : air + 1;
-        double seedY = launched ? cfg.seed() : 0;
+        if (cfg.maxAirTicks(ctx) != null) air = Math.min(air, cfg.maxAirTicks(ctx));
+        int ticks = launched ? air + cfg.launchOffset(ctx) : air + 1;
+        double seedY = launched ? cfg.seed(ctx) : 0;
         // the entity's OWN airborne motion, so it steps at the entity's dilated rate
         return steppedVy(ctx.entity(), TickScaler.aerodynamics(ctx.entity(), ctx.entity().getAerodynamics()),
-                cfg.zeroBelowY(), seedY, ticks);
+                cfg.zeroBelowY(ctx), seedY, ticks);
     }
 
     /** Apex-reseeds below {@code zeroBelowY} each step. */
