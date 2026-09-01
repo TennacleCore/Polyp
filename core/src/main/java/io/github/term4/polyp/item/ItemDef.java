@@ -1,6 +1,7 @@
 package io.github.term4.polyp.item;
 
 import net.minestom.server.item.Material;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -42,6 +43,13 @@ public final class ItemDef {
 
         /** Same value for both versions. */
         public Builder both(ItemStat stat, double value) { return legacy(stat, value).modern(stat, value); }
+
+        /** Every value {@code from} stores, so one stat can be replaced without losing the rest. */
+        public Builder copying(@Nullable ItemDef from) {
+            if (from == null) return this;
+            from.values.forEach((version, stats) -> stats.forEach((stat, v) -> set(version, stat, v)));
+            return this;
+        }
         public Builder legacy(ItemStat stat, double value) { return set(Version.LEGACY, stat, value); }
         public Builder modern(ItemStat stat, double value) { return set(Version.MODERN, stat, value); }
 

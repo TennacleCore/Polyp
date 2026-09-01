@@ -175,7 +175,7 @@ public final class ConsumableSystem extends ScopedSystem<ConsumableConfig> {
     private boolean legacyConsumeEnabled(Player p) {
         FixesConfig fixes = polyp.profiles().resolve(p, MechanicsKeys.FIXES);
         FixToggleConfig c = fixes != null ? fixes.legacyConsume() : null;
-        return c != null && c.enabled() && polyp.clientInfo().isLegacy(p);
+        return c != null && c.enabled(p) && polyp.clientInfo().isLegacy(p);
     }
 
     private void onCancel(PlayerCancelItemUseEvent e) {

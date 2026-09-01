@@ -23,6 +23,18 @@ public final class VisualsConfig {
         return new Builder().legacyArrowVisibility(lav).build();
     }
 
+    public static final java.util.List<String> VISUALS = java.util.List.of("legacyArrowVisibility");
+
+    public @Nullable Object entry(String name) {
+        if (name.equals("legacyArrowVisibility")) return legacyArrowVisibility;
+        throw new IllegalArgumentException("unknown visual fix '" + name + "' (known: " + VISUALS + ")");
+    }
+
+    public VisualsConfig with(String name, Object entry) {
+        if (name.equals("legacyArrowVisibility")) return toBuilder().legacyArrowVisibility((LegacyArrowVisibilityConfig) entry).build();
+        throw new IllegalArgumentException("unknown visual fix '" + name + "' (known: " + VISUALS + ")");
+    }
+
     public Builder toBuilder() { return new Builder(this); }
     public static Builder builder() { return new Builder(); }
     public static Builder builder(@Nullable VisualsConfig base) { return base != null ? new Builder(base) : new Builder(); }

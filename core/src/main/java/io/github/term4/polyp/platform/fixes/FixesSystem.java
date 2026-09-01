@@ -48,13 +48,13 @@ public final class FixesSystem extends ScopedSystem<FixesConfig> {
     /** Whether the legacy arrow-visibility team fix is enabled for {@code subject} (default {@code false}). */
     public boolean legacyArrowVisibilityEnabled(@Nullable Entity subject) {
         LegacyArrowVisibilityConfig c = legacyArrowVisibilityConfig(subject);
-        return c != null && Boolean.TRUE.equals(c.enabled());
+        return c != null && c.enabled(subject);
     }
 
     /** Whether the cosmetic deflect crit-trail is enabled for {@code subject} (default {@code false}). */
     public boolean legacyArrowDeflectParticles(@Nullable Entity subject) {
         LegacyArrowVisibilityConfig c = legacyArrowVisibilityConfig(subject);
-        return c != null && Boolean.TRUE.equals(c.deflectParticles());
+        return c != null && c.deflectParticles(subject);
     }
 
     /** Installs from the GLOBAL profile's {@link FixesConfig} - set the profile before installing. */

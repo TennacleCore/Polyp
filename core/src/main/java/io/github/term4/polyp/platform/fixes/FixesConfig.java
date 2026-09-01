@@ -70,6 +70,44 @@ public final class FixesConfig {
         return over != null ? over : base;
     }
 
+    /** The toggle names the {@code fixes/<toggle>/enabled} path addresses. */
+    public static final java.util.List<String> TOGGLES = java.util.List.of("legacySelfPlacement", "equipmentFix",
+            "legacyTabCompleteFix", "legacyConsume", "legacyFireDouse", "inventorySync");
+
+    public @Nullable FixToggleConfig toggle(String name) {
+        return switch (name) {
+            case "legacySelfPlacement" -> legacySelfPlacement;
+            case "equipmentFix" -> equipmentFix;
+            case "legacyTabCompleteFix" -> legacyTabCompleteFix;
+            case "legacyConsume" -> legacyConsume;
+            case "legacyFireDouse" -> legacyFireDouse;
+            case "inventorySync" -> inventorySync;
+            default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
+        };
+    }
+
+    /** {@code base} (or an empty config) with one toggle replaced. */
+    public static FixesConfig withToggle(@Nullable FixesConfig base, String name, FixToggleConfig toggle) {
+        Builder b = base != null ? base.toBuilder() : builder();
+        switch (name) {
+            case "legacySelfPlacement" -> b.legacySelfPlacement(toggle);
+            case "equipmentFix" -> b.equipmentFix(toggle);
+            case "legacyTabCompleteFix" -> b.legacyTabCompleteFix(toggle);
+            case "legacyConsume" -> b.legacyConsume(toggle);
+            case "legacyFireDouse" -> b.legacyFireDouse(toggle);
+            case "inventorySync" -> b.inventorySync(toggle);
+            default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
+        }
+        return b.build();
+    }
+
+    /** {@code base} (or an empty config) with one visual fix's config replaced ({@code visuals/<name>/<knob>}). */
+    public static FixesConfig withVisual(@Nullable FixesConfig base, String name, Object entry) {
+        VisualsConfig visuals = base != null && base.visuals != null ? base.visuals : VisualsConfig.builder().build();
+        Builder b = base != null ? base.toBuilder() : builder();
+        return b.visuals(visuals.with(name, entry)).build();
+    }
+
     public Builder toBuilder() { return new Builder(this); }
     public static Builder builder() { return new Builder(); }
     public static Builder builder(@Nullable FixesConfig base) { return base != null ? new Builder(base) : new Builder(); }

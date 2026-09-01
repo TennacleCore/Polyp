@@ -28,6 +28,8 @@ public final class ItemRegistry {
 
     public ItemDef.Version version() { return version; }
 
+    public @Nullable ItemDef def(Material material) { return defs.get(material); }
+
     /** A copy of this registry with {@code def} added or replaced. */
     public ItemRegistry register(ItemDef def) {
         Map<Material, ItemDef> map = new HashMap<>(defs);

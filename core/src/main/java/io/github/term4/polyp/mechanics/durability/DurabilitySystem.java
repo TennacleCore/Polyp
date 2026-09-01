@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.durability;
 
 import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.ScopedSystem;
 import io.github.term4.polyp.Polyp;
 import net.minestom.server.entity.Entity;
@@ -29,7 +30,7 @@ public final class DurabilitySystem extends ScopedSystem<DurabilityConfig> {
 
     /** Active by default; only an explicit {@code enabled(false)} disables. */
     public boolean enabled(@Nullable Entity subject) {
-        return !Boolean.FALSE.equals(configFor(subject).enabled());
+        return !Boolean.FALSE.equals(FieldValue.resolve(configFor(subject).enabled, new DurabilityConfig.DurabilityContext(subject)));
     }
 
     /**

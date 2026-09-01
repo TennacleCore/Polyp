@@ -54,6 +54,12 @@ public record TickScalingConfig(int referenceTps, int clientTps, Map<Key, Intege
 
     public static Builder builder() { return new Builder(); }
 
+    public Builder toBuilder() {
+        Builder b = builder().referenceTps(referenceTps).clientTps(clientTps);
+        moduleReferenceTps.forEach(b::referenceTps);
+        return b;
+    }
+
     public static final class Builder {
         private int referenceTps = SERVER_TPS;
         private int clientTps = SERVER_TPS;

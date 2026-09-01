@@ -259,6 +259,57 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
         assertTrue(bad.contains("no ConsumableBehavior named"), bad);
     }
 
+    /** The members that used to be code-only: every profile member now takes a path. */
+    @Test
+    void everyRemainingMemberIsAddressable() {
+        MechanicsProfile base = MechanicsProfile.builder()
+                .set(MechanicsKeys.DURABILITY, io.github.term4.polyp.mechanics.durability.DurabilityConfig.builder().enabled(true).build())
+                .set(MechanicsKeys.COOLDOWNS, io.github.term4.polyp.mechanics.cooldown.CooldownConfig.builder()
+                        .cooldown(net.minestom.server.item.Material.CHORUS_FRUIT, 20).build())
+                .set(MechanicsKeys.TICK_SCALING, io.github.term4.polyp.util.tick.TickScalingConfig.builder().clientTps(20).build())
+                .set(MechanicsKeys.ITEMS, io.github.term4.polyp.presets.vanilla18.Items.registry())
+                .set(MechanicsKeys.FIXES, io.github.term4.polyp.platform.fixes.FixesConfig.builder()
+                        .legacyConsume(io.github.term4.polyp.platform.fixes.FixToggleConfig.of(false)).build())
+                .set(MechanicsKeys.BLOCKING, io.github.term4.polyp.mechanics.blocking.BlockingConfig.builder()
+                        .materials(net.minestom.server.item.Material.IRON_SWORD).build())
+                .build();
+        MechanicsProfile.Builder b = MechanicsProfile.builder();
+        PathEdits.apply(b, base, "durability/enabled", "false");
+        PathEdits.apply(b, base, "cooldowns/minecraft:ender_pearl", "15");
+        PathEdits.apply(b, base, "tick-scaling/referenceTps", "40");
+        PathEdits.apply(b, base, "items/minecraft:iron_sword/attack_damage", "9");
+        PathEdits.apply(b, base, "fixes/legacyConsume/enabled", "true");
+        PathEdits.apply(b, base, "visuals/legacyArrowVisibility/deflectParticles", "true");
+        PathEdits.apply(b, base, "item-physics", "modern");
+        PathEdits.apply(b, base, "velocity", "simulated");
+        String blockingKnob = io.github.term4.polyp.mechanics.blocking.BlockingTypeConfigBuilderBase.KNOBS.values().stream()
+                .filter(k -> k.valueType() == Boolean.class).map(ConfigKnob::name).findFirst().orElseThrow();
+        PathEdits.apply(b, base, "blocking/minecraft:iron_sword/" + blockingKnob, "true");
+        PathEdits.apply(b, base, "blocking/" + blockingKnob, "false"); // the family's defaults entry
+        MechanicsProfile out = b.build();
+
+        assertEquals(Boolean.FALSE, out.get(MechanicsKeys.DURABILITY).enabled.constantOrNull());
+        var cooldowns = out.get(MechanicsKeys.COOLDOWNS);
+        assertEquals(15, cooldowns.ticks(net.minestom.server.item.Material.ENDER_PEARL));
+        assertEquals(20, cooldowns.ticks(net.minestom.server.item.Material.CHORUS_FRUIT), "the inherited entry survives");
+        var scaling = out.get(MechanicsKeys.TICK_SCALING);
+        assertEquals(40, scaling.referenceTps());
+        assertEquals(20, scaling.clientTps(), "the other knob survives");
+        var items = out.get(MechanicsKeys.ITEMS);
+        assertEquals(9.0, items.value(net.minestom.server.item.ItemStack.of(net.minestom.server.item.Material.IRON_SWORD), null,
+                io.github.term4.polyp.item.ItemStat.ATTACK_DAMAGE, -1));
+        assertTrue(items.value(net.minestom.server.item.ItemStack.of(net.minestom.server.item.Material.DIAMOND_SWORD), null,
+                io.github.term4.polyp.item.ItemStat.ATTACK_DAMAGE, -1) > 0, "the rest of the registry survives");
+        var fixes = out.get(MechanicsKeys.FIXES);
+        assertTrue(fixes.legacyConsume().enabled(null));
+        assertTrue(fixes.visuals().legacyArrowVisibility().deflectParticles(null));
+        assertEquals(io.github.term4.polyp.entity.DroppedItemEntity.Model.MODERN, out.get(MechanicsKeys.ITEM_PHYSICS));
+        assertNotNull(out.get(MechanicsKeys.VELOCITY).reconstructionConfig(), "a simulated rule, knobs addressable");
+        var blocking = out.get(MechanicsKeys.BLOCKING);
+        assertNotNull(blocking.typeConfig(net.minestom.server.item.Material.IRON_SWORD));
+        assertNotNull(blocking.defaults(), "blocking/<knob> edited the defaults entry");
+    }
+
     @Test
     void everythingInvalidThrowsWithTheReason() {
         MechanicsProfile.Builder b = MechanicsProfile.builder();

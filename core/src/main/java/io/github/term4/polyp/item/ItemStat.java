@@ -1,6 +1,7 @@
 package io.github.term4.polyp.item;
 
 import net.minestom.server.component.DataComponents;
+import java.util.Map;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.entity.attribute.AttributeInstance;
@@ -23,7 +24,16 @@ public final class ItemStat {
      * holder's potion-effect modifiers - the melee calculator folds Strength/Weakness once through the attribute system,
      * so including them here would double-count (unlike a fist, which uses the effect-free fallback).
      */
+    private static final Map<String, ItemStat> BY_ID = new java.util.concurrent.ConcurrentHashMap<>();
+
     public static final ItemStat ATTACK_DAMAGE = new ItemStat("attack_damage", ItemStat::weaponAttackDamage);
+
+    /** The stat named {@code id} ({@code items/<material>/<id>} paths), or {@code null}. */
+    public static @Nullable ItemStat byId(String id) { return BY_ID.get(id); }
+
+    public static java.util.Set<String> ids() { return java.util.Set.copyOf(BY_ID.keySet()); }
+
+    public static java.util.Collection<ItemStat> all() { return java.util.List.copyOf(BY_ID.values()); }
 
     private static double weaponAttackDamage(ItemStack item, @Nullable LivingEntity holder) {
         if (holder == null) return Double.NaN;
@@ -51,6 +61,7 @@ public final class ItemStat {
     private ItemStat(String id, BiFunction<ItemStack, @Nullable LivingEntity, Double> minestomDefault) {
         this.id = id;
         this.minestomDefault = minestomDefault;
+        BY_ID.put(id, this);
     }
 
     public String id() { return id; }

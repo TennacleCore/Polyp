@@ -24,5 +24,8 @@ public final class Vocabulary {
         io.github.term4.polyp.mechanics.explosion.ExplosionConfig.FireScope.registerFactories();
         io.github.term4.polyp.mechanics.explosion.ExplosionExposure.Rays.registerFactories();
         io.github.term4.polyp.entity.DroppedItemEntity.Model.registerFactories();
+        FieldFns.register(io.github.term4.polyp.tracking.motion.VelocityRule.class, "simulated",
+                "the server-tracked arc with its default knobs; velocity/<knob> edits them",
+                args -> io.github.term4.polyp.tracking.motion.VelocityRule.simulated());
     }
 }

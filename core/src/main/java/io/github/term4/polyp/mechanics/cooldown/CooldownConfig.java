@@ -20,9 +20,13 @@ public final class CooldownConfig {
     public @Nullable Integer ticks(Material material) { return ticks.get(material); }
 
     public static Builder builder() { return new Builder(); }
+    public Builder toBuilder() { return new Builder(this); }
 
     public static final class Builder {
         private final Map<Material, Integer> ticks = new HashMap<>();
+
+        Builder() {}
+        Builder(CooldownConfig c) { ticks.putAll(c.ticks); }
 
         public Builder cooldown(Material material, int vanillaTicks) { ticks.put(material, vanillaTicks); return this; }
 

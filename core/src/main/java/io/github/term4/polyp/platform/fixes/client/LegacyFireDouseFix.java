@@ -45,7 +45,7 @@ public final class LegacyFireDouseFix {
         GameMode mode = miner.getGameMode();
         if (mode == GameMode.ADVENTURE || mode == GameMode.SPECTATOR) return false;
         FixToggleConfig cfg = fixes.configFor(miner).legacyFireDouse();
-        return cfg != null && cfg.enabled();
+        return cfg != null && cfg.enabled(miner);
     }
 
     private static boolean douse(Player miner, Point at) {
