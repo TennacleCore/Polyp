@@ -8,6 +8,7 @@ import net.minestom.server.coordinate.Pos;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -55,7 +56,8 @@ class ProfileContributionsTest extends HeadlessServerTest {
         try {
             var profiles = polyp.profiles();
             var lobby = io.github.term4.polyp.world.MechanicsWorld.of(instance);
-            profiles.setPlayer(p.player, LOBBY, hunger(true), lobby);
+            // one world is just a predicate - a nested shard tree would be w -> w.isUnder(shard)
+            profiles.setPlayer(p.player, LOBBY, hunger(true), w -> w == lobby);
             assertEquals(Boolean.TRUE, profiles.resolve(p.player, MechanicsKeys.HUNGER).enabled(),
                     "it applies in the world it was bound to");
 
@@ -69,6 +71,15 @@ class ProfileContributionsTest extends HeadlessServerTest {
         } finally {
             p.player.remove();
         }
+    }
+
+    /** A subtree binding: {@code isUnder} is the dynamic test a powerup that only works in one shard uses. */
+    @Test
+    void isUnderCoversAWorldAndItsDescendants() {
+        var here = io.github.term4.polyp.world.MechanicsWorld.of(instance);
+        var other = io.github.term4.polyp.world.MechanicsWorld.of(flatInstance(null));
+        assertTrue(here.isUnder(here), "a world is under itself");
+        assertFalse(here.isUnder(other), "and not under an unrelated one");
     }
 
     @Test

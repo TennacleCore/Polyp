@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import net.minestom.server.entity.Entity;
 import net.kyori.adventure.key.Key;
 import net.minestom.server.MinecraftServer;
@@ -39,8 +40,9 @@ public final class MechanicsProfiles {
      *  read is hot (every hit) and wants the newest in O(1) - the rewrite on write is the rare path. */
     private static final Tag<List<Contribution>> CONTRIBUTIONS = Tag.Transient("polyp:profile-stack");
 
-    /** @param in the world it applies in, or {@code null} to follow the player everywhere */
-    private record Contribution(Key owner, MechanicsProfile profile, @Nullable MechanicsWorld in) {}
+    /** @param where which worlds it applies in, or {@code null} to follow the player everywhere */
+    private record Contribution(Key owner, MechanicsProfile profile,
+                                @Nullable Predicate<MechanicsWorld> where) {}
 
     private volatile @Nullable MechanicsProfile global;
     // fires with the affected player, or null for a wider scope (global/world/instance)
@@ -98,7 +100,7 @@ public final class MechanicsProfiles {
         MechanicsWorld here = player.getInstance() != null ? MechanicsWorld.of(player) : null;
         for (int i = stack.size() - 1; i >= 0; i--) {
             Contribution held = stack.get(i);
-            if (held.in() == null || held.in() == here) return held.profile();
+            if (held.where() == null || (here != null && held.where().test(here))) return held.profile();
         }
         return null;
     }
@@ -120,21 +122,25 @@ public final class MechanicsProfiles {
     }
 
     /**
-     * {@link #setPlayer(Player, Key, MechanicsProfile)} bound to {@code in}: it applies only while the player
-     * is in that world, and goes inert (not lost) anywhere else. This is what ambient per-player setup wants -
-     * a lobby binds to the lobby, so walking into a game world stops it outranking the game's profile.
+     * {@link #setPlayer(Player, Key, MechanicsProfile)} bound to the worlds {@code where} accepts: it applies
+     * only while the player is in one of them and goes inert (not lost) anywhere else. One world is
+     * {@code w -> w == lobby}; a nested shard tree is {@code w -> w.isUnder(shard)}; a handful is
+     * {@code set::contains}. {@code null} follows the player everywhere.
+     *
+     * <p>Keep the test cheap - it runs whenever the player's scope resolves. {@link MechanicsWorld#isUnder}
+     * is O(depth); a snapshot of {@link MechanicsWorld#family()} would miss layers added later.
      */
     public void setPlayer(Player player, @NotNull Key owner, @Nullable MechanicsProfile profile,
-                          @Nullable MechanicsWorld in) {
+                          @Nullable Predicate<MechanicsWorld> where) {
         player.updateTag(CONTRIBUTIONS, stack -> {
             List<Contribution> current = stack != null ? stack : List.of();
             List<Contribution> next = new ArrayList<>(current.size() + 1);
             boolean replaced = false;
             for (Contribution held : current) {
                 if (!held.owner().equals(owner)) next.add(held);
-                else if (profile != null) { next.add(new Contribution(owner, profile, in)); replaced = true; }
+                else if (profile != null) { next.add(new Contribution(owner, profile, where)); replaced = true; }
             }
-            if (profile != null && !replaced) next.add(new Contribution(owner, profile, in));
+            if (profile != null && !replaced) next.add(new Contribution(owner, profile, where));
             return next.isEmpty() ? null : List.copyOf(next);
         });
         changed(player);
