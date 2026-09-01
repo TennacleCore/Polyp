@@ -12,8 +12,13 @@ import java.util.function.BiConsumer;
  * Keeping them apart is what stops the vocabulary from being a grid: a new audience works with every effect and a
  * new effect with every audience, instead of one factory per pairing.
  *
- * <p>Each recipient gets its own anchor point, which is how a sound can be positional for some audiences and
- * distance-proof for others: {@link #EVERYWHERE} anchors at the LISTENER, so nothing attenuates.
+ * <p>Each recipient gets its own anchor point, so the anchor is a third axis rather than another set of names:
+ * {@link #atListener} re-anchors any audience on the listener, which is what makes a sound distance-proof.
+ *
+ * <p>Scope note: a {@code MechanicsWorld} is ONE shard, not a shard tree. {@link #SHARD} and {@link #MEMBERS}
+ * reach that shard alone; {@link #INSTANCE} reaches every player on the underlying Minestom instance, which is
+ * every shard sharing it plus anyone unsharded. Parent/child shards are an Archipelago concept the world seam
+ * does not expose, so a tree audience is a server-side registration (see {@link #registerFactories()}).
  */
 @FunctionalInterface
 public interface FxAudience {
@@ -21,9 +26,22 @@ public interface FxAudience {
     /** Calls {@code to} once per recipient with the point that recipient should perceive the fx at. */
     void each(@NotNull FxContext ctx, @NotNull BiConsumer<Player, Point> to);
 
-    /** Everyone in the shard, at the fx position - vanilla, so distance attenuates. */
+    /**
+     * Everyone RENDERING this shard - its members plus observers (spectators, all-seeing staff) - at the fx
+     * position, so distance attenuates. The default, and what {@code world.playSound} has always meant.
+     */
     FxAudience SHARD = (ctx, to) -> {
+        for (Player p : ctx.world().watchers()) to.accept(p, ctx.position());
+    };
+
+    /** The shard's own members only: spectators watching do NOT perceive it. */
+    FxAudience MEMBERS = (ctx, to) -> {
         for (Player p : ctx.world().players()) to.accept(p, ctx.position());
+    };
+
+    /** Every player on the underlying instance - ALL shards sharing it, plus anyone unsharded. */
+    FxAudience INSTANCE = (ctx, to) -> {
+        for (Player p : ctx.world().instance().getPlayers()) to.accept(p, ctx.position());
     };
 
     /**
@@ -50,28 +68,38 @@ public interface FxAudience {
         if (ctx.source() instanceof Player p) to.accept(p, p.getPosition());
     };
 
-    /** Everyone in the shard, each anchored on THEMSELVES: full volume wherever they stand (BedWars' pearl). */
-    FxAudience EVERYWHERE = (ctx, to) -> {
-        for (Player p : ctx.world().players()) to.accept(p, p.getPosition());
-    };
+    /** {@link #MEMBERS} anchored on each listener: full volume wherever they stand (BedWars' pearl landing). */
+    FxAudience EVERYWHERE = atListener(MEMBERS);
 
-    /** Everyone in the shard within {@code blocks} of the fx, still positionally. */
-    static @NotNull FxAudience within(double blocks) {
-        double squared = blocks * blocks;
-        return (ctx, to) -> {
-            for (Player p : ctx.world().players()) {
-                if (p.getPosition().distanceSquared(ctx.position()) <= squared) to.accept(p, ctx.position());
-            }
-        };
+    /** {@code base} re-anchored on each recipient, so nothing attenuates with distance. */
+    static @NotNull FxAudience atListener(@NotNull FxAudience base) {
+        return (ctx, to) -> base.each(ctx, (player, at) -> to.accept(player, player.getPosition()));
     }
 
-    /** Names the built-ins for data paths ({@code to(everywhere, sound(...))}); a server registers its own. */
+    /** {@code base} narrowed to recipients within {@code blocks} of the fx ({@link #SHARD} when unqualified). */
+    static @NotNull FxAudience within(double blocks, @NotNull FxAudience base) {
+        double squared = blocks * blocks;
+        return (ctx, to) -> base.each(ctx, (player, at) -> {
+            if (player.getPosition().distanceSquared(ctx.position()) <= squared) to.accept(player, at);
+        });
+    }
+
+    /**
+     * Names the built-ins for data paths ({@code to(everywhere, sound(...))}). Combinators take an audience
+     * argument, so scopes compose: {@code at-listener(instance)}, {@code within(20, members)}. A server that
+     * wants a shard-tree audience registers one here - the vocabulary is open, not this list.
+     */
     static void registerFactories() {
         io.github.term4.polyp.config.FieldFns.register(FxAudience.class, "shard", args -> SHARD);
+        io.github.term4.polyp.config.FieldFns.register(FxAudience.class, "members", args -> MEMBERS);
+        io.github.term4.polyp.config.FieldFns.register(FxAudience.class, "instance", args -> INSTANCE);
         io.github.term4.polyp.config.FieldFns.register(FxAudience.class, "viewers", args -> VIEWERS);
         io.github.term4.polyp.config.FieldFns.register(FxAudience.class, "predicted", args -> PREDICTED);
         io.github.term4.polyp.config.FieldFns.register(FxAudience.class, "source", args -> SOURCE);
         io.github.term4.polyp.config.FieldFns.register(FxAudience.class, "everywhere", args -> EVERYWHERE);
-        io.github.term4.polyp.config.FieldFns.register(FxAudience.class, "within", args -> within(args.arity(1).dbl(0)));
+        io.github.term4.polyp.config.FieldFns.register(FxAudience.class, "at-listener",
+                args -> atListener(args.arity(1).of(0, FxAudience.class)));
+        io.github.term4.polyp.config.FieldFns.register(FxAudience.class, "within",
+                args -> within(args.dbl(0), args.size() > 1 ? args.of(1, FxAudience.class) : SHARD));
     }
 }

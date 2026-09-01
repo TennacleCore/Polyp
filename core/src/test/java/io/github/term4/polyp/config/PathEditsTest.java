@@ -142,7 +142,8 @@ class PathEditsTest {
     /** Effects and audiences are independent, so every pairing works without being registered as a pairing. */
     @Test
     void everyAudienceComposesWithEveryEffect() {
-        for (String audience : java.util.List.of("shard", "viewers", "predicted", "source", "everywhere", "within(20)")) {
+        for (String audience : java.util.List.of("shard", "members", "instance", "viewers", "predicted",
+                "source", "everywhere", "at-listener(instance)", "within(20)", "within(20, members)")) {
             for (String effect : java.util.List.of(
                     "sound(entity.player.teleport, player, 1, 1)", "particle(crit, 8, 0.5, 0)")) {
                 String spec = "to(" + audience + ", " + effect + ")";
