@@ -8,6 +8,7 @@ import io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage;
 import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.fx.FxHandler;
 import io.github.term4.polyp.fx.FxRegistry;
+import io.github.term4.polyp.mechanics.consumable.ConsumableBehavior;
 import io.github.term4.polyp.mechanics.explosion.DamageModel;
 import io.github.term4.polyp.mechanics.explosion.ExplosionConfig;
 import io.github.term4.polyp.presets.hypixel.Hypixel;
@@ -223,37 +224,26 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
         assertTrue(kept.admits(io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage.KEY));
     }
 
-    /** The apple keeps its eat time and gate; only what it dishes out changes. */
+    /**
+     * Data SELECTS a code-defined behaviour by name - it never authors one. The item, its eat time and its
+     * edibility gate all stay; only what it dishes out is swapped.
+     */
     @Test
-    void aConsumablesPayloadIsData() {
+    void aConsumablePointsAtANamedBehaviour() {
+        ConsumableBehavior custom = new ConsumableBehavior() {};
+        FieldFns.register(ConsumableBehavior.class, "test-apple", "a stand-in", args -> custom);
+
         MechanicsProfile.Builder b = MechanicsProfile.builder();
         PathEdits.apply(b, MechanicsProfile.builder()
                         .set(MechanicsKeys.CONSUMABLES, io.github.term4.polyp.presets.vanilla18.Consumables.config())
                         .build(),
-                "consumables/minecraft:golden_apple/behavior",
-                "payload(heal(20), when(not(has-effect(minecraft:absorption)), effect(minecraft:absorption, 1, 1200)))");
+                "consumables/minecraft:golden_apple/behavior", "test-apple");
+
         var apple = b.build().get(MechanicsKeys.CONSUMABLES)
                 .typeConfig(net.kyori.adventure.key.Key.key("minecraft:golden_apple"));
         assertNotNull(apple);
-        assertNotNull(apple.behavior.constantOrNull(), "the payload built");
+        assertEquals(custom, apple.behavior.constantOrNull(), "the named behaviour, not a rebuilt one");
         assertNotNull(apple.canConsume, "the preset's 1.8 edibility gate rides along");
-    }
-
-    /** Conditions are an axis: any of them joins any effect, with no per-pairing factory. */
-    @Test
-    void everyConditionComposesWithEveryEffect() {
-        for (String condition : java.util.List.of("always", "chance(0.3)", "has-effect(minecraft:absorption)",
-                "not(has-effect(minecraft:absorption))", "health-below(6)", "missing-health(4)",
-                "and(chance(0.5), missing-health(1))", "or(health-below(2), chance(0.1))")) {
-            for (String effect : java.util.List.of("heal(4)", "food(4, 9.6)", "effect(minecraft:speed, 1, 200)")) {
-                MechanicsProfile.Builder b = MechanicsProfile.builder();
-                PathEdits.apply(b, null, "consumables/minecraft:golden_apple/behavior",
-                        "payload(when(" + condition + ", " + effect + "))");
-                assertNotNull(b.build().get(MechanicsKeys.CONSUMABLES)
-                        .typeConfig(net.kyori.adventure.key.Key.key("minecraft:golden_apple")),
-                        condition + " / " + effect);
-            }
-        }
     }
 
     @Test
