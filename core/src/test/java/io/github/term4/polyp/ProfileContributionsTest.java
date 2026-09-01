@@ -48,6 +48,29 @@ class ProfileContributionsTest extends HeadlessServerTest {
         }
     }
 
+    /** The hypothetical that used to break: a lobby's per-player setup must not follow you into a game world. */
+    @Test
+    void aWorldBoundContributionIsInertElsewhere() {
+        FakePlayer p = FakePlayer.connect(instance, new Pos(3.5, 65, 0.5), "Bound");
+        try {
+            var profiles = polyp.profiles();
+            var lobby = io.github.term4.polyp.world.MechanicsWorld.of(instance);
+            profiles.setPlayer(p.player, LOBBY, hunger(true), lobby);
+            assertEquals(Boolean.TRUE, profiles.resolve(p.player, MechanicsKeys.HUNGER).enabled(),
+                    "it applies in the world it was bound to");
+
+            var elsewhere = flatInstance(null);
+            p.player.setInstance(elsewhere, new Pos(0.5, 65, 0.5)).join();
+            assertNull(profiles.player(p.player), "and is inert in another world - the game's profile wins there");
+
+            p.player.setInstance(instance, new Pos(3.5, 65, 0.5)).join();
+            assertEquals(Boolean.TRUE, profiles.resolve(p.player, MechanicsKeys.HUNGER).enabled(),
+                    "coming back revives it - nothing was cleared");
+        } finally {
+            p.player.remove();
+        }
+    }
+
     @Test
     void clearOwnerSweepsEveryPlayerTheGameTouched() {
         FakePlayer a = FakePlayer.connect(instance, new Pos(1.5, 65, 0.5), "SweepA");

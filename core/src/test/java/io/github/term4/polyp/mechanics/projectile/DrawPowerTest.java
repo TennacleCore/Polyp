@@ -24,6 +24,13 @@ class DrawPowerTest extends HeadlessServerTest {
     }
 
     @Test
+    void oneFactoryCoversTheFamily() {
+        assertEquals(1f, DrawPower.fullDrawAt(0f).at(0f), 1e-6, "full-draw-at(0) IS instant");
+        assertEquals(DrawPower.VANILLA.at(0.4f), DrawPower.fullDrawAt(1f).at(0.4f), 1e-6,
+                "full-draw-at(1) IS the vanilla curve");
+    }
+
+    @Test
     void instantAndStretchedCurves() {
         assertEquals(1f, DrawPower.INSTANT.at(0f), 1e-6, "no charge-up at all");
         // half the time to full draw: what a "fast bow" powerup wants
@@ -36,11 +43,11 @@ class DrawPowerTest extends HeadlessServerTest {
         MechanicsProfile base = MechanicsProfile.builder()
                 .set(MechanicsKeys.PROJECTILES, Vanilla18.projectiles()).build();
         MechanicsProfile.Builder b = MechanicsProfile.builder();
-        PathEdits.apply(b, base, "projectiles/minecraft:arrow/drawPower", "instant");
+        PathEdits.apply(b, base, "projectiles/minecraft:arrow/drawPower", "full-draw-at(0)");
 
         var arrow = b.build().get(MechanicsKeys.PROJECTILES).typeConfig(Arrow.KEY);
         assertNotNull(arrow);
-        assertEquals(DrawPower.INSTANT, arrow.drawPower.constantOrNull());
+        assertEquals(1f, arrow.drawPower.constantOrNull().at(0f), 1e-6, "no charge-up");
         assertEquals(3.0, arrow.speed.constantOrNull(), "the preset's arrow tuning rides along");
     }
 }

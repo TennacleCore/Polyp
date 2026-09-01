@@ -39,7 +39,8 @@ public final class MechanicsProfiles {
      *  read is hot (every hit) and wants the newest in O(1) - the rewrite on write is the rare path. */
     private static final Tag<List<Contribution>> CONTRIBUTIONS = Tag.Transient("polyp:profile-stack");
 
-    private record Contribution(Key owner, MechanicsProfile profile) {}
+    /** @param in the world it applies in, or {@code null} to follow the player everywhere */
+    private record Contribution(Key owner, MechanicsProfile profile, @Nullable MechanicsWorld in) {}
 
     private volatile @Nullable MechanicsProfile global;
     // fires with the affected player, or null for a wider scope (global/world/instance)
@@ -86,10 +87,20 @@ public final class MechanicsProfiles {
         setPlayer(player, DEFAULT_OWNER, profile);
     }
 
-    /** The player's EFFECTIVE profile: the newest contribution, or {@code null} when it has none. */
+    /**
+     * The player's EFFECTIVE profile: the newest contribution that APPLIES WHERE THEY ARE, or {@code null}.
+     * A world-bound contribution is inert outside its world, so a lobby's per-player setup cannot outrank the
+     * game world a player walked into - the thing that made player scope dangerous for ambient setup.
+     */
     public @Nullable MechanicsProfile player(Player player) {
         List<Contribution> stack = player.getTag(CONTRIBUTIONS);
-        return stack == null || stack.isEmpty() ? null : stack.get(stack.size() - 1).profile();
+        if (stack == null || stack.isEmpty()) return null;
+        MechanicsWorld here = player.getInstance() != null ? MechanicsWorld.of(player) : null;
+        for (int i = stack.size() - 1; i >= 0; i--) {
+            Contribution held = stack.get(i);
+            if (held.in() == null || held.in() == here) return held.profile();
+        }
+        return null;
     }
 
     /** The owner of the anonymous {@link #setPlayer(Player, MechanicsProfile)} overload. */
@@ -105,15 +116,25 @@ public final class MechanicsProfiles {
      * profile here overrides only what it sets.
      */
     public void setPlayer(Player player, @NotNull Key owner, @Nullable MechanicsProfile profile) {
+        setPlayer(player, owner, profile, null);
+    }
+
+    /**
+     * {@link #setPlayer(Player, Key, MechanicsProfile)} bound to {@code in}: it applies only while the player
+     * is in that world, and goes inert (not lost) anywhere else. This is what ambient per-player setup wants -
+     * a lobby binds to the lobby, so walking into a game world stops it outranking the game's profile.
+     */
+    public void setPlayer(Player player, @NotNull Key owner, @Nullable MechanicsProfile profile,
+                          @Nullable MechanicsWorld in) {
         player.updateTag(CONTRIBUTIONS, stack -> {
             List<Contribution> current = stack != null ? stack : List.of();
             List<Contribution> next = new ArrayList<>(current.size() + 1);
             boolean replaced = false;
             for (Contribution held : current) {
                 if (!held.owner().equals(owner)) next.add(held);
-                else if (profile != null) { next.add(new Contribution(owner, profile)); replaced = true; }
+                else if (profile != null) { next.add(new Contribution(owner, profile, in)); replaced = true; }
             }
-            if (profile != null && !replaced) next.add(new Contribution(owner, profile));
+            if (profile != null && !replaced) next.add(new Contribution(owner, profile, in));
             return next.isEmpty() ? null : List.copyOf(next);
         });
         changed(player);

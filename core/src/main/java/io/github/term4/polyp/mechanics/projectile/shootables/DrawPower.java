@@ -31,10 +31,14 @@ public interface DrawPower {
         return held -> VANILLA.at(held / seconds);
     }
 
+    /**
+     * One factory, because {@code instant} and {@code vanilla} are just {@code full-draw-at(0)} and
+     * {@code full-draw-at(1)} - naming them would be naming cases. A curve of a different SHAPE is open-ended
+     * game logic: define it in code and register it here by name, the way any behaviour is selected.
+     */
     static void registerFactories() {
-        FieldFns.register(DrawPower.class, "vanilla", "the 1.8 curve, full draw at one second", args -> VANILLA);
-        FieldFns.register(DrawPower.class, "instant", "full power however briefly the bow is held", args -> INSTANT);
-        FieldFns.register(DrawPower.class, "full-draw-at(seconds)", "the vanilla curve, reaching full at that time",
+        FieldFns.register(DrawPower.class, "full-draw-at(seconds)",
+                "the 1.8 curve reaching full power at that time; 0 needs no charge, 1 is vanilla",
                 args -> fullDrawAt(args.arity(1).flt(0)));
     }
 }
