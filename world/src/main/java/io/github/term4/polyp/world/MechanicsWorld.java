@@ -260,17 +260,6 @@ public interface MechanicsWorld extends Block.Getter, ForwardingAudience, Taggab
     /** Worlds layered directly on this one. */
     default @NotNull Collection<? extends MechanicsWorld> children() { return java.util.List.of(); }
 
-    /**
-     * Whether this world IS {@code root} or layers somewhere beneath it - the cheap dynamic test for "in that
-     * subtree", O(depth) and correct for layers added later (unlike a snapshot of {@link #family()}).
-     */
-    default boolean isUnder(@NotNull MechanicsWorld root) {
-        for (MechanicsWorld world = this; world != null; world = world.parent()) {
-            if (world == root) return true;
-        }
-        return false;
-    }
-
     /** This world plus every ancestor and descendant - the whole layered family, roots first. */
     default @NotNull Collection<MechanicsWorld> family() {
         MechanicsWorld root = this;

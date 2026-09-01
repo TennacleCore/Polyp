@@ -12,12 +12,14 @@ import io.github.term4.polyp.mechanics.damage.types.DamageTypeConfig;
 import io.github.term4.polyp.mechanics.projectile.ProjectileConfig;
 import io.github.term4.polyp.mechanics.projectile.types.ProjectileTypeConfig;
 import net.kyori.adventure.key.Key;
+import net.minestom.server.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import java.util.function.BiFunction;
 
 /**
@@ -121,6 +123,16 @@ public final class PathEdits {
      * else {@code fallback}'s (the resolved global profile) - so a ruleset layers over the preset it runs on.
      */
     public static void apply(MechanicsProfile.Builder b, @Nullable MechanicsProfile fallback, String path, String rawValue) {
+        apply(b, fallback, path, rawValue, null);
+    }
+
+    /**
+     * {@link #apply} for the players {@code who} accepts only: the knob becomes {@link FieldValue#targeted},
+     * with what it held before as the fallback for everyone else. A later edit to the same knob replaces it,
+     * so fold targeted entries after the untargeted ones. Plain-value knobs cannot vary per player.
+     */
+    public static void apply(MechanicsProfile.Builder b, @Nullable MechanicsProfile fallback, String path,
+                             String rawValue, @Nullable Predicate<Player> who) {
         String[] parts = path.split("/");
         if (parts.length < 2 || parts.length > 3) {
             throw new IllegalArgumentException("path must be member/knob or member/typeKey/knob: " + path);
@@ -135,35 +147,38 @@ public final class PathEdits {
             Object base = cur != null ? cur : (fallback != null ? fallback.get(key) : null);
             if (member.editor() != null) {
                 if (parts.length != 2) throw new IllegalArgumentException(parts[0] + " paths are " + parts[0] + "/<key>: " + path);
+                if (who != null) throw new IllegalArgumentException(parts[0] + " entries cannot vary per player: " + path);
                 return member.editor().edit(base, parts[1], rawValue, path);
             }
             if (parts.length == 2) {
-                return editFlat(member.configClass(), base, parts[1], rawValue, path);
+                return editFlat(member.configClass(), base, parts[1], rawValue, path, who);
             }
             if (member.typed() == null) {
                 throw new IllegalArgumentException(parts[0] + " has no type entries - use " + parts[0] + "/" + parts[2] + ": " + path);
             }
             Key typeKey = parseKey(parts[1], path);
             Object baseEntry = base != null ? member.typed().entry().apply(base, typeKey) : null;
-            Object entry = editEntry(member.typed().defaultEntryClass(), baseEntry, typeKey, parts[2], rawValue, path);
+            Object entry = editEntry(member.typed().defaultEntryClass(), baseEntry, typeKey, parts[2], rawValue, path, who);
             return member.typed().withEntry().apply(base, entry);
         });
     }
 
     // -------------------------------------------------------------- entry / flat editing
 
-    private static Object editFlat(Class<?> configClass, @Nullable Object base, String knobName, String raw, String path) {
+    private static Object editFlat(Class<?> configClass, @Nullable Object base, String knobName, String raw,
+                                   String path, @Nullable Predicate<Player> who) {
         Class<?> cls = base != null ? base.getClass() : configClass;
         ConfigKnob knob = findKnob(cls, knobName, path);
+        Object value = value(knob, base, raw, path, who);
         // editing the base's own builder keeps every other field by construction; sparse+fromBase is the
         // fallback for configs that merge instead of copying
         Object copy = base != null ? copyBuilder(base) : null;
         if (copy != null) {
-            knob.set().accept(copy, value(knob, raw, path));
+            knob.set().accept(copy, value);
             return build(copy, path);
         }
         Object builder = newBuilder(cls, null, path);
-        knob.set().accept(builder, value(knob, raw, path));
+        knob.set().accept(builder, value);
         Object sparse = build(builder, path);
         return base != null ? fromBase(sparse, base, path) : sparse;
     }
@@ -177,19 +192,29 @@ public final class PathEdits {
         }
     }
 
-    /** The value a knob's setter wants: a constant FieldValue, or the plain decoded value. */
-    private static Object value(ConfigKnob knob, String raw, String path) {
+    /**
+     * The value a knob's setter wants: a constant FieldValue or the plain decoded value - or, targeted, a
+     * FieldValue that answers {@code decoded} for {@code who} and the base's own value for everyone else.
+     */
+    private static Object value(ConfigKnob knob, @Nullable Object base, String raw, String path,
+                                @Nullable Predicate<Player> who) {
         Object decoded = decode(knob, raw, path);
-        return knob.fieldValued() ? FieldValue.constant(decoded) : decoded;
+        if (who == null) return knob.fieldValued() ? FieldValue.constant(decoded) : decoded;
+        if (!knob.fieldValued() || knob.get() == null) {
+            throw new IllegalArgumentException("'" + knob.name() + "' is a plain value and cannot vary per player: " + path);
+        }
+        @SuppressWarnings("unchecked")
+        FieldValue<Object, Object> inherited = base != null ? (FieldValue<Object, Object>) knob.get().apply(base) : null;
+        return FieldValue.targeted(who, FieldValue.constant(decoded), inherited);
     }
 
     private static Object editEntry(Class<?> defaultClass, @Nullable Object baseEntry, Key typeKey,
-                                    String knobName, String raw, String path) {
+                                    String knobName, String raw, String path, @Nullable Predicate<Player> who) {
         Class<?> cls = baseEntry != null ? baseEntry.getClass() : defaultClass;
         ConfigKnob knob = findKnob(cls, knobName, path);
         Object builder = newBuilder(cls, typeKey, path);
         try {
-            knob.set().accept(builder, value(knob, raw, path));
+            knob.set().accept(builder, value(knob, baseEntry, raw, path, who));
         } catch (ClassCastException e) {
             // the knob is declared on an ancestor whose builder line this entry's builder doesn't extend
             throw new IllegalArgumentException("'" + knobName + "' is declared above " + cls.getSimpleName()

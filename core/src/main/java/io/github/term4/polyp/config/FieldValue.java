@@ -1,8 +1,10 @@
 package io.github.term4.polyp.config;
 
+import net.minestom.server.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * A single configurable value resolved against a context {@code CTX}: a constant, a context-aware function, or a
@@ -55,11 +57,38 @@ public record FieldValue<CTX, T>(Function<CTX, T> fn, @Nullable T constant) {
     }
 
     /** Uses {@code fallback} when this one resolves to {@code null}. */
+    @SuppressWarnings("unchecked")
     public FieldValue<CTX, T> or(FieldValue<CTX, T> fallback) {
         if (constant != null) return this; // a constant never resolves null - keep it introspectable through merges
+        if (fn instanceof Targeted<?, ?> raw) { // same for a targeted value: the merge lands in its fallback
+            Targeted<CTX, T> t = (Targeted<CTX, T>) raw;
+            FieldValue<CTX, T> below = t.fallback() == null ? fallback : t.fallback().or(fallback);
+            return new FieldValue<>(new Targeted<>(t.who(), t.value(), below), null);
+        }
         return new FieldValue<>(ctx -> {
             T r = fn.apply(ctx);
             return r != null ? r : fallback.fn.apply(ctx);
         }, null);
+    }
+
+    /**
+     * {@code value} when the context's {@link Subjects subject} is a player {@code who} accepts, else
+     * {@code fallback} - the knob's inherited value. This is how a ruleset entry scoped to a team or a seat
+     * lands in the ONE world profile a game owns, instead of a per-player scope that has to be pushed,
+     * ordered and cleared. Inspectable: {@link #fn()} is a {@link Targeted}.
+     */
+    public static <CTX, T> FieldValue<CTX, T> targeted(Predicate<Player> who, FieldValue<CTX, T> value,
+                                                       @Nullable FieldValue<CTX, T> fallback) {
+        return new FieldValue<>(new Targeted<>(who, value, fallback), null);
+    }
+
+    /** The function behind a {@link #targeted} value, kept as a record so tooling can read it back. */
+    public record Targeted<CTX, T>(Predicate<Player> who, FieldValue<CTX, T> value,
+                                   @Nullable FieldValue<CTX, T> fallback) implements Function<CTX, T> {
+        @Override
+        public T apply(CTX ctx) {
+            if (Subjects.of(ctx) instanceof Player p && who.test(p)) return value.resolve(ctx);
+            return fallback != null ? fallback.resolve(ctx) : null;
+        }
     }
 }
