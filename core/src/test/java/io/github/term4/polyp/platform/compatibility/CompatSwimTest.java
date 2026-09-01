@@ -37,7 +37,7 @@ class CompatSwimTest extends HeadlessServerTest {
         FakePlayer fp = FakePlayer.connect(instance, WATER, "SwimSuppress");
         OptimizedPlayer op = (OptimizedPlayer) fp.player;
         try {
-            op.compat().apply(FOOD);
+            op.compat().apply(FOOD, op);
 
             // entry: the fresh re-send goes out clamped
             fp.sent.clear();
@@ -63,9 +63,9 @@ class CompatSwimTest extends HeadlessServerTest {
 
             // FOOD -> BLINDNESS mid-water: food restored, hidden effect starts
             fp.player.teleport(WATER).join();
-            op.compat().apply(FOOD);
+            op.compat().apply(FOOD, op);
             CompatSwim.tick(op);
-            op.compat().apply(BLINDNESS);
+            op.compat().apply(BLINDNESS, op);
             fp.sent.clear();
             CompatSwim.tick(op);
             assertEquals(20, lastFood(fp), "mode switch restores the food bar");
@@ -79,7 +79,7 @@ class CompatSwimTest extends HeadlessServerTest {
             assertTrue(effect.potion().duration() >= 20, "saturated: the fog factor must not enter the fade region");
 
             // configured duration takes over on the next refresh, no transition needed
-            op.compat().apply(BLINDNESS.toBuilder().swimBlindnessTicks(40).build());
+            op.compat().apply(BLINDNESS.toBuilder().swimBlindnessTicks(40).build(), op);
             fp.sent.clear();
             CompatSwim.tick(op);
             assertEquals(40, fp.sent(EntityEffectPacket.class).getFirst().potion().duration());
@@ -112,7 +112,7 @@ class CompatSwimTest extends HeadlessServerTest {
         FakePlayer fp = FakePlayer.connect(instance, new Pos(0.5, 64, 848.5), "SwimExempt");
         OptimizedPlayer op = (OptimizedPlayer) fp.player;
         try {
-            op.compat().apply(FOOD);
+            op.compat().apply(FOOD, op);
 
             op.compat().setLegacyClient(true);
             CompatSwim.tick(op);

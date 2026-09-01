@@ -38,14 +38,10 @@ public interface Recipients {
               @NotNull BiConsumer<Player, Point> to);
 
     /** The world's own members - the players actually in it. Spectators watching do NOT perceive it. */
-    Recipients MEMBERS = (world, at, source, to) -> {
-        for (Player p : world.players()) to.accept(p, at);
-    };
+    Recipients MEMBERS = (world, at, source, to) -> world.forEachMember(p -> to.accept(p, at));
 
     /** Everyone RENDERING the world: its members plus observers (spectators, all-seeing staff). The default. */
-    Recipients WATCHERS = (world, at, source, to) -> {
-        for (Player p : world.watchers()) to.accept(p, at);
-    };
+    Recipients WATCHERS = (world, at, source, to) -> world.forEachWatcher(p -> to.accept(p, at));
 
     /** Every player on the underlying Minestom instance - all worlds sharing it, plus anyone unsharded. */
     Recipients INSTANCE = (world, at, source, to) -> {
@@ -106,9 +102,8 @@ public interface Recipients {
     static @NotNull Recipients tree(@NotNull Recipients base) {
         return (world, at, source, to) -> {
             Set<Player> seen = identitySet();
-            for (MechanicsWorld layer : world.family()) {
-                base.each(layer, at, source, (p, point) -> { if (seen.add(p)) to.accept(p, point); });
-            }
+            world.forEachInFamily(layer ->
+                    base.each(layer, at, source, (p, point) -> { if (seen.add(p)) to.accept(p, point); }));
         };
     }
 

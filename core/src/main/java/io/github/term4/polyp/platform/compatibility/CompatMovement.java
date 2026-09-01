@@ -60,7 +60,7 @@ public final class CompatMovement {
             c = new CompatState();
             player.setTag(FALLBACK_COMPAT, c);
         }
-        c.apply(cfg);
+        c.apply(cfg, player);
         return c;
     }
 

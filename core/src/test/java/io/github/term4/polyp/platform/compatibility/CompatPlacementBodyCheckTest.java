@@ -65,7 +65,7 @@ class CompatPlacementBodyCheckTest extends HeadlessServerTest {
         Vec centered = new Vec(0.5, 0, 0.5);
         try {
             op.compat().setLegacyClient(true);
-            op.compat().apply(CompatConfig.builder().legacySelfPlace(false).build());
+            op.compat().apply(CompatConfig.builder().legacySelfPlace(false).build(), op);
 
             assertTrue(CompatPlacement.placementBodyCheck(op, op, Block.OAK_STAIRS, centered, player),
                     "stairs into your own face are refused, unlike vanilla 1.8");

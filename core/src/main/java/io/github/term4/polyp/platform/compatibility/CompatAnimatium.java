@@ -56,7 +56,8 @@ public final class CompatAnimatium {
     public static void applyFeatures(Polyp polyp, Player player) {
         if (!(player instanceof OptimizedPlayer op)) return;
         CompatConfig cfg = polyp.profiles().resolve(player, MechanicsKeys.COMPAT);
-        boolean debug = cfg != null && Boolean.TRUE.equals(cfg.animatiumDebug);
+        CompatConfig.CompatContext ctx = new CompatConfig.CompatContext(player);
+        boolean debug = cfg != null && Boolean.TRUE.equals(cfg.animatiumDebug(ctx));
         if (!op.compat().isAnimatiumClient()) {
             // on join one skip line is NORMAL even for an Animatium client - the first config apply
             // precedes the mod's handshake, which then re-applies
@@ -64,7 +65,7 @@ public final class CompatAnimatium {
                     "[animatium] skipped: no animatium:info from this client (yet)", NamedTextColor.GRAY));
             return;
         }
-        Set<AnimatiumFeature> features = cfg == null ? Set.of() : resolve(cfg);
+        Set<AnimatiumFeature> features = cfg == null ? Set.of() : resolve(cfg, ctx);
         features = gateWireFeatures(features, op.compat());
         op.compat().setNativeFeatures(features);
         player.sendPluginMessage(SET_FEATURES_CHANNEL, encode(features));
@@ -75,42 +76,43 @@ public final class CompatAnimatium {
         }
     }
 
-    static Set<AnimatiumFeature> resolve(CompatConfig cfg) {
-        return cfg.animatiumFeatures != null ? cfg.animatiumFeatures : derive(cfg);
+    static Set<AnimatiumFeature> resolve(CompatConfig cfg, CompatConfig.CompatContext ctx) {
+        Set<AnimatiumFeature> explicit = cfg.animatiumFeatures(ctx);
+        return explicit != null ? explicit : derive(cfg, ctx);
     }
 
     /** Maps the enabled compat knobs to their native Animatium equivalents. */
-    static Set<AnimatiumFeature> derive(CompatConfig cfg) {
+    static Set<AnimatiumFeature> derive(CompatConfig cfg, CompatConfig.CompatContext ctx) {
         EnumSet<AnimatiumFeature> set = EnumSet.noneOf(AnimatiumFeature.class);
-        if (cfg.attackHitboxMargin != null) set.add(AnimatiumFeature.PICK_INFLATION);
-        if (Boolean.TRUE.equals(cfg.legacyHitbox)) set.add(AnimatiumFeature.OLD_SNEAK_HEIGHT);
-        if (Boolean.TRUE.equals(cfg.restrictSprintUse)) set.add(AnimatiumFeature.FIX_SPRINT_ITEM_USE);
-        if (Boolean.TRUE.equals(cfg.restrictSprintSneak)) set.add(AnimatiumFeature.FIX_SPRINT_SNEAKING);
-        if (cfg.disabledPoses != null) {
+        if (cfg.attackHitboxMargin(ctx) != null) set.add(AnimatiumFeature.PICK_INFLATION);
+        if (Boolean.TRUE.equals(cfg.legacyHitbox(ctx))) set.add(AnimatiumFeature.OLD_SNEAK_HEIGHT);
+        if (Boolean.TRUE.equals(cfg.restrictSprintUse(ctx))) set.add(AnimatiumFeature.FIX_SPRINT_ITEM_USE);
+        if (Boolean.TRUE.equals(cfg.restrictSprintSneak(ctx))) set.add(AnimatiumFeature.FIX_SPRINT_SNEAKING);
+        if (cfg.disabledPoses(ctx) != null) {
             // in-water swim AND the squeeze-crawl are both Pose.SWIMMING, so disabling it maps to both client bits
-            if (cfg.disabledPoses.contains(EntityPose.SWIMMING)) {
+            if (cfg.disabledPoses(ctx).contains(EntityPose.SWIMMING)) {
                 set.add(AnimatiumFeature.DISABLE_SWIM_POSE);
                 set.add(AnimatiumFeature.DISABLE_CRAWL_POSE);
             }
-            if (cfg.disabledPoses.contains(EntityPose.FALL_FLYING)) set.add(AnimatiumFeature.DISABLE_ELYTRA_POSE);
+            if (cfg.disabledPoses(ctx).contains(EntityPose.FALL_FLYING)) set.add(AnimatiumFeature.DISABLE_ELYTRA_POSE);
         }
         // native disable beats the wire lever, and handlesNatively() then keeps CompatSwim off this client
-        if (cfg.suppressSwim != null) set.add(AnimatiumFeature.DISABLE_SWIM_POSE);
-        if (Boolean.TRUE.equals(cfg.legacyFluids)) set.add(AnimatiumFeature.OLD_FLUID_PHYSICS);
-        if (Boolean.TRUE.equals(cfg.disableElytraFlight)) set.add(AnimatiumFeature.DISABLE_ELYTRA_FLIGHT);
-        if (Boolean.TRUE.equals(cfg.oldFlight)) set.add(AnimatiumFeature.OLD_FLIGHT);
-        if (Boolean.TRUE.equals(cfg.leftClickItemUsage)) set.add(AnimatiumFeature.LEFT_CLICK_ITEM_USAGE);
-        if (Boolean.TRUE.equals(cfg.disableAutoSneak)) set.add(AnimatiumFeature.DISABLE_AUTO_SNEAK);
+        if (cfg.suppressSwim(ctx) != null) set.add(AnimatiumFeature.DISABLE_SWIM_POSE);
+        if (Boolean.TRUE.equals(cfg.legacyFluids(ctx))) set.add(AnimatiumFeature.OLD_FLUID_PHYSICS);
+        if (Boolean.TRUE.equals(cfg.disableElytraFlight(ctx))) set.add(AnimatiumFeature.DISABLE_ELYTRA_FLIGHT);
+        if (Boolean.TRUE.equals(cfg.oldFlight(ctx))) set.add(AnimatiumFeature.OLD_FLIGHT);
+        if (Boolean.TRUE.equals(cfg.leftClickItemUsage(ctx))) set.add(AnimatiumFeature.LEFT_CLICK_ITEM_USAGE);
+        if (Boolean.TRUE.equals(cfg.disableAutoSneak(ctx))) set.add(AnimatiumFeature.DISABLE_AUTO_SNEAK);
         // oldPhysics is the bundle default; each per-aspect knob overrides it (null = follow the bundle)
-        boolean physics = Boolean.TRUE.equals(cfg.oldPhysics);
-        if (physicsAspect(cfg.oldMomentum, physics)) set.add(AnimatiumFeature.OLD_MOMENTUM);
-        if (physicsAspect(cfg.disableBedBounce, physics)) set.add(AnimatiumFeature.DISABLE_BED_BOUNCE);
-        if (physicsAspect(cfg.disableHoneyPhysics, physics)) set.add(AnimatiumFeature.DISABLE_HONEY_PHYSICS);
-        if (physicsAspect(cfg.disableBubbleColumn, physics)) set.add(AnimatiumFeature.DISABLE_BUBBLE_COLUMN);
-        if (Boolean.TRUE.equals(cfg.disableEntityPush)) set.add(AnimatiumFeature.DISABLE_ENTITY_PUSH);
-        if (Boolean.TRUE.equals(cfg.oldPlacement)) set.add(AnimatiumFeature.OLD_PLACEMENT);
-        if (Boolean.TRUE.equals(cfg.disableOffhand)) set.add(AnimatiumFeature.DISABLE_OFFHAND);
-        if (Boolean.TRUE.equals(cfg.nativeShortVelocity)) set.add(AnimatiumFeature.SHORTS_VELOCITY);
+        boolean physics = Boolean.TRUE.equals(cfg.oldPhysics(ctx));
+        if (physicsAspect(cfg.oldMomentum(ctx), physics)) set.add(AnimatiumFeature.OLD_MOMENTUM);
+        if (physicsAspect(cfg.disableBedBounce(ctx), physics)) set.add(AnimatiumFeature.DISABLE_BED_BOUNCE);
+        if (physicsAspect(cfg.disableHoneyPhysics(ctx), physics)) set.add(AnimatiumFeature.DISABLE_HONEY_PHYSICS);
+        if (physicsAspect(cfg.disableBubbleColumn(ctx), physics)) set.add(AnimatiumFeature.DISABLE_BUBBLE_COLUMN);
+        if (Boolean.TRUE.equals(cfg.disableEntityPush(ctx))) set.add(AnimatiumFeature.DISABLE_ENTITY_PUSH);
+        if (Boolean.TRUE.equals(cfg.oldPlacement(ctx))) set.add(AnimatiumFeature.OLD_PLACEMENT);
+        if (Boolean.TRUE.equals(cfg.disableOffhand(ctx))) set.add(AnimatiumFeature.DISABLE_OFFHAND);
+        if (Boolean.TRUE.equals(cfg.nativeShortVelocity(ctx))) set.add(AnimatiumFeature.SHORTS_VELOCITY);
         return set;
     }
 

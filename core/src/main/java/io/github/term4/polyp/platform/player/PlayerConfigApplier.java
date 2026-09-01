@@ -62,7 +62,7 @@ public final class PlayerConfigApplier {
         var state = op.compat();
         var prevView = state.itemViewKey();
         boolean prevCooldownRemoved = state.attackCooldownRemoved();
-        state.apply(compat);
+        state.apply(compat, player);
         // the join inventory is sent before this applies, so a changed client-view rewrite wouldn't reach the client
         // until the next packet; visible entities too - the blocking-pose stamp rides their equipment
         if (!prevView.equals(state.itemViewKey())) {

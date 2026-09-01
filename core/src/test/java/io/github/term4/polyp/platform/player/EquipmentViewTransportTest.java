@@ -27,7 +27,7 @@ class EquipmentViewTransportTest extends HeadlessServerTest {
         var holder = FakePlayer.connect(instance, new Pos(300.5, 64, 300.5), "Blocker");
         var viewer = FakePlayer.connect(instance, new Pos(302.5, 64, 300.5), "Watcher");
         try {
-            ((OptimizedPlayer) viewer.player).compat().apply(Compat18.config());
+            ((OptimizedPlayer) viewer.player).compat().apply(Compat18.config(), viewer.player);
             assertTrue(holder.player.getViewers().contains(viewer.player), "the harness really is watching");
             viewer.sent.clear();
 
@@ -55,7 +55,7 @@ class EquipmentViewTransportTest extends HeadlessServerTest {
         var holder = FakePlayer.connect(instance, new Pos(310.5, 64, 310.5), "PlainHolder");
         var viewer = FakePlayer.connect(instance, new Pos(312.5, 64, 310.5), "PlainWatcher");
         try {
-            ((OptimizedPlayer) viewer.player).compat().apply(null);
+            ((OptimizedPlayer) viewer.player).compat().apply(null, viewer.player);
             viewer.sent.clear();
 
             holder.player.setItemInHand(PlayerHand.MAIN, ItemStack.of(Material.DIAMOND_SWORD));

@@ -26,7 +26,7 @@ class PerViewerInventoryTest extends HeadlessServerTest {
     void incrementalSlotRefreshReachesClientReskinned() {
         var conn = new CapturingConnection();
         OptimizedPlayer p = new OptimizedPlayer(conn, new GameProfile(UUID.randomUUID(), "InvTest"));
-        p.compat().apply(Compat18.config()); // suppressThrowSwing on
+        p.compat().apply(Compat18.config(), p); // suppressThrowSwing on
         assertInstanceOf(PerViewerInventory.class, p.getInventory());
         p.getInventory().addViewer(p); // a real join adds the owner at spawn
 

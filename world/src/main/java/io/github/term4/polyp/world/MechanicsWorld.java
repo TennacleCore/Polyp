@@ -260,6 +260,32 @@ public interface MechanicsWorld extends Block.Getter, ForwardingAudience, Taggab
     /** Worlds layered directly on this one. */
     default @NotNull Collection<? extends MechanicsWorld> children() { return java.util.List.of(); }
 
+    /** Every member, without materialising a collection - the send path's iteration. */
+    default void forEachMember(@NotNull java.util.function.Consumer<Player> action) {
+        for (Player p : players()) action.accept(p);
+    }
+
+    /** Every watcher, without materialising a collection. Implementations that snapshot in {@link #watchers()} override. */
+    default void forEachWatcher(@NotNull java.util.function.Consumer<Player> action) {
+        for (Player p : watchers()) action.accept(p);
+    }
+
+    /**
+     * Visits this world's whole layered family, root first then depth-first, without building the list
+     * {@link #family()} does - the per-send walk. A malformed link is bounded by depth rather than a visited set.
+     */
+    default void forEachInFamily(@NotNull java.util.function.Consumer<MechanicsWorld> action) {
+        MechanicsWorld root = this;
+        for (int guard = 0; root.parent() != null && guard < 64; guard++) root = root.parent();
+        visitTree(root, action, 0);
+    }
+
+    private static void visitTree(MechanicsWorld world, java.util.function.Consumer<MechanicsWorld> action, int depth) {
+        if (depth > 64) return;
+        action.accept(world);
+        for (MechanicsWorld child : world.children()) visitTree(child, action, depth + 1);
+    }
+
     /** This world plus every ancestor and descendant - the whole layered family, roots first. */
     default @NotNull Collection<MechanicsWorld> family() {
         MechanicsWorld root = this;

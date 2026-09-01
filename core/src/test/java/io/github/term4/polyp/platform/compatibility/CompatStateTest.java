@@ -33,7 +33,7 @@ class CompatStateTest extends HeadlessServerTest {
     @Test
     void sanitizeStripsEchoedStampForStampedClient() {
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
         assertTrue(s.stampsAttackRange());
         assertNull(s.sanitizeInboundItem(stampedSword()).get(DataComponents.ATTACK_RANGE),
                 "a stamped client's echoed attack_range is stripped");
@@ -60,7 +60,7 @@ class CompatStateTest extends HeadlessServerTest {
     @Test
     void reskinsThrowableToNonUsableBaseInClientView() {
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
         assertTrue(s.suppressesThrowSwing());
         ItemStack shown = slotItem(s, ItemStack.of(Material.SNOWBALL, 16));
         assertEquals(Material.PAPER, shown.material(), "the client sees a non-usable base (no throw swing)");
@@ -74,7 +74,7 @@ class CompatStateTest extends HeadlessServerTest {
     @Test
     void reskinPreservesRealNameLoreEnchants() {
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
         ItemStack shown = slotItem(s, fancySnowball());
         assertEquals(Material.PAPER, shown.material());
         assertEquals(Component.text("Feather"), shown.get(DataComponents.CUSTOM_NAME), "the item's real name is kept (not overwritten)");
@@ -85,7 +85,7 @@ class CompatStateTest extends HeadlessServerTest {
     @Test
     void restoresEchoedReskinToTrueItem() {
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
         ItemStack restored = s.sanitizeInboundItem(slotItem(s, ItemStack.of(Material.SNOWBALL, 16)));
         assertEquals(Material.SNOWBALL, restored.material(), "a creative-echoed reskin becomes the true snowball again");
         assertNull(restored.get(DataComponents.ITEM_MODEL), "the reskin marker is cleared (renders as a plain snowball)");
@@ -96,7 +96,7 @@ class CompatStateTest extends HeadlessServerTest {
     @Test
     void restoreKeepsRealComponents() {
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
         ItemStack restored = s.sanitizeInboundItem(slotItem(s, fancySnowball()));
         assertEquals(Material.SNOWBALL, restored.material());
         assertEquals(Component.text("Feather"), restored.get(DataComponents.CUSTOM_NAME), "a real name survives the creative round-trip");
@@ -117,7 +117,7 @@ class CompatStateTest extends HeadlessServerTest {
     @Test
     void animatiumClientExclusionsFollowTheHarmLine() {
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
         s.setAnimatiumClient(true);
         assertFalse(s.stampsAttackRange());
         assertFalse(s.suppressesThrowSwing());
@@ -136,7 +136,7 @@ class CompatStateTest extends HeadlessServerTest {
     @Test
     void gliderStrippedFromViewAndRestoredOnEcho() {
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
         ItemStack shown = slotItem(s, ItemStack.of(Material.ELYTRA));
         assertNull(shown.get(DataComponents.GLIDER), "the view carries no glider");
         assertEquals(Material.ELYTRA, shown.material(), "still an elytra (worn/rendered normally)");
@@ -149,7 +149,7 @@ class CompatStateTest extends HeadlessServerTest {
         assertNotNull(ItemStack.of(Material.ENDER_PEARL).get(DataComponents.USE_COOLDOWN),
                 "precondition: the pinned Minestom pearl prototype carries use_cooldown");
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
         ItemStack shown = slotItem(s, ItemStack.of(Material.ENDER_PEARL));
         assertNull(shown.get(DataComponents.USE_COOLDOWN), "no client-self-applied cooldown (1.8 pearls spam-throw)");
         assertNotNull(s.sanitizeInboundItem(shown).get(DataComponents.USE_COOLDOWN), "the echo restores the prototype cooldown");
@@ -159,7 +159,7 @@ class CompatStateTest extends HeadlessServerTest {
     @Test
     void windChargeIsReskinned() {
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
         assertEquals(Material.PAPER, slotItem(s, ItemStack.of(Material.WIND_CHARGE)).material());
     }
 
@@ -167,22 +167,22 @@ class CompatStateTest extends HeadlessServerTest {
     @Test
     void itemViewKeyTracksEveryViewRewrite() {
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
         var full = s.itemViewKey();
-        s.apply(Compat18.config().toBuilder().swordBlockingPose(false).build());
+        s.apply(Compat18.config().toBuilder().swordBlockingPose(false).build(), null);
         assertNotEquals(full, s.itemViewKey(), "same margin, different sword pose -> re-send");
-        s.apply(Compat18.config().toBuilder().removeUseCooldowns(false).build());
+        s.apply(Compat18.config().toBuilder().removeUseCooldowns(false).build(), null);
         assertNotEquals(full, s.itemViewKey(), "same margin, different cooldown strip -> re-send");
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
         assertEquals(full, s.itemViewKey(), "identical policy -> no re-send");
-        s.apply(null);
+        s.apply(null, null);
         assertNotEquals(full, s.itemViewKey(), "compat dropped -> re-send (views revert)");
     }
 
     @Test
     void swordBlockPoseStampedAndStrippedOnEcho() {
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
         ItemStack shown = slotItem(s, ItemStack.of(Material.DIAMOND_SWORD));
         assertNotNull(shown.get(DataComponents.BLOCKS_ATTACKS), "the client sees a blockable sword");
         assertNull(slotItem(s, ItemStack.of(Material.STONE)).get(DataComponents.BLOCKS_ATTACKS), "only swords");
@@ -196,7 +196,7 @@ class CompatStateTest extends HeadlessServerTest {
     @Test
     void anotherPlayersSwordIsStampedSoTheBlockPoseRenders() {
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
 
         var equipment = new EntityEquipmentPacket(7, Map.of(
                 EquipmentSlot.MAIN_HAND, ItemStack.of(Material.DIAMOND_SWORD),
@@ -213,7 +213,7 @@ class CompatStateTest extends HeadlessServerTest {
     @Test
     void anOptedOutSwordIsNotStampedForViewers() {
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
 
         ItemStack optedOut = VanillaBlocking.nonBlocking(ItemStack.of(Material.DIAMOND_SWORD));
         var shown = (EntityEquipmentPacket) s.rewriteItems(new EntityEquipmentPacket(7, Map.of(EquipmentSlot.MAIN_HAND, optedOut)));
@@ -224,7 +224,7 @@ class CompatStateTest extends HeadlessServerTest {
     @Test
     void aLegacyViewersEquipmentIsUntouched() {
         CompatState s = new CompatState();
-        s.apply(Compat18.config());
+        s.apply(Compat18.config(), null);
         s.setLegacyClient(true);
 
         var equipment = new EntityEquipmentPacket(7, Map.of(EquipmentSlot.MAIN_HAND, ItemStack.of(Material.DIAMOND_SWORD)));

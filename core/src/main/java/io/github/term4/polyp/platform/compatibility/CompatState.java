@@ -1,6 +1,7 @@
 package io.github.term4.polyp.platform.compatibility;
 
 import net.minestom.server.component.DataComponents;
+import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityPose;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -47,6 +48,7 @@ public final class CompatState {
     private static final BlocksAttacks BLOCK_POSE = new BlocksAttacks(0f, 1f, List.of(), BlocksAttacks.ItemDamageFunction.DEFAULT, null, null, null);
 
     private @NotNull CompatConfig policy = OFF;
+    private @NotNull CompatConfig.CompatContext ctx = new CompatConfig.CompatContext(null);
     private boolean attackCooldownRemoved = false;
     private double savedAttackSpeedBase = 4.0; // vanilla generic.attack_speed default until a removal captures the real base
     private boolean sprintStripped = false;
@@ -61,32 +63,34 @@ public final class CompatState {
      * Swaps the whole policy; {@code null} = all off (modern). Operational/identity state is left untouched; the
      * {@code attackHitboxMargin} re-send + attack-cooldown attribute are the caller's job (they touch the player).
      */
-    public void apply(@Nullable CompatConfig config) {
+    /** Adopts {@code config} for {@code subject}: every knob resolves against that player from here on. */
+    public void apply(@Nullable CompatConfig config, @Nullable Entity subject) {
         this.policy = config != null ? config : OFF;
+        this.ctx = new CompatConfig.CompatContext(subject);
     }
 
-    public @NotNull Set<EntityPose> disabledPoses() { return policy.disabledPoses != null ? policy.disabledPoses : Set.of(); }
-    public boolean restrictMovement() { return on(policy.restrictMovement); }
+    public @NotNull Set<EntityPose> disabledPoses() { return policy.disabledPoses(ctx) != null ? policy.disabledPoses(ctx) : Set.of(); }
+    public boolean restrictMovement() { return on(policy.restrictMovement(ctx)); }
     /** Server hitbox/eye height stay at 1.8 dimensions regardless of pose (no crouch shrink). */
-    public boolean legacyHitbox() { return on(policy.legacyHitbox); }
+    public boolean legacyHitbox() { return on(policy.legacyHitbox(ctx)); }
     /** {@code attack_range.hitbox_margin} for the client's view of held items; {@code null} = untouched. */
-    public @Nullable Float attackHitboxMargin() { return policy.attackHitboxMargin; }
-    public boolean disableOffhand() { return on(policy.disableOffhand); }
-    public boolean restrictSprintSneak() { return on(policy.restrictSprintSneak); }
-    public boolean restrictSprintUse() { return on(policy.restrictSprintUse); }
-    public boolean restrictSwimSpeed() { return on(policy.restrictSwimSpeed); }
-    public double swimFactor() { return policy.swimFactor != null ? policy.swimFactor : 1.25; }
-    public double swimVerticalFactor() { return policy.swimVerticalFactor != null ? policy.swimVerticalFactor : 3.0; }
+    public @Nullable Float attackHitboxMargin() { return policy.attackHitboxMargin(ctx); }
+    public boolean disableOffhand() { return on(policy.disableOffhand(ctx)); }
+    public boolean restrictSprintSneak() { return on(policy.restrictSprintSneak(ctx)); }
+    public boolean restrictSprintUse() { return on(policy.restrictSprintUse(ctx)); }
+    public boolean restrictSwimSpeed() { return on(policy.restrictSwimSpeed(ctx)); }
+    public double swimFactor() { return policy.swimFactor(ctx) != null ? policy.swimFactor(ctx) : 1.25; }
+    public double swimVerticalFactor() { return policy.swimVerticalFactor(ctx) != null ? policy.swimVerticalFactor(ctx) : 3.0; }
     /** Max blocks from the server eye to a placement's clicked point; {@code null} = unmanaged. */
-    public @Nullable Double blockPlaceReach() { return policy.blockPlaceReach; }
-    public boolean oldPlacement() { return on(policy.oldPlacement); }
+    public @Nullable Double blockPlaceReach() { return policy.blockPlaceReach(ctx); }
+    public boolean oldPlacement() { return on(policy.oldPlacement(ctx)); }
 
     /** A legacy placer's own body never blocks their placement (1.8); {@code false} = the hypixel refusal. */
-    public boolean legacySelfPlace() { return policy.legacySelfPlace == null || policy.legacySelfPlace; }
+    public boolean legacySelfPlace() { return policy.legacySelfPlace(ctx) == null || policy.legacySelfPlace(ctx); }
 
     private static boolean on(@Nullable Boolean v) { return Boolean.TRUE.equals(v); }
 
-    public boolean hookPredictionEscort() { return policy.hookPredictionEscort == null || policy.hookPredictionEscort; }
+    public boolean hookPredictionEscort() { return policy.hookPredictionEscort(ctx) == null || policy.hookPredictionEscort(ctx); }
 
     /** Tracked so a profile swap restores the saved base only on a real change. */
     public boolean attackCooldownRemoved() { return attackCooldownRemoved; }
@@ -104,11 +108,11 @@ public final class CompatState {
 
     /** The lever configured for THIS client ({@code null} = none): legacy can't swim-pose, Animatium disables it natively. */
     public @Nullable CompatConfig.SwimSuppression suppressSwim() {
-        return legacyClient || handlesNatively(AnimatiumFeature.DISABLE_SWIM_POSE) ? null : policy.suppressSwim;
+        return legacyClient || handlesNatively(AnimatiumFeature.DISABLE_SWIM_POSE) ? null : policy.suppressSwim(ctx);
     }
 
     /** Duration of the BLINDNESS lever's per-tick refresh; {@code null} = 60 (safely above the 20-tick fog knee). */
-    public int swimBlindnessTicks() { return policy.swimBlindnessTicks != null ? policy.swimBlindnessTicks : 60; }
+    public int swimBlindnessTicks() { return policy.swimBlindnessTicks(ctx) != null ? policy.swimBlindnessTicks(ctx) : 60; }
 
     /** The lever {@code CompatSwim} currently holds on the wire; dies with the player, so a relog starts clean. */
     public @Nullable CompatConfig.SwimSuppression activeSwimFix() { return activeSwimFix; }
@@ -163,43 +167,43 @@ public final class CompatState {
 
     /** Whether this client receives the {@code attack_range} stamp (echo counterpart: {@link #sanitizeInboundItem}). Animatium clients take the 1.8 set natively - the stamp would double it. */
     public boolean stampsAttackRange() {
-        return policy.attackHitboxMargin != null && !legacyClient && !animatiumClient;
+        return policy.attackHitboxMargin(ctx) != null && !legacyClient && !animatiumClient;
     }
 
     /** Whether this client gets the throwable reskin (echo counterpart: {@link #sanitizeInboundItem}). Excluded for Animatium: its native 1.8 animations key off the real item. */
     public boolean suppressesThrowSwing() {
-        return on(policy.suppressThrowSwing) && !legacyClient && !animatiumClient;
+        return on(policy.suppressThrowSwing(ctx)) && !legacyClient && !animatiumClient;
     }
 
     /** Whether this client's bare-fist swings get the {@code FakeHits} ray fill - the empty-hand half of the attack-box, so it follows the stamp's gating. */
     public boolean fistRayHits() {
-        return on(policy.fistRayHits) && stampsAttackRange();
+        return on(policy.fistRayHits(ctx)) && stampsAttackRange();
     }
 
     /** Animatium only RESTYLES an existing block pose, so it needs the stamp like any modern client; 1.8 clients block
      *  natively and the component is junk through Via. */
     public boolean swordBlockingPose() {
-        return on(policy.swordBlockingPose) && !legacyClient;
+        return on(policy.swordBlockingPose(ctx)) && !legacyClient;
     }
 
     /** Animatium disables the glide natively too - the strip is harmless doubled, and covers a spoofed handshake. */
     public boolean stripsGlider() {
-        return on(policy.disableElytraFlight) && !legacyClient;
+        return on(policy.disableElytraFlight(ctx)) && !legacyClient;
     }
 
     /** Not Animatium-excluded (not one of its features). */
     public boolean stripsUseCooldowns() {
-        return on(policy.removeUseCooldowns) && !legacyClient;
+        return on(policy.removeUseCooldowns(ctx)) && !legacyClient;
     }
 
     /** Every client version enrolls in the shared no-push team - the OTHER side of a pair predicts its own push. */
     public boolean noEntityPush() {
-        return on(policy.disableEntityPush);
+        return on(policy.disableEntityPush(ctx));
     }
 
     /** The melee reach the attack-box advertises (stamped on items, used by the bare-fist ray); unset = 3 (1.8). */
     public float attackReach() {
-        return policy.attackReach != null ? policy.attackReach : 3f;
+        return policy.attackReach(ctx) != null ? policy.attackReach(ctx) : 3f;
     }
 
     /**
@@ -279,7 +283,7 @@ public final class CompatState {
         // respect an item's own attack_range (minigame weapon, spear); also keeps a creative-echoed stamp
         // from being re-stamped onto itself
         if (item.isAir() || item.get(DataComponents.ATTACK_RANGE) != null) return item;
-        return item.with(DataComponents.ATTACK_RANGE, new AttackRange(0f, attackReach(), 0f, 5f, policy.attackHitboxMargin, 1f));
+        return item.with(DataComponents.ATTACK_RANGE, new AttackRange(0f, attackReach(), 0f, 5f, policy.attackHitboxMargin(ctx), 1f));
     }
 
     private ItemStack reskinThrowable(ItemStack item) {

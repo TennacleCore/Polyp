@@ -86,7 +86,7 @@ class FakeHitsTest extends HeadlessServerTest {
     @Test
     void bareFistSwingFillsMarginGraze() {
         Duo d = duo(8.85, "A"); // outside the real box (8.8), inside the padded one (8.9)
-        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config());
+        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config(), d.attacker().player);
         seedAndSwing(d);
         assertTrue(d.victim().getHealth() < 20f, "the margin graze lands as a real attack");
     }
@@ -95,7 +95,7 @@ class FakeHitsTest extends HeadlessServerTest {
     @Test
     void staleTargetSideGrazeDoesNotFill() {
         Duo d = duo(8.85, "K");
-        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config());
+        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config(), d.attacker().player);
         seedCombat(d, 40); // stale: well past the hit's i-frame window (0..10)
         swingAndLook(d);
         assertEquals(20f, d.victim().getHealth(), "out of recent combat, the body-side expansion no longer fills");
@@ -105,7 +105,7 @@ class FakeHitsTest extends HeadlessServerTest {
     @Test
     void staleTargetTopGrazeFills() {
         Duo d = duo(8.5, "L"); // straight on; the ray is aimed up into the head band by the move look below
-        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config());
+        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config(), d.attacker().player);
         seedCombat(d, 40);
         EventDispatcher.call(new PlayerHandAnimationEvent(d.attacker().player, PlayerHand.MAIN));
         // eye 65.62 aiming to enter the padded front face (z=11.1, 2.6 away) at y=65.85 - above the real top 65.8
@@ -122,7 +122,7 @@ class FakeHitsTest extends HeadlessServerTest {
                 .build());
         FakePlayer attacker = FakePlayer.connect(inst, new Pos(8.5, 64, 8.5, 0f, 0f), "FistI");
         Player victim = FakePlayer.connect(inst, new Pos(8.5, 64, 11.5), "VictimI").player;
-        ((OptimizedPlayer) attacker.player).compat().apply(Compat18.config());
+        ((OptimizedPlayer) attacker.player).compat().apply(Compat18.config(), attacker.player);
         setCombatTick(inst, 0);
         polyp.module(AttackSystem.class).apply(new AttackSnapshot(attacker.player, victim, null));
         victim.setHealth(20f);
@@ -153,7 +153,7 @@ class FakeHitsTest extends HeadlessServerTest {
     @Test
     void heldItemSwingIsNotFilledOnTheCompatRule() {
         Duo d = duo(8.85, "B");
-        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config());
+        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config(), d.attacker().player);
         d.attacker().player.setItemInMainHand(ItemStack.of(Material.DIAMOND_SWORD)); // covered by the attack_range stamp instead
         seedAndSwing(d);
         assertEquals(20f, d.victim().getHealth(), "a held-item swing is the stamp's job, never ray-filled");
@@ -162,7 +162,7 @@ class FakeHitsTest extends HeadlessServerTest {
     @Test
     void rayOffThePaddedBoxDoesNotFill() {
         Duo d = duo(8.95, "C"); // outside even the padded box (8.9)
-        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config());
+        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config(), d.attacker().player);
         seedAndSwing(d);
         assertEquals(20f, d.victim().getHealth(), "a swing whose ray misses the padded box stays a miss");
     }
@@ -177,7 +177,7 @@ class FakeHitsTest extends HeadlessServerTest {
     @Test
     void dropSwingDoesNotArm() {
         Duo d = duo(8.85, "E");
-        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config());
+        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config(), d.attacker().player);
         seedCombat(d, 10);
         EventDispatcher.call(new ItemDropEvent(d.attacker().player, ItemStack.of(Material.SNOWBALL)));
         swingAndLook(d);
@@ -188,7 +188,7 @@ class FakeHitsTest extends HeadlessServerTest {
     @Test
     void instantBreakSwingDoesNotArm() {
         Duo d = duo(8.85, "J");
-        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config());
+        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config(), d.attacker().player);
         seedCombat(d, 10);
         EventDispatcher.call(new PlayerBlockBreakEvent(d.attacker().player, d.inst(), Block.STONE, Block.AIR,
                 new BlockVec(8, 63, 9), BlockFace.TOP));
@@ -199,7 +199,7 @@ class FakeHitsTest extends HeadlessServerTest {
     @Test
     void useItemSwingDoesNotArm() {
         Duo d = duo(8.85, "F");
-        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config());
+        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config(), d.attacker().player);
         seedCombat(d, 10);
         EventDispatcher.call(new PlayerUseItemEvent(d.attacker().player, PlayerHand.MAIN, ItemStack.of(Material.SNOWBALL), 0));
         swingAndLook(d);
