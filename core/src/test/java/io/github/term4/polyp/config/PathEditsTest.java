@@ -258,5 +258,9 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
                 () -> PathEdits.apply(b, base, "projectiles/minecraft:arrow/critDamage", "maybe")).getMessage().contains("not a Boolean"));
         assertTrue(assertThrows(IllegalArgumentException.class,
                 () -> PathEdits.apply(b, base, "projectiles", "1")).getMessage().contains("member/knob"));
+        // a nullary factory handed arguments is a typo, not a no-op
+        assertTrue(assertThrows(IllegalArgumentException.class,
+                () -> PathEdits.apply(b, base, "explosion/damageModel", "curve(9)"))
+                .getMessage().contains("takes no arguments"));
     }
 }

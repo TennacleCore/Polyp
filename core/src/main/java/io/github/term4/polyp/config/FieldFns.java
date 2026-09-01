@@ -94,6 +94,10 @@ public final class FieldFns {
             throw new IllegalArgumentException("no " + type.getSimpleName() + " named '" + name + "' (known: "
                     + new java.util.TreeSet<>(named.keySet()) + "): " + where);
         }
+        // a signature with no parens takes nothing: silently ignoring "curve(9)" hides a real mistake
+        if (!entry.signature().contains("(") && !raw.isEmpty()) {
+            throw new IllegalArgumentException(name + " takes no arguments: " + where);
+        }
         return (T) entry.factory().create(new Args(entry.signature(), raw, where));
     }
 

@@ -71,7 +71,8 @@ public interface FxEffect {
                 args -> FxHandler.of(args.arity(2).of(0, FxAudience.class), args.of(1, FxEffect.class)));
         // a bare effect is the default audience, so the common case stays short
         for (String effect : FieldFns.names(FxEffect.class)) {
-            FieldFns.register(FxHandler.class, effect, "shorthand for to(watchers, " + effect + "(...))",
+            // the signature keeps its parens: these forward their arguments to the effect factory
+            FieldFns.register(FxHandler.class, effect + "(...)", "shorthand for to(watchers, " + effect + "(...))",
                     args -> FxHandler.of(FxAudience.WATCHERS, FieldFns.build(FxEffect.class, effect, args)));
         }
     }
