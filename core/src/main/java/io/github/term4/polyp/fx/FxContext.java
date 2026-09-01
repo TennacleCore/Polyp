@@ -57,6 +57,11 @@ public final class FxContext {
         return new FxContext(world, position, source, null, null);
     }
 
+    /** This context re-scoped to another world, for an audience that spans a layered family. */
+    public @NotNull FxContext withWorld(@NotNull MechanicsWorld other) {
+        return new FxContext(other, position, source, target, detail);
+    }
+
     /** This context with a type-specific payload attached (the stepped-on block). */
     public @NotNull FxContext withDetail(@Nullable Object detail) {
         return new FxContext(world, position, source, target, detail);

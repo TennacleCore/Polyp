@@ -251,6 +251,30 @@ public interface MechanicsWorld extends Block.Getter, ForwardingAudience, Taggab
     /** Puts {@code entity} into this world at {@code position} (a virtual world also binds it). */
     @NotNull CompletableFuture<Void> spawn(@NotNull Entity entity, @NotNull Pos position);
 
+    /**
+     * The world this one layers over, or {@code null} at the root. Layered worlds form a tree (a shard chain
+     * reads child -> parent -> base); a plain instance world is always a root.
+     */
+    default @Nullable MechanicsWorld parent() { return null; }
+
+    /** Worlds layered directly on this one. */
+    default @NotNull Collection<? extends MechanicsWorld> children() { return java.util.List.of(); }
+
+    /** This world plus every ancestor and descendant - the whole layered family, roots first. */
+    default @NotNull Collection<MechanicsWorld> family() {
+        MechanicsWorld root = this;
+        for (MechanicsWorld up = parent(); up != null; up = up.parent()) root = up;
+        java.util.List<MechanicsWorld> out = new java.util.ArrayList<>();
+        java.util.ArrayDeque<MechanicsWorld> queue = new java.util.ArrayDeque<>(java.util.List.of(root));
+        while (!queue.isEmpty()) {
+            MechanicsWorld world = queue.poll();
+            if (out.contains(world)) continue; // identity: a malformed link must not loop forever
+            out.add(world);
+            queue.addAll(world.children());
+        }
+        return out;
+    }
+
     /** This world's own players - the audience gameplay targets. */
     @NotNull Collection<@NotNull Player> players();
 

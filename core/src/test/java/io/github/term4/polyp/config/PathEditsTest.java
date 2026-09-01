@@ -23,8 +23,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Path writes layer over the inherited config - they can flip one knob and can never wipe base tuning. */
-class PathEditsTest {
+/**
+ * Path writes layer over the inherited config - they can flip one knob and can never wipe base tuning.
+ * Server-backed because the fx cases touch {@code Fx}'s keys and the sound registry; the path layer itself
+ * needs no server.
+ */
+class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest {
 
     /** A stand-in target: the shipped models never look at it. */
     private static net.minestom.server.entity.Entity dummy() {
@@ -142,8 +146,15 @@ class PathEditsTest {
     /** Effects and audiences are independent, so every pairing works without being registered as a pairing. */
     @Test
     void everyAudienceComposesWithEveryEffect() {
-        for (String audience : java.util.List.of("shard", "members", "instance", "viewers", "predicted",
-                "source", "everywhere", "at-listener(instance)", "within(20)", "within(20, members)")) {
+        for (String audience : java.util.List.of(
+                // primitives
+                "members", "watchers", "instance", "viewers", "source", "nobody",
+                // compositions - none of these is a registered case
+                "except(instance, shard)", "both(members, viewers)", "only(instance, members)",
+                "tree(members)", "at-listener(tree(watchers))", "within(20, except(shard, source))",
+                "legacy(members)",
+                // the three aliases, which ARE compositions
+                "shard", "everywhere", "predicted")) {
             for (String effect : java.util.List.of(
                     "sound(entity.player.teleport, player, 1, 1)", "particle(crit, 8, 0.5, 0)")) {
                 String spec = "to(" + audience + ", " + effect + ")";
@@ -165,7 +176,7 @@ class PathEditsTest {
                 () -> PathEdits.apply(b, null, "fx/polyp:pearl_teleport", "sideways")).getMessage();
         assertTrue(message.contains("to") && message.contains("none"), message);
         String audience = assertThrows(IllegalArgumentException.class,
-                () -> PathEdits.apply(b, null, "fx/polyp:pearl_teleport", "to(nobody, sound(a, player, 1, 1))")).getMessage();
+                () -> PathEdits.apply(b, null, "fx/polyp:pearl_teleport", "to(elsewhere, sound(entity.player.teleport, player, 1, 1))")).getMessage();
         assertTrue(audience.contains("no FxAudience named"), audience);
     }
 
