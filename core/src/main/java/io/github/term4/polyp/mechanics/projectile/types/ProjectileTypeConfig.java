@@ -209,6 +209,9 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
     public final @Nullable FieldValue<ProjectileContext, Boolean> removeOnBlockHit;
     /** Whether a damaging arrow adds the cosmetic stuck-in-body count (vanilla {@code true}); arrow-only. */
     public final @Nullable FieldValue<ProjectileContext, Boolean> stuckInBody;
+    /** Bow draw curve for this type ({@link io.github.term4.polyp.mechanics.projectile.shootables.DrawPower});
+     *  default vanilla. Resolved per shot, so a scope can drop the charge-up without a different bow. */
+    public final @Nullable FieldValue<ProjectileContext, io.github.term4.polyp.mechanics.projectile.shootables.DrawPower> drawPower;
     /** Whether a critical arrow rolls its bonus damage; {@code null} = follow the arrow (vanilla). Arrow-only,
      *  and deliberately independent of {@link #critParticles}: hypixel/scrims bridge drop the roll. */
     public final @Nullable FieldValue<ProjectileContext, Boolean> critDamage;
@@ -277,6 +280,7 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
         removeOnEntityHit = b.removeOnEntityHit;
         removeOnBlockHit = b.removeOnBlockHit;
         stuckInBody = b.stuckInBody;
+        drawPower = b.drawPower;
         critDamage = b.critDamage;
         critParticles = b.critParticles;
         invulnHit = b.invulnHit;

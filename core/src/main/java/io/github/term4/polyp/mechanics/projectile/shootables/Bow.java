@@ -27,7 +27,8 @@ import java.util.concurrent.ThreadLocalRandom;
  * Bow launcher ({@link Shootable}): a drawn-bow release fires an {@link Arrow}. Pass {@code new Bow()} to
  * {@link ProjectileSystem#install}.
  *
- * <p>Vanilla 1.8: draw power {@code (s^2 + 2s)/3} capped at 1, {@code < 0.1} fires nothing, full draw is critical
+ * <p>Vanilla 1.8: draw power {@link DrawPower#VANILLA} (per-shot, from the arrow type's {@code drawPower}
+ * knob), {@code < 0.1} fires nothing, full draw is critical
  * (chance = the arrow type's {@code critChance} knob); consumes one arrow (unless creative); the arrow launches at
  * speed {@code power * speed}.
  * TODO: offhand arrow selection; gate drawing (not just release) on ammo.
@@ -54,7 +55,10 @@ public final class Bow implements Shootable {
         if (e.getItemStack().material() != Material.BOW) return;
         Player p = e.getPlayer();
         if (!system.armed(arrowType.key(), p)) return;
-        float power = drawPower(e.getUseDuration());
+        // the curve is resolved per shot, so a scoped profile (or a timed powerup) can change the charge-up
+        ProjectileSnapshot probe = ProjectileSnapshot.of(p, arrowType).withItem(e.getItemStack());
+        float seconds = e.getUseDuration() / (float) ServerFlag.SERVER_TICKS_PER_SECOND;
+        float power = system.resolveFlight(probe).drawPower().at(seconds);
         if (power < MIN_POWER) return;
         boolean creative = p.getGameMode() == GameMode.CREATIVE;
         int slot = firstArrowSlot(p);
@@ -78,13 +82,6 @@ public final class Bow implements Shootable {
     private static boolean rollCrit(double chance) {
         if (chance >= 1.0) return true;
         return chance > 0.0 && ThreadLocalRandom.current().nextDouble() < chance;
-    }
-
-    /** Vanilla bow power curve over the draw in real SECONDS (ticks / server TPS, not a hardcoded 20), so charge is TPS-invariant. */
-    private static float drawPower(long useDurationTicks) {
-        float f = useDurationTicks / (float) ServerFlag.SERVER_TICKS_PER_SECOND;
-        float power = (f * f + 2 * f) / 3.0f;
-        return power > 1f ? 1f : power;
     }
 
     /** Inventory slot of the first arrow the bow can fire (plain / tipped / spectral), or {@code -1} if none. */

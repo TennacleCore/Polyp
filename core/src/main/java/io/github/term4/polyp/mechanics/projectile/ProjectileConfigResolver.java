@@ -82,6 +82,7 @@ public final class ProjectileConfigResolver {
                 FieldValue.resolve(tc.spawnOffsetForward, ctx, 0.0),
                 FieldValue.resolve(tc.spawnOffsetVertical, ctx, 0.0),
                 FieldValue.resolve(tc.spawnOffsetSideways, ctx, 0.0),
+                FieldValue.resolve(tc.drawPower, ctx, io.github.term4.polyp.mechanics.projectile.shootables.DrawPower.VANILLA),
                 FieldValue.resolve(tc.speed, ctx, 1.5),
                 FieldValue.resolve(tc.launchPitchOffset, ctx, 0.0), // vanilla splash potion / XP bottle = -20
                 FieldValue.resolve(tc.spread, ctx, 0.0),
@@ -141,6 +142,7 @@ public final class ProjectileConfigResolver {
             double spawnOffsetForward,
             double spawnOffsetVertical,
             double spawnOffsetSideways,
+            io.github.term4.polyp.mechanics.projectile.shootables.DrawPower drawPower,
             double speed,
             double launchPitchOffset,
             double spread,
