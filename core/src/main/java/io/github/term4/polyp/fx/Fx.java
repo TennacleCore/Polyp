@@ -146,14 +146,18 @@ public final class Fx {
                     Block block = ctx.detail(Block.class);
                     BlockSoundType st = block != null ? block.blockSoundType() : null;
                     if (st == null || st.placeSound() == null) return;
-                    ctx.predictedSound(st.placeSound(), Sound.Source.BLOCK, (st.volume() + 1.0f) / 2.0f, st.pitch() * 0.8f);
+                    // block view, not the placer's entity viewers: whoever sees the block appear hears it
+                    ctx.emit(FxAudiences.predictedFor(Recipients.BLOCK_VIEWERS),
+                            FxEffect.sound(st.placeSound(), Sound.Source.BLOCK, (st.volume() + 1.0f) / 2.0f, st.pitch() * 0.8f));
                 })
-                // world event 2001: the client derives sound + particles from the block id; both
-                // generations predict their own break, so viewers only
+                // world event 2001: the client derives sound + particles from the block id
                 .register(BLOCK_BREAK, ctx -> {
                     Block block = ctx.detail(Block.class);
                     if (block == null || ctx.source() == null) return;
-                    ctx.emit(Recipients.VIEWERS, FxEffect.worldEvent(WorldEvent.PARTICLES_DESTROY_BLOCK.id(), block.stateId()));
+                    // block view minus the breaker: both eras predict their own break, and an observer watching
+                    // only the players must not see a block they cannot see shatter
+                    ctx.emit(Recipients.except(Recipients.BLOCK_VIEWERS, Recipients.SOURCE),
+                            FxEffect.worldEvent(WorldEvent.PARTICLES_DESTROY_BLOCK.id(), block.stateId()));
                 });
     }
 

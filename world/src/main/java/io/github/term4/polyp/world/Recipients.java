@@ -18,11 +18,11 @@ import java.util.function.BiConsumer;
  * block feedback, world sounds - so the scopes live beside {@link MechanicsWorld#players()} /
  * {@link MechanicsWorld#watchers()} / {@link MechanicsWorld#family()} that define them.
  *
- * <p>Not a menu of cases. Seven primitives closed under {@link #both union}, {@link #except difference},
+ * <p>Not a menu of cases. Eight primitives closed under {@link #both union}, {@link #except difference},
  * {@link #only intersection}, {@link #tree}, {@link #within}, and {@link #atListener} for the anchor -
  * "on the instance but not in this world" is {@code except(INSTANCE, WATCHERS)}, not another constant.
  *
- * <p>Scope, widest last: {@link #MEMBERS} / {@link #WATCHERS} are ONE world, {@link #tree} spans its layered
+ * <p>Scope, widest last: {@link #MEMBERS} / {@link #WATCHERS} / {@link #BLOCK_VIEWERS} are ONE world, {@link #tree} spans its layered
  * family, {@link #INSTANCE} every world sharing the Minestom instance, {@link #SERVER} the whole process.
  * Each recipient carries its own anchor, which is how {@link #atListener} makes a sound distance-proof.
  */
@@ -42,6 +42,15 @@ public interface Recipients {
 
     /** Everyone RENDERING the world: its members plus observers (spectators, all-seeing staff). The default. */
     Recipients WATCHERS = (world, at, source, to) -> world.forEachWatcher(p -> to.accept(p, at));
+
+    /**
+     * Everyone rendering the world's BLOCKS ({@link WorldPolicy#seesBlocks}). Block feedback - place sounds,
+     * break particles - follows this, not the source's entity viewers: an observer watching only the players
+     * must not hear a block they cannot see change, and one watching only the blocks must.
+     */
+    Recipients BLOCK_VIEWERS = (world, at, source, to) -> world.forEachWatcher(p -> {
+        if (WorldPolicy.seesBlocks(p, world)) to.accept(p, at);
+    });
 
     /** Every player on the underlying Minestom instance - all worlds sharing it, plus anyone unsharded. */
     Recipients INSTANCE = (world, at, source, to) -> {

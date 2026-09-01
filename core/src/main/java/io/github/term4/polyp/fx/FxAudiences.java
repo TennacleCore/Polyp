@@ -7,7 +7,7 @@ import net.minestom.server.entity.Player;
 
 /**
  * The core's additions to {@link Recipients}: the scope-shaped sets live in polyp-world beside the world
- * methods that define them, and what needs the CLIENT belongs here, where the client tracker is.
+ * methods that define them, and what needs the CLIENT (prediction) belongs here, where the client tracker is.
  * Also where the data vocabulary is registered - the world module has no config layer.
  */
 public final class FxAudiences {
@@ -15,16 +15,26 @@ public final class FxAudiences {
     private FxAudiences() {}
 
     /**
-     * {@link Recipients#VIEWERS} plus the source when its client will NOT produce the effect itself: modern
-     * clients predict their own world sounds, while 1.8's local sound sinks are stubs, so its doer hears
-     * nothing unless we echo it. The one set defined by client CAPABILITY rather than by scope.
+     * The source alone, and only when its client will NOT produce the effect itself: modern clients predict
+     * their own world sounds locally, while 1.8's local sound sinks are stubs, so its doer hears nothing
+     * unless we echo it. The one set defined by client CAPABILITY rather than by scope.
      */
-    public static final Recipients PREDICTED = (world, at, source, to) -> {
-        Recipients.VIEWERS.each(world, at, source, to);
+    private static final Recipients LEGACY_SOURCE = (world, at, source, to) -> {
         Polyp polyp = Polyp.getInstance();
         var info = polyp.isInitialized() ? polyp.clientInfo() : null;
         if (info != null && source instanceof Player p && info.isLegacy(p)) to.accept(p, at);
     };
+
+    /**
+     * {@code base} minus the source, plus the source when it cannot predict the effect - the shape every
+     * client-predicted effect takes, whichever set of onlookers it starts from.
+     */
+    public static Recipients predictedFor(Recipients base) {
+        return Recipients.both(Recipients.except(base, Recipients.SOURCE), LEGACY_SOURCE);
+    }
+
+    /** Entity-anchored prediction: the source's viewers, plus a legacy source. */
+    public static final Recipients PREDICTED = predictedFor(Recipients.VIEWERS);
 
     /** Names the vocabulary for data paths; a scope not listed is a composition, not a missing feature. */
     public static void registerFactories() {
@@ -34,8 +44,10 @@ public final class FxAudiences {
         FieldFns.register(Recipients.class, "server", "every player online, across all instances", args -> Recipients.SERVER);
         FieldFns.register(Recipients.class, "viewers", "the source's viewers, not the source itself", args -> Recipients.VIEWERS);
         FieldFns.register(Recipients.class, "source", "the source player alone", args -> Recipients.SOURCE);
+        FieldFns.register(Recipients.class, "block-viewers", "everyone rendering the world's blocks", args -> Recipients.BLOCK_VIEWERS);
         FieldFns.register(Recipients.class, "nobody", "no one - the identity for both()", args -> Recipients.NOBODY);
-        FieldFns.register(Recipients.class, "predicted", "viewers + a source whose client cannot predict it", args -> PREDICTED);
+        FieldFns.register(Recipients.class, "predicted-for(recipients)", "those, minus the source unless its client cannot predict the effect",
+                args -> predictedFor(args.arity(1).of(0, Recipients.class)));
 
         FieldFns.register(Recipients.class, "both(a, b)", "everyone either side reaches",
                 args -> Recipients.both(args.arity(2).of(0, Recipients.class), args.of(1, Recipients.class)));
