@@ -138,6 +138,23 @@ class PathEditsTest {
         assertEquals(FxHandler.NONE, silence.build().get(MechanicsKeys.FX).get(Fx.PEARL_TELEPORT));
     }
 
+    /** Every audience the fx layer can address is reachable from data, not just the global one. */
+    @Test
+    void theFxVocabularyCoversEveryAudience() {
+        for (String spec : java.util.List.of(
+                "sound(entity.player.teleport, player, 1, 1)",
+                "viewer-sound(entity.player.teleport, player, 1, 1)",
+                "predicted-sound(entity.player.teleport, player, 1, 1)",
+                "source-sound(entity.player.teleport, player, 1, 1)",
+                "global-sound(entity.player.teleport, player, 1, 1)",
+                "particle(crit, 8, 0.5, 0)",
+                "none")) {
+            MechanicsProfile.Builder b = MechanicsProfile.builder();
+            PathEdits.apply(b, null, "fx/polyp:pearl_teleport", spec);
+            assertNotNull(b.build().get(MechanicsKeys.FX).get(Fx.PEARL_TELEPORT), spec);
+        }
+    }
+
     @Test
     void anUnknownFxFactoryListsWhatIsAvailable() {
         MechanicsProfile.Builder b = MechanicsProfile.builder();

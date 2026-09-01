@@ -181,6 +181,20 @@ public final class Fx {
                 sound(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
         FieldFns.register(FxHandler.class, "source-sound", args -> FxHandler.sourceSound(
                 sound(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
+        // the doer's own client predicts these locally, so they go to the others (predicted- adds 1.8 doers back)
+        FieldFns.register(FxHandler.class, "viewer-sound", args -> ctx -> ctx.viewerSound(
+                sound(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
+        FieldFns.register(FxHandler.class, "predicted-sound", args -> ctx -> ctx.predictedSound(
+                sound(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
+        FieldFns.register(FxHandler.class, "particle", args -> FxHandler.particle(
+                particle(args.arity(4), 0), args.integer(1), args.dbl(2), args.flt(3)));
+    }
+
+    private static Particle particle(FieldFns.Args args, int i) {
+        Key key = args.key(i);
+        Particle particle = Particle.fromKey(key);
+        if (particle == null) throw new IllegalArgumentException("unknown particle '" + key.asString() + "'");
+        return particle;
     }
 
     private static SoundEvent sound(FieldFns.Args args, int i) {
