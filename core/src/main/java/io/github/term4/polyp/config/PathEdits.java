@@ -2,7 +2,6 @@ package io.github.term4.polyp.config;
 
 import io.github.term4.polyp.ConfigKey;
 import io.github.term4.polyp.fx.FxHandler;
-import io.github.term4.polyp.fx.FxHandlers;
 import io.github.term4.polyp.fx.FxRegistry;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
@@ -52,6 +51,10 @@ public final class PathEdits {
     private static final Map<String, Member> MEMBERS = new LinkedHashMap<>();
 
     static {
+        // the shipped behaviour vocabularies, registered where the path layer first needs them
+        io.github.term4.polyp.mechanics.explosion.DamageModel.registerFactories();
+        io.github.term4.polyp.fx.Fx.registerFactories();
+
         MEMBERS.put("projectiles", new Member(MechanicsKeys.PROJECTILES, ProjectileConfig.class, new TypedFamily(
                 ProjectileTypeConfig.class,
                 (c, k) -> ((ProjectileConfig) c).typeConfig(k),
@@ -78,14 +81,10 @@ public final class PathEdits {
         MEMBERS.put("tnt", new Member(MechanicsKeys.TNT, io.github.term4.polyp.mechanics.explosion.TntConfig.class, null));
         MEMBERS.put("death", new Member(MechanicsKeys.DEATH, io.github.term4.polyp.mechanics.damage.DeathConfig.class, null));
         MEMBERS.put("knockback", new Member(MechanicsKeys.KNOCKBACK, io.github.term4.polyp.mechanics.knockback.KnockbackConfig.class, null));
-        // fx/<key> = <named handler>: the value picks from FxHandlers, not from a knob table
+        // fx/<key> = <factory call>, e.g. global-sound(entity.player.teleport, player, 1, 1)
         MEMBERS.put("fx", new Member(MechanicsKeys.FX, FxRegistry.class, null, (base, slot, raw, path) -> {
             Key fxKey = parseKey(slot, path);
-            FxHandler handler = FxHandlers.get(fxKey, raw);
-            if (handler == null) {
-                throw new IllegalArgumentException("no fx named '" + raw + "' for " + fxKey.asString()
-                        + " (known: " + FxHandlers.names(fxKey) + "): " + path);
-            }
+            FxHandler handler = FieldFns.parse(FxHandler.class, raw, path);
             return (base != null ? (FxRegistry) base : FxRegistry.empty()).register(fxKey, handler);
         }));
     }
@@ -269,6 +268,7 @@ public final class PathEdits {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("'" + raw + "' is not a " + t.getSimpleName() + " for " + path);
         }
+        if (FieldFns.supports(t)) return FieldFns.parse(t, raw, path);
         throw new IllegalArgumentException(knob.name() + " takes a " + t.getSimpleName() + " - not path-settable yet: " + path);
     }
 }

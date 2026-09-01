@@ -24,6 +24,16 @@ public interface FxHandler {
         return ctx -> ctx.sound(sound, source, volume, pitch);
     }
 
+    /** The same sound to the whole shard at full volume, wherever a listener stands (BedWars' pearl landing). */
+    static @NotNull FxHandler globalSound(@NotNull SoundEvent sound, @NotNull Sound.Source source, float volume, float pitch) {
+        return ctx -> ctx.globalSound(sound, source, volume, pitch);
+    }
+
+    /** A sound only the context's source hears (a hit marker). */
+    static @NotNull FxHandler sourceSound(@NotNull SoundEvent sound, @NotNull Sound.Source source, float volume, float pitch) {
+        return ctx -> ctx.sourceSound(sound, source, volume, pitch);
+    }
+
     /** A symmetric particle burst at the context position. */
     static @NotNull FxHandler particle(@NotNull Particle particle, int count, double spread, float speed) {
         return ctx -> ctx.particle(particle, count, spread, spread, spread, speed);

@@ -239,10 +239,8 @@ public final class ExplosionSystem implements MechanicsModule {
             // a dropped item takes the blast like anything else (vanilla EntityItem.damageEntity); its own
             // health/pricing lives in the item-damage config, so the raw curve amount is what it receives
             float damage = entity instanceof ItemEntity ? hit.damage() : !living ? 0f
-                    : switch (resolved.damageModel()) {
-                        case CURVE -> hit.damage();
-                        case FLAT -> (float) resolved.flatDamage();
-                    };
+                    : resolved.damageModel().amount(
+                            new DamageModel.Hit(entity, distance, exposure, hit.damage()));
             damage *= (float) resolved.damageScale(); // post-floor, so a scaled vanilla curve stays step-quantized (MineMen FBF)
             Vec push = kbTarget ? hit.knockback() : null; // a non-KB target (mob) still takes damage, no push
             targets.add(new ExplosionEvent.Target(entity, distance, exposure, push, damage));

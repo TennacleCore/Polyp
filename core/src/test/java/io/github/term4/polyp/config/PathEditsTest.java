@@ -7,8 +7,8 @@ import io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamageConfig;
 import io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage;
 import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.fx.FxHandler;
-import io.github.term4.polyp.fx.FxHandlers;
 import io.github.term4.polyp.fx.FxRegistry;
+import io.github.term4.polyp.mechanics.explosion.DamageModel;
 import io.github.term4.polyp.mechanics.explosion.ExplosionConfig;
 import io.github.term4.polyp.presets.hypixel.Hypixel;
 import io.github.term4.polyp.mechanics.projectile.ProjectileConfig;
@@ -25,6 +25,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Path writes layer over the inherited config - they can flip one knob and can never wipe base tuning. */
 class PathEditsTest {
+
+    /** A stand-in target: the shipped models never look at it. */
+    private static net.minestom.server.entity.Entity dummy() {
+        return new net.minestom.server.entity.Entity(net.minestom.server.entity.EntityType.ZOMBIE);
+    }
 
     private static MechanicsProfile base() {
         return MechanicsProfile.builder()
@@ -68,28 +73,45 @@ class PathEditsTest {
     @Test
     void flatMemberEditWithNoBaseMakesASparseConfig() {
         MechanicsProfile.Builder b = MechanicsProfile.builder();
-        PathEdits.apply(b, null, "explosion/flatDamage", "2.0");
+        PathEdits.apply(b, null, "explosion/damageScale", "0.5");
         ExplosionConfig cfg = b.build().get(MechanicsKeys.EXPLOSION);
-        assertEquals(2.0, cfg.flatDamage.constantOrNull());
+        assertEquals(0.5, cfg.damageScale.constantOrNull());
     }
 
-    /** Hypixel's flat TNT switched back to the vanilla curve for SkyWars - the model is a value, so it overlays. */
+    /** Behaviour-typed values are built by named FACTORIES with arguments - open, not a fixed menu. */
     @Test
-    void anOverlayCanSwitchTheExplosionDamageModelBothWays() {
+    void behaviourValuesAreBuiltByFactoryCall() {
         MechanicsProfile hypixelish = MechanicsProfile.builder()
-                .set(MechanicsKeys.EXPLOSION, ExplosionConfig.builder()
-                        .damageModel(ExplosionConfig.DamageModel.FLAT).flatDamage(2.0).build()).build();
+                .set(MechanicsKeys.EXPLOSION, ExplosionConfig.builder().damageModel(DamageModel.flat(2.0)).build())
+                .build();
 
+        // hypixel's flat TNT back to the vanilla curve for SkyWars
         MechanicsProfile.Builder toCurve = MechanicsProfile.builder();
         PathEdits.apply(toCurve, hypixelish, "explosion/damageModel", "curve");
-        ExplosionConfig curved = toCurve.build().get(MechanicsKeys.EXPLOSION);
-        assertEquals(ExplosionConfig.DamageModel.CURVE, curved.damageModel.constantOrNull());
-        assertEquals(2.0, curved.flatDamage.constantOrNull(), "the parameter survives - the model chooses");
+        DamageModel curved = toCurve.build().get(MechanicsKeys.EXPLOSION).damageModel.constantOrNull();
+        assertNotNull(curved);
+        assertEquals(7.5f, curved.amount(new DamageModel.Hit(dummy(), 2.0, 1.0f, 7.5f)), 1e-4);
 
+        // and any flat amount, not just the one someone predeclared
         MechanicsProfile.Builder toFlat = MechanicsProfile.builder();
-        PathEdits.apply(toFlat, hypixelish, "explosion/damageModel", "flat");
-        assertEquals(ExplosionConfig.DamageModel.FLAT,
-                toFlat.build().get(MechanicsKeys.EXPLOSION).damageModel.constantOrNull());
+        PathEdits.apply(toFlat, hypixelish, "explosion/damageModel", "flat(3.5)");
+        DamageModel flat = toFlat.build().get(MechanicsKeys.EXPLOSION).damageModel.constantOrNull();
+        assertNotNull(flat);
+        assertEquals(3.5f, flat.amount(new DamageModel.Hit(dummy(), 2.0, 1.0f, 7.5f)), 1e-4);
+    }
+
+    @Test
+    void factoryArgumentsAreValidatedByPosition() {
+        MechanicsProfile.Builder b = MechanicsProfile.builder();
+        assertTrue(assertThrows(IllegalArgumentException.class,
+                () -> PathEdits.apply(b, null, "explosion/damageModel", "flat(soon)"))
+                .getMessage().contains("must be a number"));
+        assertTrue(assertThrows(IllegalArgumentException.class,
+                () -> PathEdits.apply(b, null, "explosion/damageModel", "flat(1, 2)"))
+                .getMessage().contains("takes 1 argument"));
+        assertTrue(assertThrows(IllegalArgumentException.class,
+                () -> PathEdits.apply(b, null, "explosion/damageModel", "quadratic(2)"))
+                .getMessage().contains("no DamageModel named"));
     }
 
     @Test
@@ -100,15 +122,15 @@ class PathEditsTest {
         assertEquals(ProjectileTypeConfig.KnockbackSource.PROJECTILE, arrow.knockbackSource.constantOrNull());
     }
 
-    /** The whole Hypixel.bedwars() delta as data: the game-wide pearl landing, one path. */
+    /** The whole Hypixel.bedwars() delta as data - and any sound, not a preordained "game-wide" instance. */
     @Test
-    void fxHandlersAreSwappableByName() {
+    void fxIsBuiltFromTheSameFactoryVocabulary() {
         MechanicsProfile hypixelish = MechanicsProfile.builder().set(MechanicsKeys.FX, Hypixel.fx()).build();
         MechanicsProfile.Builder b = MechanicsProfile.builder();
-        PathEdits.apply(b, hypixelish, "fx/polyp:pearl_teleport", "game-wide");
+        PathEdits.apply(b, hypixelish, "fx/polyp:pearl_teleport", "global-sound(entity.player.teleport, player, 1, 1)");
 
         FxRegistry fx = b.build().get(MechanicsKeys.FX);
-        assertEquals(FxHandlers.get(Fx.PEARL_TELEPORT, "game-wide"), fx.get(Fx.PEARL_TELEPORT));
+        assertNotNull(fx.get(Fx.PEARL_TELEPORT));
         assertNotNull(fx.get(Fx.ARROW_HIT_PLAYER), "the rest of the registry rides along");
 
         MechanicsProfile.Builder silence = MechanicsProfile.builder();
@@ -117,11 +139,11 @@ class PathEditsTest {
     }
 
     @Test
-    void anUnknownFxNameListsWhatTheKeyOffers() {
+    void anUnknownFxFactoryListsWhatIsAvailable() {
         MechanicsProfile.Builder b = MechanicsProfile.builder();
         String message = assertThrows(IllegalArgumentException.class,
                 () -> PathEdits.apply(b, null, "fx/polyp:pearl_teleport", "sideways")).getMessage();
-        assertTrue(message.contains("game-wide") && message.contains("none"), message);
+        assertTrue(message.contains("global-sound") && message.contains("none"), message);
     }
 
     @Test

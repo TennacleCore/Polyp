@@ -3,6 +3,7 @@ package io.github.term4.polyp.fx;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.api.event.fx.FxEvent;
+import io.github.term4.polyp.config.FieldFns;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.minestom.server.event.EventDispatcher;
@@ -165,6 +166,28 @@ public final class Fx {
                         .and(FxHandler.sound(SoundEvent.ENTITY_PLAYER_ATTACK_CRIT, Sound.Source.PLAYER, 1.0f, 1.0f)))
                 // ThrownEnderpearl.playSound: positional at the destination, PLAYERS category
                 .register(PEARL_TELEPORT, pearlTeleport());
+    }
+
+    /**
+     * Names the ways an fx can be built, so a data path can pick one with its own arguments
+     * ({@code fx/polyp:pearl_teleport = global-sound(entity.player.teleport, player, 1, 1)}). Open by
+     * registration - these are constructors, not a menu of preset instances.
+     */
+    public static void registerFactories() {
+        FieldFns.register(FxHandler.class, "none", args -> FxHandler.NONE);
+        FieldFns.register(FxHandler.class, "sound", args -> FxHandler.sound(
+                sound(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
+        FieldFns.register(FxHandler.class, "global-sound", args -> FxHandler.globalSound(
+                sound(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
+        FieldFns.register(FxHandler.class, "source-sound", args -> FxHandler.sourceSound(
+                sound(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
+    }
+
+    private static SoundEvent sound(FieldFns.Args args, int i) {
+        Key key = args.key(i);
+        SoundEvent sound = SoundEvent.fromKey(key);
+        if (sound == null) throw new IllegalArgumentException("unknown sound '" + key.asString() + "'");
+        return sound;
     }
 
     /** The vanilla pearl landing: positional at the destination, so it fades with distance. */

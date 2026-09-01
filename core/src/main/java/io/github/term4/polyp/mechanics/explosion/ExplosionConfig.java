@@ -22,14 +22,6 @@ import java.util.function.Predicate;
 @GenerateBuilder
 public final class ExplosionConfig extends Config<ExplosionContext, ExplosionConfig> {
 
-    /** How a blast decides a living target's damage. */
-    public enum DamageModel {
-        /** The vanilla falloff curve (distance + exposure). */
-        CURVE,
-        /** {@link #flatDamage} to every target in range, whatever the distance (Hypixel/BedWars). */
-        FLAT
-    }
-
     /** Which cells the incendiary pass may light. */
     public enum FireScope {
         /** Every selected cell (vanilla) - fire can land on intact surfaces the blast merely reached. */
@@ -44,10 +36,8 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
     public final FieldValue<ExplosionContext, Double> damageConstant;
     /** Floor the per-entity damage to an int (1.8 parity). */
     public final FieldValue<ExplosionContext, Boolean> floorDamage;
-    /** Which damage model a living target takes. Default {@link DamageModel#CURVE}. */
+    /** How a living target's damage is decided ({@link DamageModel}); default {@link ExplosionDamage#CURVE}. */
     public final FieldValue<ExplosionContext, DamageModel> damageModel;
-    /** What {@link DamageModel#FLAT} deals per target (Hypixel/BedWars = 2.0); default 0, a knockback-only blast. */
-    public final FieldValue<ExplosionContext, Double> flatDamage;
     /** Damage this blast deals to a DROPPED ITEM; unset = the same curve amount a player takes. */
     public final FieldValue<ExplosionContext, Double> itemDamage;
     /** Scale on the final damage, applied AFTER the floor (MineMen Fireball-Fight = the vanilla floored curve × 0.05). Default 1.0. */
@@ -91,7 +81,6 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
         power = b.power;
         damageConstant = b.damageConstant;
         floorDamage = b.floorDamage;
-        flatDamage = b.flatDamage;
         damageModel = b.damageModel;
         itemDamage = b.itemDamage;
         damageScale = b.damageScale;

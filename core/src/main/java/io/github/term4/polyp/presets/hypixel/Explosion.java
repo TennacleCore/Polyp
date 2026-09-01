@@ -3,6 +3,7 @@ package io.github.term4.polyp.presets.hypixel;
 import io.github.term4.polyp.mechanics.attribute.defense.Bypass;
 import io.github.term4.polyp.mechanics.explosion.BlockBreaking;
 import io.github.term4.polyp.mechanics.explosion.ExplosionConfig;
+import io.github.term4.polyp.mechanics.explosion.DamageModel;
 import io.github.term4.polyp.mechanics.explosion.ExplosionExposure;
 import io.github.term4.polyp.mechanics.explosion.RadialScale;
 import io.github.term4.polyp.presets.vanilla18.Vanilla18;
@@ -53,7 +54,7 @@ public final class Explosion {
                 .baseKnockback(BASE).baseHeight(BASE_HEIGHT)
                 .baseScale(RadialScale.builder().down(BASE_DOWNWARD_SCALE).horizontal(BASE_HORIZONTAL_SCALE).build())
                 .knockbackImpactFloor(KB_IMPACT_FLOOR)
-                .damageModel(ExplosionConfig.DamageModel.FLAT).flatDamage(FLAT_DAMAGE).damageBypass(Bypass.builder().armor(true).build())
+                .damageModel(DamageModel.flat(FLAT_DAMAGE)).damageBypass(Bypass.builder().armor(true).build())
                 .exposure(ExplosionExposure.Rays.LEGACY_1_8_FULL_CUBE) // Hypixel gates off-flat blasts (full-cube), unlike singleplayer 1.8
                 // Hypixel fireballs light fire ONLY where a block was broken - never on intact ground (observed in-game)
                 .fireScope(ExplosionConfig.FireScope.BROKEN)
