@@ -8,6 +8,8 @@ import io.github.term4.polyp.mechanics.attribute.catalog.enchant.Flame;
 import io.github.term4.polyp.mechanics.damage.types.burning.Ignite;
 import io.github.term4.polyp.mechanics.projectile.ProjectileConfigResolver.ResolvedHit;
 import io.github.term4.polyp.mechanics.attribute.catalog.VanillaPotions;
+import io.github.term4.polyp.config.FieldValue;
+import io.github.term4.polyp.mechanics.projectile.ProjectileConfigResolver;
 import io.github.term4.polyp.mechanics.projectile.ProjectileSnapshot;
 import io.github.term4.polyp.mechanics.projectile.ProjectileSystem;
 import io.github.term4.polyp.mechanics.projectile.entities.ManagedProjectile;
@@ -70,15 +72,24 @@ public class ArrowEntity extends ManagedProjectile {
     /** Who may pick up a stuck arrow (vanilla {@code AbstractArrow.Pickup}): none, any player (survival gets the item), or creative only. */
     public enum Pickup { DISALLOWED, ALLOWED, CREATIVE_ONLY }
 
+    /** {@code critParticles} resolved at launch: the flag is a spawn-time visual, not a per-hit value. */
+    private final @Nullable Boolean critParticles;
+
     public ArrowEntity(@Nullable Entity shooter, @NotNull EntityType entityType,
                        ProjectileSnapshot snap, ProjectileTypeConfig effectiveConfig) {
         super(shooter, entityType, snap, effectiveConfig);
+        this.critParticles = FieldValue.resolve(effectiveConfig.critParticles,
+                ProjectileConfigResolver.ProjectileContext.of(snap, services()));
     }
 
-    /** Marks the arrow critical (full draw): extra random damage + the client crit-particle trail. */
+    /**
+     * Marks the arrow critical (full draw). The particle flag and the damage roll are separate knobs, so a
+     * server can show the trail without the bonus (scrims) or vice versa; unset, both follow the draw.
+     */
     public void setCritical(boolean critical) {
         this.critical = critical;
-        if (getEntityMeta() instanceof AbstractArrowMeta meta) meta.setCritical(critical);
+        boolean flag = critParticles != null ? critParticles : critical;
+        if (getEntityMeta() instanceof AbstractArrowMeta meta) meta.setCritical(flag);
     }
 
     /** The optional {@code deflectParticles} cosmetic trail ({@link #deflectVisible}). */
@@ -111,7 +122,8 @@ public class ArrowEntity extends ManagedProjectile {
         if (powerLevel() > 0) damage += powerLevel() * 0.5 + 0.5;
         int dmg = (int) Math.ceil(velocityBt.length() * damage);
         if (dmg < 0) dmg = 0;
-        if (critical) dmg += ThreadLocalRandom.current().nextInt(dmg / 2 + 2);
+        Boolean roll = hit.critDamage();
+        if (roll != null ? roll : critical) dmg += ThreadLocalRandom.current().nextInt(dmg / 2 + 2);
         return dmg;
     }
 

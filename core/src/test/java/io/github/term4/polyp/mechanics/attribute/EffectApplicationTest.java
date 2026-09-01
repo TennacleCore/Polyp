@@ -51,8 +51,8 @@ class EffectApplicationTest extends HeadlessServerTest {
         victim.setHealth(20f);
         victim.addEffect(new Potion(resistance, (byte) 1, 600)); // Resistance II (level 2) -> ×(25-10)/25 = 0.6
         DamageSnapshot snap = MeleeDamage.INSTANCE.snapshot(attacker, victim, false, ItemStack.of(Material.DIAMOND_SWORD), services);
-        services.damage().apply(snap); // 7 × 0.6 = 4.2
-        assertEquals(15.8f, victim.getHealth(), 1e-2);
+        services.damage().apply(snap); // 8 × 0.6 = 4.8
+        assertEquals(15.2f, victim.getHealth(), 1e-2);
     }
 
     @Test

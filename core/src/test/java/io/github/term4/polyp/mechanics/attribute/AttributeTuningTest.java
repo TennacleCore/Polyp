@@ -45,11 +45,11 @@ class AttributeTuningTest extends HeadlessServerTest {
     @Test
     void scaleMultipliesTheSourceAmount() {
         // scaled ×2 -> amount 2.6 -> 7×(1+2.6)
-        assertEquals(25.2f, meleeWithStrength(AttributeConfig.builder().scale(Strength.KEY, 2.0).build()), 1e-2f);
+        assertEquals(28.8f, meleeWithStrength(AttributeConfig.builder().scale(Strength.KEY, 2.0).build()), 1e-2f);
     }
 
     @Test
     void disableTurnsTheSourceOff() {
-        assertEquals(7.0f, meleeWithStrength(AttributeConfig.builder().disable(Strength.KEY).build()), 1e-3f);
+        assertEquals(8.0f, meleeWithStrength(AttributeConfig.builder().disable(Strength.KEY).build()), 1e-3f);
     }
 }

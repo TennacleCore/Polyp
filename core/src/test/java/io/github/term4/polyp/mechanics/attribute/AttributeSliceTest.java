@@ -50,8 +50,8 @@ class AttributeSliceTest extends HeadlessServerTest {
     @Test
     void sharpnessAddsAfterCrit() {
         LivingEntity atk = zombie(new Pos(0, 64, 50));
-        assertEquals(13.25f, melee(atk, false, sword(5)), EPS); // 7 + 1.25×5
-        assertEquals(16.75f, melee(atk, true, sword(5)), EPS);  // 7×1.5 + 6.25
+        assertEquals(14.25f, melee(atk, false, sword(5)), EPS); // 8 + 1.25×5
+        assertEquals(18.25f, melee(atk, true, sword(5)), EPS);  // 8×1.5 + 6.25
     }
 
     @Test
@@ -61,7 +61,7 @@ class AttributeSliceTest extends HeadlessServerTest {
         assertNotNull(weakness, "weakness potion effect");
         atk.addEffect(new Potion(weakness, 0, 600)); // Weakness I
         try {
-            assertEquals(6.5f, melee(atk, false, ItemStack.of(Material.DIAMOND_SWORD)), EPS); // 7 - 0.5
+            assertEquals(7.5f, melee(atk, false, ItemStack.of(Material.DIAMOND_SWORD)), EPS); // 8 - 0.5
         } finally {
             atk.clearEffects();
         }
@@ -74,8 +74,8 @@ class AttributeSliceTest extends HeadlessServerTest {
         assertNotNull(strength, "strength potion effect");
         atk.addEffect(new Potion(strength, 0, 600)); // amplifier 0 = Strength I
         try {
-            assertEquals(16.1f, melee(atk, false, ItemStack.of(Material.DIAMOND_SWORD)), EPS); // 7 × 2.3
-            assertEquals(30.4f, melee(atk, true, sword(5)), EPS);                              // 7×2.3×1.5 + 6.25
+            assertEquals(18.4f, melee(atk, false, ItemStack.of(Material.DIAMOND_SWORD)), EPS); // 8 × 2.3
+            assertEquals(33.85f, melee(atk, true, sword(5)), EPS);                             // 8×2.3×1.5 + 6.25
         } finally {
             atk.clearEffects();
         }

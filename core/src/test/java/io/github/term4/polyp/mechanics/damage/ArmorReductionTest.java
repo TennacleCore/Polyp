@@ -44,8 +44,8 @@ class ArmorReductionTest extends HeadlessServerTest {
         victim.getAttribute(Attribute.ARMOR).setBaseValue(20); // a fully-armored player
         victim.setHealth(20f);
         DamageSnapshot snap = MeleeDamage.INSTANCE.snapshot(attacker, victim, false, ItemStack.of(Material.DIAMOND_SWORD), services);
-        services.damage().apply(snap); // 7 melee × (25−20)/25 = 7 × 0.2 = 1.4
-        assertEquals(18.6f, victim.getHealth(), 1e-2f);
+        services.damage().apply(snap); // 8 melee × (25−20)/25 = 8 × 0.2 = 1.6
+        assertEquals(18.4f, victim.getHealth(), 1e-2f);
     }
 
     @Test

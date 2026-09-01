@@ -38,13 +38,13 @@ class MeleeDamageCharacterizationTest extends HeadlessServerTest {
 
     @Test
     void weaponNoCrit() {
-        assertEquals(7.0f, amount(false, ItemStack.of(Material.DIAMOND_SWORD)), EPS);
+        assertEquals(8.0f, amount(false, ItemStack.of(Material.DIAMOND_SWORD)), EPS); // 1 base + 7 modifier
     }
 
     @Test
     void weaponCritMultipliesBy1_5() {
-        assertEquals(10.5f, amount(true, ItemStack.of(Material.DIAMOND_SWORD)), EPS); // 7 × 1.5
-        assertEquals(6.0f, amount(true, ItemStack.of(Material.WOODEN_SWORD)), EPS);   // 4 × 1.5
+        assertEquals(12.0f, amount(true, ItemStack.of(Material.DIAMOND_SWORD)), EPS); // 8 × 1.5
+        assertEquals(7.5f, amount(true, ItemStack.of(Material.WOODEN_SWORD)), EPS);   // 5 × 1.5
     }
 
     @Test
@@ -58,7 +58,7 @@ class MeleeDamageCharacterizationTest extends HeadlessServerTest {
         atk.setItemInMainHand(ItemStack.of(Material.IRON_AXE));
         try {
             DamageSnapshot snap = MeleeDamage.INSTANCE.snapshot(atk, target(), false, null, services);
-            assertEquals(5.0f, snap.amount(), EPS);
+            assertEquals(6.0f, snap.amount(), EPS);
         } finally {
             atk.setItemInMainHand(ItemStack.AIR);
         }

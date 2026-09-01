@@ -209,6 +209,12 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
     public final @Nullable FieldValue<ProjectileContext, Boolean> removeOnBlockHit;
     /** Whether a damaging arrow adds the cosmetic stuck-in-body count (vanilla {@code true}); arrow-only. */
     public final @Nullable FieldValue<ProjectileContext, Boolean> stuckInBody;
+    /** Whether a critical arrow rolls its bonus damage; {@code null} = follow the arrow (vanilla). Arrow-only,
+     *  and deliberately independent of {@link #critParticles}: hypixel/scrims bridge drop the roll. */
+    public final @Nullable FieldValue<ProjectileContext, Boolean> critDamage;
+    /** Whether the arrow carries the critical flag clients render as a particle trail; {@code null} = follow the
+     *  arrow. Set it {@code true} with {@link #critDamage} off for scrims' cosmetic-only crits. */
+    public final @Nullable FieldValue<ProjectileContext, Boolean> critParticles;
     /** Response for a hit the target rejects as invulnerable ({@link InvulnResponse}). 1.8 arrow = {@code invulnHit(DEFLECT, PASS_THROUGH)}; throwables {@code invulnHit(DESTROY)} (default). */
     public final @Nullable FieldValue<ProjectileContext, InvulnResponse> invulnHit;
     /** How a {@link HitResponse#DEFLECT} transforms the velocity ({@link Deflect}). 1.8 = {@code deflect(-0.1)}, 26.1 = {@code deflect(-0.5, 0, -10, 10)}. Default {@code deflect(-0.1)}. */
@@ -271,6 +277,8 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
         removeOnEntityHit = b.removeOnEntityHit;
         removeOnBlockHit = b.removeOnBlockHit;
         stuckInBody = b.stuckInBody;
+        critDamage = b.critDamage;
+        critParticles = b.critParticles;
         invulnHit = b.invulnHit;
         deflect = b.deflect;
         pickupBox = b.pickupBox;

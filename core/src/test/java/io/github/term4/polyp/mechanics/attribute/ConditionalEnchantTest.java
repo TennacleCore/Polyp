@@ -43,8 +43,8 @@ class ConditionalEnchantTest extends HeadlessServerTest {
         Entity undead = spawn(EntityType.SKELETON, 81);
         Entity living = spawn(EntityType.PIG, 82);
         ItemStack sword = swordWith(Smite.KEY, 3);
-        assertEquals(14.5f, melee(atk, undead, sword), EPS); // 7 + 2.5×3
-        assertEquals(7.0f, melee(atk, living, sword), EPS);
+        assertEquals(15.5f, melee(atk, undead, sword), EPS); // 8 + 2.5×3
+        assertEquals(8.0f, melee(atk, living, sword), EPS);
     }
 
     @Test
@@ -53,7 +53,7 @@ class ConditionalEnchantTest extends HeadlessServerTest {
         Entity arthropod = spawn(EntityType.SPIDER, 84);
         Entity undead = spawn(EntityType.ZOMBIE, 85);
         ItemStack sword = swordWith(Bane.KEY, 3);
-        assertEquals(14.5f, melee(atk, arthropod, sword), EPS); // 7 + 2.5×3
-        assertEquals(7.0f, melee(atk, undead, sword), EPS);     // undead is not an arthropod
+        assertEquals(15.5f, melee(atk, arthropod, sword), EPS); // 8 + 2.5×3
+        assertEquals(8.0f, melee(atk, undead, sword), EPS);     // undead is not an arthropod
     }
 }
