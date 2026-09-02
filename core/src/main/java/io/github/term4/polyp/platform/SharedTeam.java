@@ -11,6 +11,7 @@ import net.minestom.server.network.packet.server.play.TeamsPacket.CollisionRule;
 import net.minestom.server.network.packet.server.play.TeamsPacket;
 import net.minestom.server.scoreboard.Team;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -52,6 +53,8 @@ public final class SharedTeam {
 
     private static Team team;
     private static final Map<String, EnumSet<Reason>> roster = new HashMap<>();
+    // username -> the profile name their 1.8 tab entry carries (a game's sort name), while it differs
+    private static final Map<String, String> aliases = new HashMap<>();
 
     private SharedTeam() {}
 
@@ -88,8 +91,25 @@ public final class SharedTeam {
         }
     }
 
+    /**
+     * The profile name {@code player}'s 1.8 tab entry carries when a game gives them a sort name; {@code null}
+     * clears it. A 1.8 client resolves a tab entry's team ({@code NetworkPlayerInfo.getPlayerTeam}) AND a player
+     * entity's team ({@code EntityPlayer.getTeam}, the gate on {@code canAttackPlayer}) BY THAT NAME. A renamed
+     * member must therefore sit on the roster under the alias too, or that client sees them teamless: the tab
+     * sorts them ahead of their teammates, and the arrow-visibility fix silently stops holding for them.
+     */
+    public static synchronized void alias(@NotNull Player player, @Nullable String alias) {
+        String name = player.getUsername();
+        String old = alias == null ? aliases.remove(name) : aliases.put(name, alias);
+        if (old != null && !old.equals(alias) && team != null && team.getMembers().contains(old)) team.removeMember(old);
+        sync(name);
+        if (team != null) refresh(player);
+    }
+
     private static synchronized void onDisconnect(Player player) {
-        if (roster.remove(player.getUsername()) != null) sync(player.getUsername());
+        String name = player.getUsername();
+        if (roster.remove(name) != null) sync(name); // with the alias still mapped, so it leaves the team too
+        aliases.remove(name);
     }
 
     /** Reconciles the Minestom team with the roster: membership for {@code name}, collision rule for everyone. */
@@ -103,8 +123,11 @@ public final class SharedTeam {
         }
         CollisionRule rule = wantedRule();
         if (team.getCollisionRule() != rule) team.updateCollisionRule(rule);
-        if (member && !team.getMembers().contains(name)) team.addMember(name);
-        else if (!member && team.getMembers().contains(name)) team.removeMember(name);
+        String alias = aliases.get(name);
+        for (String wire : alias == null ? List.of(name) : List.of(name, alias)) {
+            if (member && !team.getMembers().contains(wire)) team.addMember(wire);
+            else if (!member && team.getMembers().contains(wire)) team.removeMember(wire);
+        }
     }
 
     private static CollisionRule wantedRule() {
