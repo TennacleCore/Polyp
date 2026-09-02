@@ -8,11 +8,13 @@ import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
 import net.minestom.server.event.trait.PlayerEvent;
 import net.minestom.server.network.packet.server.play.TeamsPacket.CollisionRule;
+import net.minestom.server.network.packet.server.play.TeamsPacket;
 import net.minestom.server.scoreboard.Team;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -68,6 +70,18 @@ public final class SharedTeam {
             if (reasons.isEmpty()) roster.remove(name);
         }
         sync(name);
+        if (team != null) refresh(player);
+    }
+
+    // a joiner enrols at spawn, before broadcasts reach them: the play-init CREATE they already hold carries the
+    // previous rule and roster, so they get the current ones directly
+    private static void refresh(Player player) {
+        player.sendPacket(new TeamsPacket(TEAM_NAME, new TeamsPacket.UpdateTeamAction(new TeamsPacket.Settings(
+                team.getTeamDisplayName(), team.getPrefix(), team.getSuffix(), team.getNameTagVisibility(),
+                team.getCollisionRule(), team.getTeamColor(), team.getFriendlyFlags()))));
+        if (!team.getMembers().isEmpty()) {
+            player.sendPacket(new TeamsPacket(TEAM_NAME, new TeamsPacket.AddEntitiesToTeamAction(List.copyOf(team.getMembers()))));
+        }
     }
 
     private static synchronized void onDisconnect(Player player) {

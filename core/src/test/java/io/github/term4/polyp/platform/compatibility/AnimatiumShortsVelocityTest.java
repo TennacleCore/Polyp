@@ -75,7 +75,8 @@ class AnimatiumShortsVelocityTest extends HeadlessServerTest {
         assertTrue(featurePush(conn).get(AnimatiumFeature.SHORTS_VELOCITY.bit), "handshake must push the shorts bit");
 
         conn.sent.clear();
-        assertTrue(dispatchVelocity(p).isCancelled(), "LpVec3 velocity must be cancelled for the shorts rewrite");
+        assertTrue(dispatchVelocity(p).isCancelled(), () -> "LpVec3 velocity must be cancelled for the shorts rewrite (native="
+                + p.compat().nativeFeatures() + ", supports=" + p.compat().supports(AnimatiumFeature.SHORTS_VELOCITY) + ")");
 
         BufferedPacket shorts = (BufferedPacket) conn.sent.stream()
                 .filter(BufferedPacket.class::isInstance).findFirst().orElseThrow();
