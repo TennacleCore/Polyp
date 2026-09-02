@@ -41,7 +41,11 @@ public final class SharedTeam {
         /** 1.8 arrow-visibility fix: shooter and target must share a friendly-fire-off team. */
         ARROW_VISIBILITY,
         /** {@code CompatConfig.disableEntityPush}: collision rule NEVER while anyone is enrolled for this. */
-        NO_PUSH
+        NO_PUSH,
+        /** A game's tab keeps a spectator on the roster: both eras' tab comparators weigh the TEAM name before the
+         *  profile name, so a teamless spectator sorts AHEAD of players who share this team. On it, the team key
+         *  ties and their sort name decides. Set by the game, untouched by the compat re-evaluation on spawn. */
+        TAB_ORDER
     }
 
     private static final String TEAM_NAME = "polyp_lib"; // <=16 chars (the 1.8 wire limit)
