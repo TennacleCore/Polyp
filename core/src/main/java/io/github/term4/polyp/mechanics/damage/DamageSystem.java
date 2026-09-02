@@ -184,10 +184,11 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
      * {@link #FRESH_DAMAGE}, sprint reset on {@link #landed()}).
      */
     public enum DamageOutcome {
-        /** Absorbed by the i-frame window, or cancelled / zero / disabled. Distinct from {@link #IMMUNE}. */
+        /** Absorbed by the i-frame window, or zero / disabled. Distinct from {@link #IMMUNE}. */
         BLOCKED,
-        /** Fundamentally immune (creative/spectator): no damage and no knockback. Kept distinct from {@link #BLOCKED} so a
-         *  projectile can react differently - a 1.8 arrow passes through an immune target but deflects off an i-frame one. */
+        /** Fundamentally immune (creative/spectator), or a listener refused the hit (protection, a dead seat, a teammate):
+         *  no damage and no knockback. Kept distinct from {@link #BLOCKED} so a projectile can react differently - a 1.8
+         *  arrow passes through an immune target but deflects off an i-frame one. */
         IMMUNE,
         /** Overdamage replacement inside the i-frame window: damage dealt, but the fresh effects are skipped. */
         OVERDAMAGE,
@@ -214,7 +215,7 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         if (PRE_DAMAGE.hasListener()) {
             PreDamageEvent pre = new PreDamageEvent(working, services);
             EventDispatcher.call(pre);
-            if (pre.isCancelled()) return DamageOutcome.BLOCKED;
+            if (pre.isCancelled()) return DamageOutcome.IMMUNE;
             working = pre.finalSnap();
             if (!(working.target() instanceof LivingEntity)) return DamageOutcome.BLOCKED;
         }
@@ -225,7 +226,7 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
 
         DamageEvent event = new DamageEvent(working, amount, services);
         EventDispatcher.call(event);
-        if (event.isCancelled()) return DamageOutcome.BLOCKED;
+        if (event.isCancelled()) return DamageOutcome.IMMUNE;
 
         DamageSnapshot finalSnap = event.finalSnap();
         if (!(finalSnap.target() instanceof LivingEntity living)) return DamageOutcome.BLOCKED;
