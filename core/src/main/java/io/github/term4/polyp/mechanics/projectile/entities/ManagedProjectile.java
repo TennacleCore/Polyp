@@ -123,10 +123,10 @@ public class ManagedProjectile extends ProjectileEntity {
         return result;
     }
 
-    // the arrow-visibility compat keys on the shooter's context, like the deflect-trail fix
+    // a 1.8 shooter: the client hides/bounces an arrow off a player it can't damage, so the server never deflects
     private boolean arrowVisibility() {
-        Services s = services();
-        return s != null && s.fixes() != null && s.fixes().legacyArrowVisibilityEnabled(shooter);
+        var info = io.github.term4.polyp.Polyp.getInstance().clientInfo();
+        return info != null && shooter instanceof net.minestom.server.entity.Player p && info.isLegacy(p);
     }
 
     private void bounce(ResolvedHit hit, @Nullable Entity hitEntity) {
