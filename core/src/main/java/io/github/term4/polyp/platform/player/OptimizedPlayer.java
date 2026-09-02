@@ -1,5 +1,8 @@
 package io.github.term4.polyp.platform.player;
 
+import net.minestom.server.network.packet.server.play.RespawnPacket;
+import net.minestom.server.network.packet.server.play.JoinGamePacket;
+import io.github.term4.polyp.platform.compatibility.SpectatorHud;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.mechanics.knockback.KnockbackConfig;
@@ -138,7 +141,12 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
             p = inventorySync.filter(p);
             if (p == null) return; // redundant slot echo: the client already shows it
         }
+        p = SpectatorHud.rewrite(this, p);
         super.sendPacket(p);
+        // a respawn or join carries the real game mode; the spoof follows it
+        if ((p instanceof RespawnPacket || p instanceof JoinGamePacket) && SpectatorHud.hidden(this)) {
+            super.sendPacket(SpectatorHud.spoof(this));
+        }
     }
 
     // bulk equipment resends (respawn/teleport) group into a CachedPacket the per-viewer transform can't unwrap,
