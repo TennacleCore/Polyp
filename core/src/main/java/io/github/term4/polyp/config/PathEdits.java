@@ -364,6 +364,10 @@ public final class PathEdits {
                                 @Nullable Predicate<Player> who) {
         Object decoded = decode(knob, raw, path);
         if (who == null) return FieldValue.constant(decoded);
+        if (!SubjectContext.class.isAssignableFrom(knob.contextType())) {
+            throw new IllegalArgumentException("'" + knob.name() + "' resolves against " + knob.contextType().getSimpleName()
+                    + ", which names no subject - it cannot vary per player: " + path);
+        }
         @SuppressWarnings("unchecked")
         FieldValue<SubjectContext, Object> inherited = base != null ? (FieldValue<SubjectContext, Object>) knob.get().apply(base) : null;
         return FieldValue.targeted(who, FieldValue.constant(decoded), inherited);

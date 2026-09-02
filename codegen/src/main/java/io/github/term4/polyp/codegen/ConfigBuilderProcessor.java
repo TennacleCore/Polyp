@@ -178,7 +178,8 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
         s.append("package ").append(pkg).append(";\n\n")
          .append("import io.github.term4.polyp.config.FieldValue;\n\n")
          .append("import java.util.function.Function;\n\n")
-         .append("/** Generated from {@link ").append(cfg).append("}'s FieldValue fields (").append(GenerateBuilder.class.getSimpleName()).append(") - do not edit. */\n")
+         .append("/** Generated from {@link ").append(cfg).append("}'s FieldValue fields (").append(GenerateBuilder.class.getSimpleName()).append(") - do not edit.")
+         .append(" A bare {@code null} or an int literal for a Double knob is ambiguous between the constant and function setters: write {@code (T) null} / {@code 2.0}. */\n")
          .append("@SuppressWarnings({\"unchecked\", \"rawtypes\"})\n")
          .append("public abstract class ").append(base).append("<B extends ").append(base).append("<B>> {\n\n");
         for (Knob k : knobs) {
@@ -211,7 +212,7 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
             // generic value types have no class literal - registered as code-only (null valueType)
             String literal = k.type.contains("<") ? "null" : k.type + ".class";
             s.append("        m.put(\"").append(k.name).append("\", new io.github.term4.polyp.config.ConfigKnob(\"")
-             .append(k.name).append("\", ").append(literal)
+             .append(k.name).append("\", ").append(literal).append(", ").append(ctx).append(".class")
              .append(", c -> ((").append(cfg).append(") c).").append(k.name)
              .append(", (b, v) -> ((").append(base).append(") b).").append(k.name).append("((FieldValue) v)));\n");
         }

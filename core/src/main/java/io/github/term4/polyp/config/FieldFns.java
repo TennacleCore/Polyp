@@ -43,6 +43,7 @@ public final class FieldFns {
      */
     public static <T> void register(@NotNull Class<T> type, @NotNull String signature, @NotNull String doc,
                                     @NotNull Factory<T> factory) {
+        Vocabulary.ensure(); // a mode's name must meet the shipped ones NOW, not at somebody's first parse
         int paren = signature.indexOf('(');
         String name = (paren < 0 ? signature : signature.substring(0, paren)).trim();
         Entry<?> clash = BY_TYPE.computeIfAbsent(type, t -> new ConcurrentHashMap<>())
@@ -64,13 +65,14 @@ public final class FieldFns {
         if (named == null) return null;
         for (Entry<?> e : named.values()) {
             if (e.signature().contains("(")) continue;
-            if (e.factory().create(new Args(e.signature(), List.of(), "nameOf")) == value) return e.name();
+            if (e.factory().create(new Args(e.signature(), List.of(), "nameOf")).equals(value)) return e.name();
         }
         return null;
     }
 
     /** Removes {@code name} for {@code type}; {@code false} when it was not registered. Tests and re-installs use this. */
     public static boolean unregister(@NotNull Class<?> type, @NotNull String name) {
+        Vocabulary.ensure();
         Map<String, Entry<?>> named = BY_TYPE.get(type);
         return named != null && named.remove(name) != null;
     }
@@ -90,7 +92,17 @@ public final class FieldFns {
      * (a bare {@code sound(...)} as an {@code FxHandler}) without snapshotting them at registration time.
      */
     public static <T> void fallback(@NotNull Class<T> type, @NotNull String doc, @NotNull Fallback<T> fallback) {
-        FALLBACKS.put(type, new FallbackEntry<>(doc, fallback));
+        Vocabulary.ensure();
+        FallbackEntry<?> clash = FALLBACKS.putIfAbsent(type, new FallbackEntry<>(doc, fallback));
+        if (clash != null) {
+            throw new IllegalStateException(type.getSimpleName() + " already has a fallback (" + clash.doc()
+                    + "); clearFallback it first if the replacement is deliberate");
+        }
+    }
+
+    public static boolean clearFallback(@NotNull Class<?> type) {
+        Vocabulary.ensure();
+        return FALLBACKS.remove(type) != null;
     }
 
     /** The factory names {@code type} offers, for errors and pickers. */

@@ -31,9 +31,10 @@ public interface VelocityRule {
      */
     default @Nullable VelocityConfig reconstructionConfig() { return null; }
 
-    VelocityRule DEFAULT = simulated();
+    VelocityRule DEFAULT = new Simulated(VelocityConfig.defaults());
 
-    static VelocityRule simulated() { return simulated(VelocityConfig.defaults()); }
+    /** The one default instance: {@code FieldFns.nameOf} must find the registered {@code simulated} again. */
+    static VelocityRule simulated() { return DEFAULT; }
 
     static VelocityRule simulated(VelocityConfig cfg) { return new Simulated(cfg); }
 
@@ -157,12 +158,12 @@ public interface VelocityRule {
      * residual, not the knockback, plus the entity-push and flow residuals when enabled.
      */
     private static Vec arc(VelocityContext ctx, VelocityConfig cfg) {
+        double zeroX = cfg.zeroBelowX(ctx), zeroY = cfg.zeroBelowY(ctx), zeroZ = cfg.zeroBelowZ(ctx);
         // non-players are server-simulated already
-        if (!(ctx.entity() instanceof Player)) {
-            return zeroBelow(ctx.positionDelta(), cfg.zeroBelowX(ctx), cfg.zeroBelowY(ctx), cfg.zeroBelowZ(ctx));
-        }
-        Vec hMot = MotionTracker.horizontalMot(ctx.entity(), cfg.launchOffset(ctx));
-        Vec out = new Vec(hMot.x(), verticalMot(ctx, cfg), hMot.z());
+        if (!(ctx.entity() instanceof Player)) return zeroBelow(ctx.positionDelta(), zeroX, zeroY, zeroZ);
+        int launchOffset = cfg.launchOffset(ctx);
+        Vec hMot = MotionTracker.horizontalMot(ctx.entity(), launchOffset);
+        Vec out = new Vec(hMot.x(), verticalMot(ctx, cfg, launchOffset, zeroY), hMot.z());
         if (cfg.entityPush(ctx)) {
             Vec push = MotionTracker.entityPush(ctx.entity());
             out = out.add(push.x(), 0, push.z());
@@ -173,30 +174,27 @@ public interface VelocityRule {
         }
         // wall-pinned mot reads 0 on the blocked axis (vanilla move() zeroing, measured)
         out = MotionTracker.zeroBlockedAxes(ctx.entity(), out);
-        return zeroBelow(out, cfg.zeroBelowX(ctx), cfg.zeroBelowY(ctx), cfg.zeroBelowZ(ctx));
+        return zeroBelow(out, zeroX, zeroY, zeroZ);
     }
 
-    /** The live ticked sim, falling back to the air clock before it has ticked. */
-    private static double verticalMot(VelocityContext ctx, VelocityConfig cfg) {
-        Double simY = MotionTracker.serverMotY(ctx.entity(),
-                VelocityConfig.DEFAULT_LAUNCH_OFFSET - cfg.launchOffset(ctx), cfg.zeroBelowY(ctx) > 0);
-        return simY != null ? simY : reconstructedVy(ctx, cfg);
+    private static double verticalMot(VelocityContext ctx, VelocityConfig cfg, int launchOffset, double zeroBelowY) {
+        Double simY = MotionTracker.serverMotY(ctx.entity(), VelocityConfig.DEFAULT_LAUNCH_OFFSET - launchOffset, zeroBelowY > 0);
+        return simY != null ? simY : reconstructedVy(ctx, cfg, launchOffset, zeroBelowY);
     }
 
-    /** Seeds at launch and steps the air ticks, gated on ground state. */
-    private static double reconstructedVy(VelocityContext ctx, VelocityConfig cfg) {
+    private static double reconstructedVy(VelocityContext ctx, VelocityConfig cfg, int launchOffset, double zeroBelowY) {
         boolean grounded = ctx.onGround(cfg.groundTicks(ctx));
         boolean launched = !grounded && ctx.launched();
         int air = grounded ? 0 : ctx.ticksInAir();
-        if (cfg.maxAirTicks(ctx) != null) air = Math.min(air, cfg.maxAirTicks(ctx));
-        int ticks = launched ? air + cfg.launchOffset(ctx) : air + 1;
+        Integer maxAir = cfg.maxAirTicks(ctx);
+        if (maxAir != null) air = Math.min(air, maxAir);
+        int ticks = launched ? air + launchOffset : air + 1;
         double seedY = launched ? cfg.seed(ctx) : 0;
         // the entity's OWN airborne motion, so it steps at the entity's dilated rate
         return steppedVy(ctx.entity(), TickScaler.aerodynamics(ctx.entity(), ctx.entity().getAerodynamics()),
-                cfg.zeroBelowY(ctx), seedY, ticks);
+                zeroBelowY, seedY, ticks);
     }
 
-    /** Apex-reseeds below {@code zeroBelowY} each step. */
     private static double steppedVy(Entity entity, Aerodynamics aero, double zeroBelowY, double seedY, int ticks) {
         if (ticks <= 0) return seedY;
         Vec vel = new Vec(0, seedY, 0);

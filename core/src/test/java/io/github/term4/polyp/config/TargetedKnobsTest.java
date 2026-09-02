@@ -1,5 +1,6 @@
 package io.github.term4.polyp.config;
 
+import io.github.term4.polyp.config.PathEdits;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.mechanics.hunger.HungerConfig;
 import io.github.term4.polyp.MechanicsProfile;
@@ -19,6 +20,10 @@ import net.minestom.server.entity.Player;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -102,5 +107,53 @@ class TargetedKnobsTest extends HeadlessServerTest {
             red.player.remove();
             blue.player.remove();
         }
+    }
+
+    @Test
+    void orKeepsTheTargetingAndLayersTheFallback() {
+        FakePlayer red = FakePlayer.connect(instance, new Pos(0.5, 65, 0.5), "OrRed");
+        FakePlayer blue = FakePlayer.connect(instance, new Pos(1.5, 65, 0.5), "OrBlue");
+        try {
+            FieldValue<ProjectileContext, Boolean> targeted = FieldValue.targeted(p -> p == red.player, FieldValue.constant(true), null);
+            FieldValue<ProjectileContext, Boolean> layered = targeted.or(FieldValue.constant(false));
+            assertInstanceOf(FieldValue.Targeted.class, layered.fn(), "or() layers under the targeting, never over it");
+            assertEquals(Boolean.TRUE, layered.resolve(shot(red.player)));
+            assertEquals(Boolean.FALSE, layered.resolve(shot(blue.player)), "everyone else reads the fallback");
+        } finally {
+            red.player.remove();
+            blue.player.remove();
+        }
+    }
+
+    @Test
+    void velocityAndCompatVaryPerPlayerThroughTheSameProfile() {
+        FakePlayer red = FakePlayer.connect(instance, new Pos(0.5, 65, 0.5), "VcRed");
+        FakePlayer blue = FakePlayer.connect(instance, new Pos(1.5, 65, 0.5), "VcBlue");
+        try {
+            MechanicsProfile.Builder b = MechanicsProfile.builder();
+            PathEdits.apply(b, base(), "velocity/entityPush", "false");
+            PathEdits.apply(b, base(), "velocity/entityPush", "true", p -> p == red.player);
+            PathEdits.apply(b, base(), "compat/legacyHitbox", "false");
+            PathEdits.apply(b, base(), "compat/legacyHitbox", "true", p -> p == red.player);
+            MechanicsProfile profile = b.build();
+            var velocity = profile.get(MechanicsKeys.VELOCITY).reconstructionConfig();
+            assertNotNull(velocity);
+            assertTrue(velocity.entityPush(io.github.term4.polyp.tracking.motion.VelocityContext.of(red.player)));
+            assertFalse(velocity.entityPush(io.github.term4.polyp.tracking.motion.VelocityContext.of(blue.player)));
+            var compat = profile.get(MechanicsKeys.COMPAT);
+            assertEquals(Boolean.TRUE, compat.legacyHitbox(new io.github.term4.polyp.platform.compatibility.CompatConfig.CompatContext(red.player)));
+            assertEquals(Boolean.FALSE, compat.legacyHitbox(new io.github.term4.polyp.platform.compatibility.CompatConfig.CompatContext(blue.player)));
+        } finally {
+            red.player.remove();
+            blue.player.remove();
+        }
+    }
+
+    @Test
+    void aScalarMemberCannotVaryPerPlayer() {
+        MechanicsProfile.Builder b = MechanicsProfile.builder();
+        String message = assertThrows(IllegalArgumentException.class,
+                () -> PathEdits.apply(b, base(), "item-physics", "modern", p -> true)).getMessage();
+        assertTrue(message.contains("cannot vary per player"), message);
     }
 }

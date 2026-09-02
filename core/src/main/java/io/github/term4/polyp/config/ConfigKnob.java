@@ -12,6 +12,6 @@ import java.util.function.Function;
  *
  * @param valueType the field's value class, or {@code null} for generic types (code-only - no path writes)
  */
-public record ConfigKnob(String name, @Nullable Class<?> valueType,
+public record ConfigKnob(String name, @Nullable Class<?> valueType, Class<?> contextType,
                          Function<Object, @Nullable Object> get, BiConsumer<Object, Object> set) {
 }
