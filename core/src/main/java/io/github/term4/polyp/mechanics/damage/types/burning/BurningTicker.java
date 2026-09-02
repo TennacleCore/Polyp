@@ -103,7 +103,7 @@ final class BurningTicker implements EnvironmentalTickProducer {
         DamageSnapshot snap = DamageSnapshot.of(living, type);
         DamageContext ctx = sys.contextFor(snap);
         DamageTypeConfig cfg = ctx.typeConfig();
-        if (!cfg.enabled(ctx) || !(cfg instanceof BurningConfig bc)) return;
+        if (!DamageSystem.typeEnabled(ctx) || !(cfg instanceof BurningConfig bc)) return;
 
         if (!wet) {
             Integer ignite = bc.igniteTicks(ctx);
@@ -130,7 +130,7 @@ final class BurningTicker implements EnvironmentalTickProducer {
         DamageSnapshot snap = DamageSnapshot.of(living, BurningDamage.INSTANCE);
         DamageContext ctx = sys.contextFor(snap);
         DamageTypeConfig cfg = ctx.typeConfig();
-        if (!cfg.enabled(ctx)) return;
+        if (!DamageSystem.typeEnabled(ctx)) return;
 
         if (cfg instanceof BurningConfig bc && Boolean.TRUE.equals(bc.skipBurnWhileInLava(ctx)) && inLava) {
             return;

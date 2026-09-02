@@ -86,7 +86,7 @@ public final class DrowningDamage extends DamageType implements EnvironmentalTic
         DamageSnapshot snap = DamageSnapshot.of(living, this);
         DamageContext ctx = sys.contextFor(snap);
         DamageTypeConfig tc = ctx.typeConfig();
-        if (!tc.enabled(ctx)) return;
+        if (!DamageSystem.typeEnabled(ctx)) return;
 
         int maxAir = MAX_AIR;
         AirRefill refill = AirRefill.MODERN;

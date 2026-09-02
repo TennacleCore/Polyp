@@ -120,8 +120,6 @@ public final class FallDamageConfig extends DamageTypeConfig {
         @Override protected Builder self() { return this; }
         private final DamageTypeConfig.Builder common = new DamageTypeConfig.Builder().key(FallDamage.KEY);
 
-        public Builder enabled(Boolean v) { common.enabled(v); return this; }
-        public Builder enabled(Function<DamageContext, Boolean> fn) { common.enabled(fn); return this; }
         public Builder baseAmount(Double v) { common.baseAmount(v); return this; }
         public Builder baseAmount(Function<DamageContext, Double> fn) { common.baseAmount(fn); return this; }
         public Builder baseAmount(Double fallback, Function<DamageContext, Double> fn) { common.baseAmount(fallback, fn); return this; }

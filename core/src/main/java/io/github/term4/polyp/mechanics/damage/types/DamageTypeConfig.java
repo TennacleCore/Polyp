@@ -19,7 +19,6 @@ import java.util.function.Function;
 @GenerateBuilder
 public class DamageTypeConfig extends TypeConfig<DamageContext, DamageTypeConfig> {
 
-    public final @Nullable FieldValue<DamageContext, Boolean> enabled;
     public final @Nullable FieldValue<DamageContext, Double> baseAmount;
     public final @Nullable FieldValue<DamageContext, Integer> invulTicks;
     public final @Nullable FieldValue<DamageContext, Boolean> overdamage;
@@ -37,7 +36,6 @@ public class DamageTypeConfig extends TypeConfig<DamageContext, DamageTypeConfig
 
     protected DamageTypeConfig(Builder b) {
         super(b.key, b.subConfig);
-        this.enabled = b.enabled;
         this.baseAmount = b.baseAmount;
         this.invulTicks = b.invulTicks;
         this.overdamage = b.overdamage;
@@ -55,10 +53,6 @@ public class DamageTypeConfig extends TypeConfig<DamageContext, DamageTypeConfig
     }
 
     /** Whether this type applies in the resolved scope (default {@code true}); resolved per victim through the config chain. */
-    public boolean enabled(DamageContext ctx) {
-        Boolean v = resolve(enabled, ctx);
-        return v == null || v;
-    }
 
     /** Default damage amount for this context, or {@code null} (treated as 0) when a snapshot doesn't override it. */
     public @Nullable Double baseAmount(DamageContext ctx) { return resolve(baseAmount, ctx); }

@@ -91,8 +91,6 @@ public final class BurningConfig extends DamageTypeConfig {
 
         public Builder key(Key key) { common.key(key); return this; }
 
-        public Builder enabled(Boolean v) { common.enabled(v); return this; }
-        public Builder enabled(Function<DamageContext, Boolean> fn) { common.enabled(fn); return this; }
         public Builder baseAmount(Double v) { common.baseAmount(v); return this; }
         public Builder baseAmount(Function<DamageContext, Double> fn) { common.baseAmount(fn); return this; }
         public Builder baseAmount(Double fallback, Function<DamageContext, Double> fn) { common.baseAmount(fallback, fn); return this; }

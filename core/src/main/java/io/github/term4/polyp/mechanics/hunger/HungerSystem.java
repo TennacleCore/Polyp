@@ -199,7 +199,7 @@ public final class HungerSystem extends ScopedSystem<HungerConfig> {
         if (damage == null || p.getHealth() <= 1.0f) return;
         DamageSnapshot snap = DamageSnapshot.of(p, StarvationDamage.INSTANCE);
         var ctx = damage.contextFor(snap);
-        if (ctx.typeConfig().enabled(ctx)) damage.apply(snap);
+        if (DamageSystem.typeEnabled(ctx)) damage.apply(snap);
     }
 
     private static int timer(Player p) {

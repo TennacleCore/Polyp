@@ -60,8 +60,6 @@ public final class BreathingConfig extends DamageTypeConfig {
         private final DamageTypeConfig.Builder common = new DamageTypeConfig.Builder();
 
         public Builder key(Key key) { common.key(key); return this; }
-        public Builder enabled(Boolean v) { common.enabled(v); return this; }
-        public Builder enabled(Function<DamageContext, Boolean> fn) { common.enabled(fn); return this; }
         public Builder baseAmount(Double v) { common.baseAmount(v); return this; }
         public Builder baseAmount(Function<DamageContext, Double> fn) { common.baseAmount(fn); return this; }
         public Builder invulTicks(Integer v) { common.invulTicks(v); return this; }

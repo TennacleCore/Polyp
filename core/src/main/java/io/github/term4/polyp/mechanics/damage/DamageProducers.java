@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.damage;
 
 import io.github.term4.polyp.mechanics.damage.DamageConfigResolver.DamageContext;
+import io.github.term4.polyp.mechanics.damage.DamageSystem;
 import io.github.term4.polyp.mechanics.damage.types.DamageType;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.LivingEntity;
@@ -29,7 +30,7 @@ public final class DamageProducers {
     public static void emit(DamageSystem sys, LivingEntity living, DamageType type) {
         DamageSnapshot snap = DamageSnapshot.of(living, type);
         DamageContext ctx = sys.contextFor(snap);
-        if (!ctx.typeConfig().enabled(ctx)) return;
+        if (!DamageSystem.typeEnabled(ctx)) return;
         if (DamageSystem.absorbedByWindow(living, ctx.baseAmount())) return;
         sys.apply(snap);
     }

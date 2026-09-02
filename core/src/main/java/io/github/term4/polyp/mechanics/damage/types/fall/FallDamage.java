@@ -209,7 +209,7 @@ public final class FallDamage extends DamageType {
         // the fly ABILITY blocks fall damage even when not flying (1.8 EntityHuman.e !canFly, 26.1 mayfly);
         // gated at landing, so revoking it mid-fall still lands the accrued damage (vanilla)
         if (flyAbilityExempt(ctx) && living instanceof Player p && p.isAllowFlying()) return;
-        if (!ctx.typeConfig().enabled(ctx)) return;
+        if (!DamageSystem.typeEnabled(ctx)) return;
         // skip below-threshold landings before any event fires
         if (ctx.baseAmount() <= 0) return;
         sys.apply(snap);

@@ -4,6 +4,8 @@ import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.ScopedSystem;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.Services;
+import io.github.term4.polyp.fx.FxContext;
+import io.github.term4.polyp.fx.FxEffect;
 import io.github.term4.polyp.mechanics.damage.DeathConfig;
 import io.github.term4.polyp.mechanics.damage.DeathConfig.DeathContext;
 import io.github.term4.polyp.presets.vanilla18.Knockback;
@@ -37,6 +39,7 @@ import io.github.term4.polyp.util.tick.TickSystem;
 import io.github.term4.polyp.util.tick.TickScaler;
 import io.github.term4.polyp.util.tick.TickState;
 import io.github.term4.polyp.presets.vanilla18.Vanilla18;
+import io.github.term4.polyp.world.Recipients;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.minestom.server.adventure.AdventurePacketConvertor;
@@ -167,8 +170,13 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
 
     /** Whether {@code type} is enabled for {@code target} under its effective config chain. */
     public boolean typeEnabled(DamageType type, Entity target) {
-        DamageContext ctx = contextFor(DamageSnapshot.of(target, type));
-        return ctx.typeConfig().enabled(ctx);
+        return typeEnabled(contextFor(DamageSnapshot.of(target, type)));
+    }
+
+    /** The scope's type selection ({@code damage/enabledTypes}) - the one switch a type has, producers included. */
+    public static boolean typeEnabled(DamageContext ctx) {
+        DamageConfig scoped = ctx.snap().config();
+        return FieldValue.resolve(scoped != null ? scoped.enabledTypes : null, ctx, KeySet.ALL).admits(ctx.snap().type().key());
     }
 
     /**
@@ -225,10 +233,8 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         DamageType type = finalSnap.type();
         DamageContext typeCtx = contextFor(finalSnap);
         DamageTypeConfig typeCfg = typeCtx.typeConfig();
-        // per-scope kill switch; read off the final snap so a listener can swap in an enabled config.
-        // the scope's type SELECTION gates first: a denied type is inert whatever its own switch says
-        KeySet admitted = FieldValue.resolve(effective.enabledTypes, typeCtx, KeySet.ALL);
-        if (!admitted.admits(type.key()) || !typeCfg.enabled(typeCtx)) return DamageOutcome.BLOCKED;
+        // read off the final snap so a listener can swap in a config
+        if (!typeEnabled(typeCtx)) return DamageOutcome.BLOCKED;
         amount = event.amount();
         boolean bypassImmune = event.bypassImmune() || typeCfg.bypassImmune(typeCtx);
         boolean bypassInvul = event.bypassInvul() || typeCfg.bypassInvul(typeCtx);
@@ -431,10 +437,8 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
                 damage.getSourcePosition()));
         SoundEvent sound = damage.getSound(living);
         if (sound == null) return;
-        Pos at = living.getPosition();
         Sound.Source category = living instanceof Player ? Sound.Source.PLAYER : Sound.Source.HOSTILE;
-        living.sendPacketToViewers(AdventurePacketConvertor.createSoundPacket(
-                Sound.sound(sound, category, 1.0f, 1.0f), at.x(), at.y(), at.z()));
+        FxContext.of(living).emit(Recipients.VIEWERS, FxEffect.sound(sound, category, 1.0f, 1.0f));
     }
 
     /**
