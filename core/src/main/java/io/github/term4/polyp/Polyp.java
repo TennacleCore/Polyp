@@ -9,6 +9,7 @@ import io.github.term4.polyp.platform.compatibility.CompatMovement;
 import io.github.term4.polyp.platform.compatibility.CompatOffhand;
 import io.github.term4.polyp.platform.compatibility.CompatPlacement;
 import io.github.term4.polyp.platform.compatibility.LegacyVelocityBridge;
+import io.github.term4.polyp.platform.compatibility.LegacyZeroCountBridge;
 import io.github.term4.polyp.platform.compatibility.ViaBridgeRpc;
 import io.github.term4.polyp.platform.fixes.client.MetaFix;
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
@@ -186,7 +187,8 @@ public final class Polyp {
         if (installPlayerProvider) {
             CompatAnimatium.install(this);
             if (installViaBridge) ViaBridgeRpc.install(this);
-            LegacyVelocityBridge.install(this); // Animatium shorts need no proxy; the 1.8 route checks isInstalled()
+            LegacyVelocityBridge.install(this); // Animatium shorts need no proxy; the 1.8 route checks the bridge
+            LegacyZeroCountBridge.install(this);
         }
     }
 

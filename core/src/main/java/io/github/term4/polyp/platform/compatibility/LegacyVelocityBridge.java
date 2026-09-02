@@ -2,34 +2,27 @@ package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
-import io.github.term4.polyp.tracking.ClientVersion;
 import io.github.term4.polyp.tracking.motion.LegacyVelocity;
-import net.minestom.server.MinecraftServer;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
-import net.minestom.server.event.player.PlayerDisconnectEvent;
 import net.minestom.server.event.player.PlayerPacketOutEvent;
-import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.trait.PlayerEvent;
 import net.minestom.server.network.packet.server.play.EntityVelocityPacket;
 import net.minestom.server.tag.Tag;
-import net.minestom.server.timer.TaskSchedule;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Byte-exact 1.8 velocity, bypassing the lossy 26.1 LpVec3 wire, by client transport:
  * <ul>
  *   <li><b>1.8/Via</b> - {@link #applyExact} injects the knocked player's exact short through {@link ViaBridgeRpc} (the proxy
- *   translates it losslessly), only above 2 b/t where {@link LegacyVelocity#snap} drifts. Availability is probed once at
- *   login, never on a hit: an unproven bridge takes the lossy snap rather than a knockback that waits out an RPC timeout.</li>
+ *   translates it losslessly), only above 2 b/t where {@link LegacyVelocity#snap} drifts. Only a bridge that answered the
+ *   login ping ({@link ViaBridgeRpc#available}) is used: an unproven one takes the lossy snap on time rather than a
+ *   knockback that waits out an RPC timeout.</li>
  *   <li><b>Animatium</b> ({@link AnimatiumFeature#SHORTS_VELOCITY}) - the client decodes EVERY velocity packet as a 1.8 short, so the
  *   {@link PlayerPacketOutEvent} listener rewrites all of its {@link EntityVelocityPacket}s to shorts via {@link LegacyShortVelocity} (what Via does for a real 1.8 client).</li>
  * </ul>
@@ -39,13 +32,6 @@ public final class LegacyVelocityBridge {
     /** Set just before {@code setVelocity} on the ViaBridge path; the listener cancels the one self LpVec3 echo it gates. */
     private static final Tag<Boolean> SUPPRESS_SELF_VELOCITY = Tag.Transient("polyp:bridge-suppress-self-velocity");
 
-    private enum Availability { UNKNOWN, AVAILABLE, UNAVAILABLE }
-
-    private static final int PROBE_INTERVAL_TICKS = 5;
-    private static final int PROBE_TIMEOUT_TICKS = 100;
-    private static final byte[] PROBE_ECHO = new byte[0];
-    private static final Map<UUID, Availability> AVAILABILITY = new ConcurrentHashMap<>();
-
     private static volatile Polyp polyp;
 
     private LegacyVelocityBridge() {}
@@ -54,34 +40,7 @@ public final class LegacyVelocityBridge {
         polyp = instance;
         EventNode<@NotNull PlayerEvent> node = EventNode.type("polyp:legacy-velocity-bridge", EventFilter.PLAYER);
         node.addListener(PlayerPacketOutEvent.class, LegacyVelocityBridge::onVelocityOut);
-        node.addListener(PlayerDisconnectEvent.class, e -> AVAILABILITY.remove(e.getPlayer().getUuid()));
-        node.addListener(PlayerSpawnEvent.class, e -> {
-            if (e.isFirstSpawn()) probe(e.getPlayer());
-        });
         polyp.install(node);
-    }
-
-    /**
-     * Settles availability at login, so no real hit ever spends its knockback on an RPC that may time out: until the
-     * ping answers, {@link #applyExact} declines and the lossy snap goes out on time.
-     */
-    private static void probe(Player player) {
-        if (!ViaBridgeRpc.isInstalled()) return;
-        int[] waited = {0};
-        MinecraftServer.getSchedulerManager().scheduleTask(() -> {
-            if (!player.isOnline() || polyp == null) return TaskSchedule.stop();
-            // the protocol lands with Via's proxy-details message, shortly after the join events
-            if (polyp.clientInfo().getProtocol(player) == ClientVersion.UNKNOWN_PROTOCOL) {
-                return (waited[0] += PROBE_INTERVAL_TICKS) < PROBE_TIMEOUT_TICKS
-                        ? TaskSchedule.tick(PROBE_INTERVAL_TICKS) : TaskSchedule.stop();
-            }
-            if (polyp.clientInfo().isLegacy(player)) {
-                ViaBridgeRpc.get().ping(player, PROBE_ECHO).whenComplete((ignored, err) ->
-                        AVAILABILITY.put(player.getUuid(),
-                                err == null ? Availability.AVAILABLE : Availability.UNAVAILABLE));
-            }
-            return TaskSchedule.stop();
-        }, TaskSchedule.tick(PROBE_INTERVAL_TICKS));
     }
 
     private static void onVelocityOut(PlayerPacketOutEvent e) {
@@ -113,9 +72,8 @@ public final class LegacyVelocityBridge {
      * (incl. Animatium clients, whose velocity the {@link #install outgoing listener} rewrites wholesale), so the caller broadcasts normally.
      */
     public static boolean applyExact(@NotNull Entity target, @NotNull Vec rawBps, @NotNull Vec snappedBps, double capBt) {
-        if (polyp == null || !ViaBridgeRpc.isInstalled() || !(target instanceof Player player)) return false;
+        if (polyp == null || !(target instanceof Player player) || !ViaBridgeRpc.available(player)) return false;
         if (!polyp.clientInfo().isLegacy(player) || !LegacyVelocity.exceedsLpExactBand(rawBps)) return false;
-        if (AVAILABILITY.get(player.getUuid()) != Availability.AVAILABLE) return false;
 
         short[] s = LegacyVelocity.wireShorts(rawBps, capBt);
         player.setTag(SUPPRESS_SELF_VELOCITY, true);
@@ -123,8 +81,7 @@ public final class LegacyVelocityBridge {
         ViaBridgeRpc.get()
                 .sendEntityMotion(player, ViaBridgeRpc.PROTOCOL_1_21_6, player.getEntityId(), s[0], s[1], s[2])
                 .whenComplete((ignored, err) -> {
-                    AVAILABILITY.put(player.getUuid(), err == null ? Availability.AVAILABLE : Availability.UNAVAILABLE);
-                    // bridge missing/failed: resend the LpVec3 value we suppressed (next tick, on the entity thread)
+                    // bridge failed: resend the LpVec3 value we suppressed (next tick, on the entity thread)
                     if (err != null && player.isOnline()) {
                         player.scheduleNextTick(en -> { en.removeTag(SUPPRESS_SELF_VELOCITY); en.setVelocity(snappedBps); });
                     }

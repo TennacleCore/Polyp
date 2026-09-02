@@ -1,12 +1,16 @@
 package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.Polyp;
+import io.github.term4.polyp.tracking.ClientVersion;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
 import net.minestom.server.event.player.PlayerPluginMessageEvent;
+import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.trait.PlayerEvent;
+import net.minestom.server.timer.TaskSchedule;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.ByteArrayInputStream;
@@ -14,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -21,24 +26,38 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Backend RPC to the ViaBridge Velocity plugin ({@value #CHANNEL}). Player version via {@code vv:proxy_details}. */
+/**
+ * Backend RPC to the ViaBridge Velocity plugin ({@value #CHANNEL}). Player version via {@code vv:proxy_details}.
+ * Whether the bridge answers for a player is settled by one ping at login ({@link #available}), so no hot path
+ * ever waits out the timeout to learn it.
+ */
 public final class ViaBridgeRpc {
 
     public static final String CHANNEL = "viabridge:rpc";
     /** {@code ClientboundPackets1_21_6} - shorts-format {@code SET_ENTITY_MOTION}. */
     public static final int PROTOCOL_1_21_6 = 771;
+    public static final int PROTOCOL_1_8 = 47;
+    public static final String PACKETS_1_8 = "ClientboundPackets1_8";
 
     private static final int WIRE_VERSION = 1;
     private static final int OPCODE_PING = 0;
     private static final int OPCODE_SEND_CLIENTBOUND = 1;
+    private static final int OPCODE_TRANSFORM_CLIENTBOUND = 5;
     private static final byte STATUS_OK = 0;
     private static final byte STATUS_CANCELLED = 1;
     private static final long DEFAULT_TIMEOUT_MS = 2_000;
+    private static final int PROBE_INTERVAL_TICKS = 5;
+    private static final int PROBE_TIMEOUT_TICKS = 100;
 
     private static volatile ViaBridgeRpc instance;
 
+    private enum Availability { AVAILABLE, UNAVAILABLE }
+
     private record Pending(CompletableFuture<Response> future, UUID playerId) {}
     private record Response(int opcode, byte[] payload) {}
+    private record Status(byte code, String message, byte[] body) {}
+
+    private final Map<UUID, Availability> availability = new ConcurrentHashMap<>();
 
     private final AtomicInteger nextRequestId = new AtomicInteger(1);
     private final Map<Integer, Pending> pending = new ConcurrentHashMap<>();
@@ -59,9 +78,35 @@ public final class ViaBridgeRpc {
             instance = new ViaBridgeRpc(timeoutMs);
             EventNode<@NotNull PlayerEvent> node = EventNode.type("polyp:viabridge-rpc", EventFilter.PLAYER);
             node.addListener(PlayerPluginMessageEvent.class, instance::onPluginMessage);
-            node.addListener(PlayerDisconnectEvent.class, e -> instance.failPending(e.getPlayer(), "disconnect"));
+            node.addListener(PlayerDisconnectEvent.class, e -> {
+                instance.failPending(e.getPlayer(), "disconnect");
+                instance.availability.remove(e.getPlayer().getUuid());
+            });
+            node.addListener(PlayerSpawnEvent.class, e -> {
+                if (e.isFirstSpawn()) instance.probe(polyp, e.getPlayer());
+            });
             polyp.install(node);
         }
+    }
+
+    /** The bridge answered this player's login ping; {@code false} until it has, and for every modern client. */
+    public static boolean available(@NotNull Player player) {
+        ViaBridgeRpc rpc = instance;
+        return rpc != null && rpc.availability.get(player.getUuid()) == Availability.AVAILABLE;
+    }
+
+    // only legacy clients route through the bridge; the protocol lands with Via's proxy-details message, after the join events
+    private void probe(Polyp polyp, Player player) {
+        int[] waited = {0};
+        MinecraftServer.getSchedulerManager().scheduleTask(() -> {
+            if (!player.isOnline()) return TaskSchedule.stop();
+            if (polyp.clientInfo().getProtocol(player) == ClientVersion.UNKNOWN_PROTOCOL) {
+                return (waited[0] += PROBE_INTERVAL_TICKS) < PROBE_TIMEOUT_TICKS
+                        ? TaskSchedule.tick(PROBE_INTERVAL_TICKS) : TaskSchedule.stop();
+            }
+            if (polyp.clientInfo().isLegacy(player)) ping(player, new byte[0]);
+            return TaskSchedule.stop();
+        }, TaskSchedule.tick(PROBE_INTERVAL_TICKS));
     }
 
     public static @NotNull ViaBridgeRpc get() {
@@ -85,18 +130,36 @@ public final class ViaBridgeRpc {
             short vy,
             short vz
     ) {
-        byte[] body = encodeEntityMotionBody(entityId, vx, vy, vz);
-        byte[] payload = encodeSendClientbound(
-                inputProtocolId, "ClientboundPackets1_21_6", "SET_ENTITY_MOTION", body);
-        return send(player, OPCODE_SEND_CLIENTBOUND, payload).thenApply(response -> {
-            Status status = decodeStatus(response.payload());
-            if (status.code == STATUS_OK) return null;
-            if (status.code == STATUS_CANCELLED) {
-                throw new ViaBridgeException("packet cancelled by Via pipeline");
-            }
-            throw new ViaBridgeException(status.message != null ? status.message
-                    : "SEND_CLIENTBOUND failed (status=" + status.code + ")");
-        });
+        return sendClientbound(player, inputProtocolId, "ClientboundPackets1_21_6", "SET_ENTITY_MOTION",
+                encodeEntityMotionBody(entityId, vx, vy, vz));
+    }
+
+    /** {@code body} = the packet's fields as {@code inputProtocolId} writes them (no id); the proxy translates down to the client. */
+    public @NotNull CompletableFuture<Void> sendClientbound(@NotNull Player player, int inputProtocolId,
+                                                           @NotNull String packetClass, @NotNull String packetType,
+                                                           byte[] body) {
+        byte[] payload = encodeSendClientbound(inputProtocolId, packetClass, packetType, body);
+        return send(player, OPCODE_SEND_CLIENTBOUND, payload)
+                .thenApply(response -> {
+                    checked(response, "SEND_CLIENTBOUND");
+                    return null;
+                });
+    }
+
+    /** The same packet as the client's own version would read it: packet id first, then the translated fields. */
+    public @NotNull CompletableFuture<byte[]> transformClientbound(@NotNull Player player, int inputProtocolId,
+                                                                  @NotNull String packetClass, @NotNull String packetType,
+                                                                  byte[] body) {
+        byte[] payload = encodeSendClientbound(inputProtocolId, packetClass, packetType, body);
+        return send(player, OPCODE_TRANSFORM_CLIENTBOUND, payload)
+                .thenApply(response -> checked(response, "TRANSFORM_CLIENTBOUND").body());
+    }
+
+    private static Status checked(Response response, String what) {
+        Status status = decodeStatus(response.payload());
+        if (status.code == STATUS_OK) return status;
+        if (status.code == STATUS_CANCELLED) throw new ViaBridgeException("packet cancelled by Via pipeline");
+        throw new ViaBridgeException(status.message != null ? status.message : what + " failed (status=" + status.code + ")");
     }
 
     private @NotNull CompletableFuture<Response> send(@NotNull Player player, int opcode, byte[] payload) {
@@ -108,7 +171,11 @@ public final class ViaBridgeRpc {
         CompletableFuture.delayedExecutor(timeoutMs, TimeUnit.MILLISECONDS).execute(() ->
                 future.completeExceptionally(new ViaBridgeException(
                         "ViaBridge RPC timed out - is the Velocity plugin installed?")));
-        future.whenComplete((ignored, err) -> pending.remove(requestId));
+        future.whenComplete((ignored, err) -> {
+            pending.remove(requestId);
+            if (err == null) availability.put(player.getUuid(), Availability.AVAILABLE);
+            else if (err instanceof ViaBridgeException && player.isOnline()) availability.put(player.getUuid(), Availability.UNAVAILABLE);
+        });
         return future;
     }
 
@@ -145,7 +212,6 @@ public final class ViaBridgeRpc {
     }
 
     private record Frame(int requestId, int opcode, byte[] payload) {}
-    private record Status(byte code, String message) {}
 
     private static byte[] encodeEntityMotionBody(int entityId, short vx, short vy, short vz) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -202,13 +268,16 @@ public final class ViaBridgeRpc {
     private static Status decodeStatus(byte[] payload) {
         if (payload.length == 0) throw new IllegalArgumentException("empty status");
         byte code = payload[0];
-        if (payload.length == 1) return new Status(code, null);
-        ByteArrayInputStream in = new ByteArrayInputStream(payload, 1, payload.length - 1);
-        try {
-            return new Status(code, readString(in));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+        if (payload.length == 1) return new Status(code, null, new byte[0]);
+        if (code != STATUS_OK && code != STATUS_CANCELLED) {
+            ByteArrayInputStream in = new ByteArrayInputStream(payload, 1, payload.length - 1);
+            try {
+                return new Status(code, readString(in), new byte[0]);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
         }
+        return new Status(code, null, Arrays.copyOfRange(payload, 1, payload.length));
     }
 
     private static void writeShort(ByteArrayOutputStream out, short value) throws IOException {
