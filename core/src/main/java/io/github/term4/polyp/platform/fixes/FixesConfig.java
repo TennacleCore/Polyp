@@ -67,7 +67,7 @@ public final class FixesConfig {
     }
 
     private static @Nullable FixToggleConfig merge(@Nullable FixToggleConfig over, @Nullable FixToggleConfig base) {
-        return over != null ? over : base;
+        return over == null ? base : base == null ? over : over.fromBase(base);
     }
 
     /** The toggle names the {@code fixes/<toggle>/enabled} path addresses. */

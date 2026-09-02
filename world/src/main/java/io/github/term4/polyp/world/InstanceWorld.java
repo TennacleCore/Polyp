@@ -114,6 +114,7 @@ public class InstanceWorld implements MechanicsWorld {
 
 
     // the tracker's chunk index, not a walk over every player on the map
+    // everyone on the instance, like players(): the unsharded world claims the whole instance
     @Override public void forEachMemberWithin(@NotNull Point point, double range, @NotNull Consumer<Player> action) {
         instance.getEntityTracker().nearbyEntities(point, range, EntityTracker.Target.PLAYERS, action);
     }

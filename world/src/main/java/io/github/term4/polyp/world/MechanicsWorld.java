@@ -290,24 +290,23 @@ public interface MechanicsWorld extends Block.Getter, ForwardingAudience, Taggab
 
     /**
      * Visits this world's whole layered family, root first then depth-first, without building the list
-     * {@link #family()} does - the per-send walk. A malformed link is bounded by depth rather than a visited set.
+     * {@link #family()} does - the per-send walk. Identity-visited like family(): a malformed link neither loops nor repeats.
      */
     default void forEachInFamily(@NotNull java.util.function.Consumer<MechanicsWorld> action) {
-        MechanicsWorld root = this;
-        for (int guard = 0; root.parent() != null && guard < 64; guard++) root = root.parent();
-        visitTree(root, action, 0);
+        java.util.Set<MechanicsWorld> seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        visitTree(root(), action, seen);
     }
 
-    private static void visitTree(MechanicsWorld world, java.util.function.Consumer<MechanicsWorld> action, int depth) {
-        if (depth > 64) return;
+    private static void visitTree(MechanicsWorld world, java.util.function.Consumer<MechanicsWorld> action,
+                                  java.util.Set<MechanicsWorld> seen) {
+        if (!seen.add(world)) return;
         action.accept(world);
-        for (MechanicsWorld child : world.children()) visitTree(child, action, depth + 1);
+        for (MechanicsWorld child : world.children()) visitTree(child, action, seen);
     }
 
     /** This world plus every ancestor and descendant - the whole layered family, roots first. */
     default @NotNull Collection<MechanicsWorld> family() {
-        MechanicsWorld root = this;
-        for (MechanicsWorld up = parent(); up != null; up = up.parent()) root = up;
+        MechanicsWorld root = root();
         java.util.List<MechanicsWorld> out = new java.util.ArrayList<>();
         // worlds are compared by IDENTITY here (TickContext.owns does too); the set also stops a malformed link looping
         java.util.Set<MechanicsWorld> seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());

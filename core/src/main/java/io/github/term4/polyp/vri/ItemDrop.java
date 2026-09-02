@@ -13,6 +13,7 @@ import net.minestom.server.event.EventNode;
 import net.minestom.server.event.inventory.InventoryCloseEvent;
 import net.minestom.server.event.item.ItemDropEvent;
 import net.minestom.server.instance.Instance;
+import net.minestom.server.inventory.TransactionOption;
 import net.minestom.server.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
@@ -40,8 +41,9 @@ public final class ItemDrop {
             if (cursor.isAir()) return;
             inventory.setCursorItem(ItemStack.AIR);
             if (!VriConfig.on(vri.configFor(e.getPlayer()).itemDrop, e.getPlayer())) {
-                // tossing is off, but the close may not strand the stack in the invisible cursor
-                inventory.addItemStack(cursor);
+                // tossing is off, but the close may not strand the stack: what the slots cannot take stays on
+                // the cursor for the next open, never on the floor
+                inventory.setCursorItem(inventory.addItemStack(cursor, TransactionOption.ALL));
                 inventory.update();
                 return;
             }
@@ -53,8 +55,7 @@ public final class ItemDrop {
                 MinecraftServer.getSchedulerManager().scheduleNextTick(() -> {
                     // unclaimed on a closed screen is invisible limbo - back into the slots
                     if (e.getPlayer().getOpenInventory() == null && inventory.getCursorItem().equals(cursor)) {
-                        inventory.setCursorItem(ItemStack.AIR);
-                        inventory.addItemStack(cursor);
+                        inventory.setCursorItem(inventory.addItemStack(cursor, TransactionOption.ALL));
                         inventory.update();
                     }
                 });

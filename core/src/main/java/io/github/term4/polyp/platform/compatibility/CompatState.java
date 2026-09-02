@@ -69,7 +69,7 @@ public final class CompatState {
         this.ctx = new CompatConfig.CompatContext(subject);
     }
 
-    public @NotNull Set<EntityPose> disabledPoses() { return policy.disabledPoses(ctx) != null ? policy.disabledPoses(ctx) : Set.of(); }
+    public @NotNull Set<EntityPose> disabledPoses() { return or(policy.disabledPoses(ctx), Set.of()); }
     public boolean restrictMovement() { return on(policy.restrictMovement(ctx)); }
     /** Server hitbox/eye height stay at 1.8 dimensions regardless of pose (no crouch shrink). */
     public boolean legacyHitbox() { return on(policy.legacyHitbox(ctx)); }
@@ -79,18 +79,19 @@ public final class CompatState {
     public boolean restrictSprintSneak() { return on(policy.restrictSprintSneak(ctx)); }
     public boolean restrictSprintUse() { return on(policy.restrictSprintUse(ctx)); }
     public boolean restrictSwimSpeed() { return on(policy.restrictSwimSpeed(ctx)); }
-    public double swimFactor() { return policy.swimFactor(ctx) != null ? policy.swimFactor(ctx) : 1.25; }
-    public double swimVerticalFactor() { return policy.swimVerticalFactor(ctx) != null ? policy.swimVerticalFactor(ctx) : 3.0; }
+    public double swimFactor() { return or(policy.swimFactor(ctx), 1.25); }
+    public double swimVerticalFactor() { return or(policy.swimVerticalFactor(ctx), 3.0); }
     /** Max blocks from the server eye to a placement's clicked point; {@code null} = unmanaged. */
     public @Nullable Double blockPlaceReach() { return policy.blockPlaceReach(ctx); }
     public boolean oldPlacement() { return on(policy.oldPlacement(ctx)); }
 
     /** A legacy placer's own body never blocks their placement (1.8); {@code false} = the hypixel refusal. */
-    public boolean legacySelfPlace() { return policy.legacySelfPlace(ctx) == null || policy.legacySelfPlace(ctx); }
+    public boolean legacySelfPlace() { return !Boolean.FALSE.equals(policy.legacySelfPlace(ctx)); }
 
     private static boolean on(@Nullable Boolean v) { return Boolean.TRUE.equals(v); }
+    private static <T> T or(@Nullable T v, T d) { return v != null ? v : d; }
 
-    public boolean hookPredictionEscort() { return policy.hookPredictionEscort(ctx) == null || policy.hookPredictionEscort(ctx); }
+    public boolean hookPredictionEscort() { return !Boolean.FALSE.equals(policy.hookPredictionEscort(ctx)); }
 
     /** Tracked so a profile swap restores the saved base only on a real change. */
     public boolean attackCooldownRemoved() { return attackCooldownRemoved; }
@@ -112,7 +113,7 @@ public final class CompatState {
     }
 
     /** Duration of the BLINDNESS lever's per-tick refresh; {@code null} = 60 (safely above the 20-tick fog knee). */
-    public int swimBlindnessTicks() { return policy.swimBlindnessTicks(ctx) != null ? policy.swimBlindnessTicks(ctx) : 60; }
+    public int swimBlindnessTicks() { return or(policy.swimBlindnessTicks(ctx), 60); }
 
     /** The lever {@code CompatSwim} currently holds on the wire; dies with the player, so a relog starts clean. */
     public @Nullable CompatConfig.SwimSuppression activeSwimFix() { return activeSwimFix; }
@@ -203,7 +204,7 @@ public final class CompatState {
 
     /** The melee reach the attack-box advertises (stamped on items, used by the bare-fist ray); unset = 3 (1.8). */
     public float attackReach() {
-        return policy.attackReach(ctx) != null ? policy.attackReach(ctx) : 3f;
+        return or(policy.attackReach(ctx), 3f);
     }
 
     /**
@@ -229,15 +230,16 @@ public final class CompatState {
      * next full {@link WindowItemsPacket}.
      */
     public @NotNull SendablePacket rewriteItems(@NotNull SendablePacket packet) {
-        if (!rewritesItems()) return packet;
+        Rewrites r = rewrites(); // the five knobs, read once per packet rather than per item
+        if (!r.any()) return packet;
         return switch (PacketShapes.unwrapStateless(packet)) {
-            case SetSlotPacket p -> new SetSlotPacket(p.windowId(), p.stateId(), p.slot(), rewrite(p.itemStack()));
-            case SetPlayerInventorySlotPacket p -> new SetPlayerInventorySlotPacket(p.slot(), rewrite(p.itemStack()));
-            case WindowItemsPacket p -> new WindowItemsPacket(p.windowId(), p.stateId(), p.items().stream().map(this::rewrite).toList(), rewrite(p.carriedItem()));
-            case SetCursorItemPacket p -> new SetCursorItemPacket(rewrite(p.itemStack()));
+            case SetSlotPacket p -> new SetSlotPacket(p.windowId(), p.stateId(), p.slot(), rewrite(p.itemStack(), r));
+            case SetPlayerInventorySlotPacket p -> new SetPlayerInventorySlotPacket(p.slot(), rewrite(p.itemStack(), r));
+            case WindowItemsPacket p -> new WindowItemsPacket(p.windowId(), p.stateId(), p.items().stream().map(item -> rewrite(item, r)).toList(), rewrite(p.carriedItem(), r));
+            case SetCursorItemPacket p -> new SetCursorItemPacket(rewrite(p.itemStack(), r));
             // another player's held item: a modern client reads the block POSE off blocks_attacks, so without the stamp
             // it never renders anyone else blocking. The other rewrites are the viewer's own first-person concern.
-            case EntityEquipmentPacket p when swordBlockingPose() -> new EntityEquipmentPacket(p.entityId(),
+            case EntityEquipmentPacket p when r.blockPose() -> new EntityEquipmentPacket(p.entityId(),
                     p.equipments().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> blockPose(e.getValue()))));
             case null, default -> packet;
         };
@@ -263,12 +265,20 @@ public final class CompatState {
         return out;
     }
 
-    private ItemStack rewrite(ItemStack item) {
-        if (stampsAttackRange()) item = withAttackRange(item);
-        if (suppressesThrowSwing()) item = reskinThrowable(item);
-        if (swordBlockingPose()) item = blockPose(item);
-        if (stripsGlider() && item.get(DataComponents.GLIDER) != null) item = item.without(DataComponents.GLIDER);
-        if (stripsUseCooldowns() && item.get(DataComponents.USE_COOLDOWN) != null) item = item.without(DataComponents.USE_COOLDOWN);
+    private record Rewrites(boolean range, boolean throwSwing, boolean blockPose, boolean glider, boolean cooldowns) {
+        boolean any() { return range || throwSwing || blockPose || glider || cooldowns; }
+    }
+
+    private Rewrites rewrites() {
+        return new Rewrites(stampsAttackRange(), suppressesThrowSwing(), swordBlockingPose(), stripsGlider(), stripsUseCooldowns());
+    }
+
+    private ItemStack rewrite(ItemStack item, Rewrites r) {
+        if (r.range()) item = withAttackRange(item);
+        if (r.throwSwing()) item = reskinThrowable(item);
+        if (r.blockPose()) item = blockPose(item);
+        if (r.glider() && item.get(DataComponents.GLIDER) != null) item = item.without(DataComponents.GLIDER);
+        if (r.cooldowns() && item.get(DataComponents.USE_COOLDOWN) != null) item = item.without(DataComponents.USE_COOLDOWN);
         return item;
     }
 
