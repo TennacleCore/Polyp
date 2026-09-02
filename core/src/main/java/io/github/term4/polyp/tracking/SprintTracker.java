@@ -54,7 +54,11 @@ public final class SprintTracker implements Tracker {
 
         // instance change reseeds the clock these stamps use, and isClientSprinting compares raw eventTicks (no
         // TickState future-guard), so drop them or it misreads across instances
-        node.addListener(PlayerSpawnEvent.class, e -> clearTransient(e.getPlayer()));
+        node.addListener(PlayerSpawnEvent.class, e -> {
+            clearTransient(e.getPlayer());
+            // the client's new player entity is not sprinting and never says so; a stale flag lands a w-tap
+            if (!e.isFirstSpawn()) e.getPlayer().setSprinting(false);
+        });
 
         return node;
     }

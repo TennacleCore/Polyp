@@ -137,6 +137,10 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
     /** Fraction of the shooter's vertical velocity (y) folded in. {@code 0} = none (1.8); 26.1 folds it only when airborne (a lambda). */
     public final @Nullable FieldValue<ProjectileContext, Double> momentumVertical;
     public final @Nullable FieldValue<ProjectileContext, Integer> shooterImmunityTicks;
+    /** A kept shot (Infinity, creative) still lands a collectable arrow. Vanilla: creative-only pickup. */
+    public final @Nullable FieldValue<ProjectileContext, Boolean> infinityPickup;
+    /** Ticks a stuck projectile lasts before it despawns; vanilla 1200, and the 1.8 client despawns its copy at exactly that. */
+    public final @Nullable FieldValue<ProjectileContext, Integer> stuckDespawnTicks;
     /** Entity-hit margin: the target's bbox grows by this each side for the hit ray-test (vanilla {@code 0.3}). */
     public final @Nullable FieldValue<ProjectileContext, Double> entityHitGrow;
     /** What the projectile does when it hits its own shooter ({@link HitResponse}; default {@code HIT} = vanilla). */
@@ -283,6 +287,8 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
         drawPower = b.drawPower;
         critDamage = b.critDamage;
         critParticles = b.critParticles;
+        infinityPickup = b.infinityPickup;
+        stuckDespawnTicks = b.stuckDespawnTicks;
         invulnHit = b.invulnHit;
         deflect = b.deflect;
         pickupBox = b.pickupBox;

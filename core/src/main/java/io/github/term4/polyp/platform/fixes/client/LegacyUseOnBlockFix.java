@@ -1,5 +1,9 @@
 package io.github.term4.polyp.platform.fixes.client;
 
+import net.minestom.server.tag.Tag;
+import net.minestom.server.event.player.PlayerPacketEvent;
+import net.minestom.server.entity.PlayerHand;
+import net.minestom.server.MinecraftServer;
 import io.github.term4.polyp.Polyp;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.Event;
@@ -20,6 +24,8 @@ public final class LegacyUseOnBlockFix {
 
     private LegacyUseOnBlockFix() {}
 
+    private static final Tag<Boolean> PENDING = Tag.Transient("polyp:use-on-block-pending");
+
     public static void install(EventNode<? super Event> node) {
         node.addListener(PlayerUseItemOnBlockEvent.class, e -> {
             Player p = e.getPlayer();
@@ -31,8 +37,19 @@ public final class LegacyUseOnBlockFix {
                 p.refreshActiveHand(false, p.getItemUseHand() == net.minestom.server.entity.PlayerHand.OFF, false);
                 p.clearItemUse();
             }
-            UseItemListener.useItemListener(new ClientUseItemPacket(e.getHand(), 0,
-                    p.getPosition().yaw(), p.getPosition().pitch()), p);
+            // the 1.8 client follows a refused block click with its own use_item (a rod, a bow at a plain block);
+            // synthesize only when none arrives this tick, or the rod casts and retrieves in one click
+            p.setTag(PENDING, true);
+            PlayerHand hand = e.getHand();
+            MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
+                if (!p.isOnline() || !Boolean.TRUE.equals(p.getTag(PENDING))) return;
+                p.removeTag(PENDING);
+                UseItemListener.useItemListener(new ClientUseItemPacket(hand, 0,
+                        p.getPosition().yaw(), p.getPosition().pitch()), p);
+            });
+        });
+        node.addListener(PlayerPacketEvent.class, e -> {
+            if (e.getPacket() instanceof ClientUseItemPacket) e.getPlayer().removeTag(PENDING);
         });
     }
 }

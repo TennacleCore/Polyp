@@ -115,10 +115,10 @@ public final class Fx {
                 .register(EAT, ctx -> ctx.viewerSound(SoundEvent.ENTITY_GENERIC_EAT, Sound.Source.PLAYER, eatVolume(), jitterPitch(0.2f)))
                 .register(DRINK, ctx -> ctx.viewerSound(SoundEvent.ENTITY_GENERIC_DRINK, Sound.Source.PLAYER, 0.5f, drinkPitch()))
                 // 1.8 random.burp
-                .register(BURP, ctx -> ctx.sound(SoundEvent.ENTITY_PLAYER_BURP, Sound.Source.PLAYER,
+                .register(BURP, ctx -> ctx.entitySound(SoundEvent.ENTITY_PLAYER_BURP, Sound.Source.PLAYER,
                         0.5f, ThreadLocalRandom.current().nextFloat() * 0.1f + 0.9f))
                 // 1.8 item pickup
-                .register(ITEM_PICKUP, ctx -> ctx.sound(SoundEvent.ENTITY_ITEM_PICKUP, Sound.Source.PLAYER, 0.2f,
+                .register(ITEM_PICKUP, ctx -> ctx.entitySound(SoundEvent.ENTITY_ITEM_PICKUP, Sound.Source.PLAYER, 0.2f,
                         jitterPitch(0.7f) * 2.0f))
                 // 1.8 random.fizz 0.7F / 1.6F +- 0.4 dual-rand
                 .register(FIRE_EXTINGUISH, ctx -> ctx.viewerSound(SoundEvent.ENTITY_GENERIC_EXTINGUISH_FIRE,
@@ -128,14 +128,14 @@ public final class Fx {
                 .register(THROW_EGG, throwSound(SoundEvent.ENTITY_EGG_THROW, Sound.Source.PLAYER))
                 .register(THROW_PEARL, throwSound(SoundEvent.ENTITY_ENDER_PEARL_THROW, Sound.Source.NEUTRAL))
                 // vanilla fire-charge / ghast-shoot pitch
-                .register(THROW_FIREBALL, ctx -> ctx.sound(SoundEvent.ENTITY_GHAST_SHOOT, Sound.Source.NEUTRAL, 1.0f, jitterPitch(0.2f)))
-                .register(BOW_SHOOT, ctx -> ctx.sound(SoundEvent.ENTITY_ARROW_SHOOT, Sound.Source.PLAYER, 1.0f, bowPitch()))
+                .register(THROW_FIREBALL, ctx -> ctx.entitySound(SoundEvent.ENTITY_GHAST_SHOOT, Sound.Source.NEUTRAL, 1.0f, jitterPitch(0.2f)))
+                .register(BOW_SHOOT, ctx -> ctx.entitySound(SoundEvent.ENTITY_ARROW_SHOOT, Sound.Source.PLAYER, 1.0f, bowPitch()))
                 .register(ROD_CAST, throwSound(SoundEvent.ENTITY_FISHING_BOBBER_THROW, Sound.Source.NEUTRAL))
                 .register(ROD_RETRIEVE, throwSound(SoundEvent.ENTITY_FISHING_BOBBER_RETRIEVE, Sound.Source.NEUTRAL))
-                .register(ARROW_HIT, ctx -> ctx.sound(SoundEvent.ENTITY_ARROW_HIT, Sound.Source.NEUTRAL, 1.0f, arrowHitPitch()))
+                .register(ARROW_HIT, ctx -> ctx.entitySound(SoundEvent.ENTITY_ARROW_HIT, Sound.Source.NEUTRAL, 1.0f, arrowHitPitch()))
                 .register(ARROW_CRIT, FxHandler.particle(Particle.CRIT, 2, 0.05, 0f))
                 // 1.8 game.tnt.primed 1.0/1.0 on ignite
-                .register(TNT_PRIME, FxHandler.sound(SoundEvent.ENTITY_TNT_PRIMED, Sound.Source.BLOCK, 1.0f, 1.0f))
+                .register(TNT_PRIME, ctx -> ctx.entitySound(SoundEvent.ENTITY_TNT_PRIMED, Sound.Source.BLOCK, 1.0f, 1.0f))
                 // the wire explosion packet carries no radius through Via, so the 1.8 client never picks its own hugeexplosion
                 .register(EXPLOSION_EMITTER, FxHandler.particle(Particle.EXPLOSION_EMITTER, 1, 0, 0f))
                 // vanilla Entity.playStepSound: volume soundType.volume * 0.15, pitch soundType.pitch
@@ -176,7 +176,7 @@ public final class Fx {
 
     /** The vanilla pearl landing: positional at the destination, so it fades with distance. */
     public static @NotNull FxHandler pearlTeleport() {
-        return ctx -> ctx.sound(SoundEvent.ENTITY_PLAYER_TELEPORT, Sound.Source.PLAYER, 1.0f, 1.0f);
+        return ctx -> ctx.entitySound(SoundEvent.ENTITY_PLAYER_TELEPORT, Sound.Source.PLAYER, 1.0f, 1.0f);
     }
 
     /** Hypixel BEDWARS only (their other modes stay positional): the landing reaches the whole game at full
@@ -207,7 +207,7 @@ public final class Fx {
 
     /** A throwable's launch sound: server-driven to everyone - the 1.8 client does NOT self-predict the throw. */
     private static FxHandler throwSound(SoundEvent sound, Sound.Source src) {
-        return ctx -> ctx.sound(sound, src, 0.5f, throwPitch());
+        return ctx -> ctx.entitySound(sound, src, 0.5f, throwPitch());
     }
 
     private static float throwPitch() { return 0.4f / (ThreadLocalRandom.current().nextFloat() * 0.4f + 0.8f); }

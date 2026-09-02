@@ -73,7 +73,7 @@ public final class Bow implements Shootable {
         if (proj instanceof ArrowEntity arrow) {
             arrow.setCritical(power >= 1f && rollCrit(system.resolveFlight(snap).critChance()));
             // a kept shot (creative / Infinity) must not hand the collector a free arrow
-            arrow.setPickup(keepArrow ? ArrowEntity.Pickup.CREATIVE_ONLY : ArrowEntity.Pickup.ALLOWED);
+            arrow.setPickup(keepArrow && !arrow.infinityPickup() ? ArrowEntity.Pickup.CREATIVE_ONLY : ArrowEntity.Pickup.ALLOWED);
             TippedArrows.apply(arrow, arrowItem);
         }
         system.firstStep(proj);

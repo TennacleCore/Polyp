@@ -42,6 +42,8 @@ public final class ItemDamageConfig {
     public final @Nullable FieldValue<ItemDamageContext, Integer> lavaIgniteTicks;
     /** Fire-ticks between lingering burn charges (vanilla {@code fireTicks % 20}). */
     public final @Nullable FieldValue<ItemDamageContext, Integer> burnInterval;
+    /** Ticks a ground item lasts; vanilla 6000. {@code 0} = forever. */
+    public final @Nullable FieldValue<ItemDamageContext, Integer> despawnTicks;
     /** Per-item health, overriding {@link #health()}. */
     public final Map<Material, Integer> healthPerItem;
     /** Per-source damage, keyed by the {@link ItemDamageSystem} source keys; unset = the source's own amount. */
@@ -59,6 +61,7 @@ public final class ItemDamageConfig {
         this.fireIgniteTicks = b.fireIgniteTicks;
         this.lavaIgniteTicks = b.lavaIgniteTicks;
         this.burnInterval = b.burnInterval;
+        this.despawnTicks = b.despawnTicks;
         this.healthPerItem = Map.copyOf(b.healthPerItem);
         this.damage = Map.copyOf(b.damage);
         this.immune = copy(b.immune);

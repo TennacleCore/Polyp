@@ -77,6 +77,21 @@ public interface Recipients {
         if (source instanceof Player p) to.accept(p, p.getPosition());
     };
 
+    /**
+     * Everyone whose client renders the source ({@link WorldPolicy#sees}), the source included: a sound an
+     * entity MAKES. A shard member overlaid on the base map never sees a base player, so never hears their
+     * burp either. No source = {@link #WATCHERS}.
+     */
+    Recipients SEEING = (world, at, source, to) -> {
+        if (source == null) {
+            WATCHERS.each(world, at, null, to);
+            return;
+        }
+        world.forEachWatcher(p -> {
+            if (p == source || WorldPolicy.canSee(p, source)) to.accept(p, at);
+        });
+    };
+
     /** No one: the identity for {@link #both}, and a branch that contributes nothing. */
     Recipients NOBODY = (world, at, source, to) -> {};
 

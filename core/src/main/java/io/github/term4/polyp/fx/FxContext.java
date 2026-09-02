@@ -91,6 +91,11 @@ public final class FxContext {
         emit(Recipients.WATCHERS, FxEffect.sound(sound, src, volume, pitch));
     }
 
+    /** A sound the {@code source} entity makes: whoever renders it hears it, the source included. */
+    public void entitySound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
+        emit(Recipients.SEEING, FxEffect.sound(sound, src, volume, pitch));
+    }
+
     /**
      * A positional sound to the {@code source}'s viewers but NOT the source itself - the sound analogue of
      * {@link #hitAnimation}: the doer's own client predicts it, so echoing it would double it.

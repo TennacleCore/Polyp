@@ -1,5 +1,8 @@
 package io.github.term4.polyp.platform.compatibility;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.UUID;
+import java.util.Set;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import net.minestom.server.MinecraftServer;
@@ -31,6 +34,7 @@ import java.util.concurrent.CompletableFuture;
 public final class LegacyZeroCountBridge {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LegacyZeroCountBridge.class);
+    private static final Set<UUID> WARNED = ConcurrentHashMap.newKeySet();
     private static final Tag<Boolean> ZERO = Tag.Boolean("polyp:zero-count");
     /** 26.2 reuses 26.1's clientbound enum in Via. */
     private static final String BACKEND_PACKETS = "ClientboundPackets26_1";
@@ -84,7 +88,7 @@ public final class LegacyZeroCountBridge {
                     return rpc.sendClientbound(player, ViaBridgeRpc.PROTOCOL_1_8, ViaBridgeRpc.PACKETS_1_8, SET_SLOT, body);
                 })
                 .exceptionally(err -> {
-                    LOGGER.debug("zero-count resend for {} failed: {}", player.getUsername(), err.getMessage());
+                    if (WARNED.add(player.getUuid())) LOGGER.warn("zero-count resend for {} failed: {}", player.getUsername(), err.getMessage());
                     return null;
                 });
     }

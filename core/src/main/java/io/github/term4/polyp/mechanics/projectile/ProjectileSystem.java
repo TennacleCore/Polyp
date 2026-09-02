@@ -249,6 +249,7 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
         // cadence would stay silent until tick 20
         if (flight.syncInterval() > 0 || flight.velocitySyncInterval() > 0) entity.synchronizeNextTick();
         entity.setShooterImmunityTicks(TickScaler.duration(scope, flight.shooterImmunityTicks(), KEY));
+        entity.setStuckDespawnTicks(TickScaler.duration(scope, flight.stuckDespawnTicks(), KEY));
         entity.setEntityHitGrow(flight.entityHitGrow());
         entity.setPhysicsOrder(flight.physicsOrder());
         entity.setLeftOwnerImmunity(flight.leftOwnerImmunity());

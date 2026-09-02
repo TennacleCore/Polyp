@@ -30,9 +30,37 @@ class LegacyUseOnBlockFixTest extends HeadlessServerTest {
         LegacyUseOnBlockFix.install(MinecraftServer.getGlobalEventHandler());
     }
 
+    // the fallback lands at the tick's end, once no client use_item has shown up
     private static void useOnBlock(Player p) {
         EventDispatcher.call(new PlayerUseItemOnBlockEvent(p, PlayerHand.MAIN, p.getItemInMainHand(),
                 new Vec(8, 40, 8), Vec.ZERO, BlockFace.TOP));
+        MinecraftServer.getSchedulerManager().processTickEnd();
+    }
+
+    @Test
+    void aClientThatSendsItsOwnUseItemGetsNoSecondOne() {
+        Player p = FakePlayer.connect(instance, new Pos(8.5, 42, 8.5), "LegacyRod").player;
+        polyp.clientInfo().setProxyDetails(p, "{\"version\": 47}");
+        p.setItemInMainHand(ItemStack.of(Material.FISHING_ROD));
+        int[] uses = {0};
+        var node = net.minestom.server.event.EventNode.all("count-uses");
+        node.addListener(net.minestom.server.event.player.PlayerUseItemEvent.class, e -> {
+            if (e.getPlayer() == p) uses[0]++;
+        });
+        MinecraftServer.getGlobalEventHandler().addChild(node);
+        try {
+            EventDispatcher.call(new PlayerUseItemOnBlockEvent(p, PlayerHand.MAIN, p.getItemInMainHand(),
+                    new Vec(8, 40, 8), Vec.ZERO, BlockFace.TOP));
+            // the 1.8 client's own fallback, as the packet path delivers it
+            var packet = new net.minestom.server.network.packet.client.play.ClientUseItemPacket(PlayerHand.MAIN, 0, 0f, 0f);
+            EventDispatcher.call(new net.minestom.server.event.player.PlayerPacketEvent(p, packet));
+            net.minestom.server.listener.UseItemListener.useItemListener(packet, p);
+            MinecraftServer.getSchedulerManager().processTickEnd();
+            assertEquals(1, uses[0], "one click, one use: the fallback is not synthesized on top of the client's");
+        } finally {
+            MinecraftServer.getGlobalEventHandler().removeChild(node);
+            p.remove();
+        }
     }
 
     @Test

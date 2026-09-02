@@ -396,9 +396,10 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
     private void applyDamage(LivingEntity living, DamageType type, DamageSnapshot snap, float amount, boolean silent) {
         if (FATAL_DAMAGE.hasListener() && wouldKill(living, amount)) {
             FatalDamageEvent fatal = new FatalDamageEvent(snap, amount, services);
+            FxContext at = FxContext.of(living); // a listener that respawns the victim moves them before the feedback
             EventDispatcher.call(fatal);
             if (fatal.isCancelled()) {
-                hurtEffectsOnly(living, type, snap, amount);
+                hurtEffectsOnly(living, type, snap, amount, at);
                 return;
             }
         }
@@ -427,7 +428,7 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
 
     // a cancelled fatal still connected: hurt flash to everyone, hurt sound to viewers only (the victim's
     // client predicts its own - see the EntityDamageEvent listener)
-    private void hurtEffectsOnly(LivingEntity living, DamageType type, DamageSnapshot snap, float amount) {
+    private void hurtEffectsOnly(LivingEntity living, DamageType type, DamageSnapshot snap, float amount, FxContext at) {
         Entity source = snap.source();
         Damage damage = new Damage(type.minecraftType(), source, source, snap.point(), amount);
         living.sendPacketToViewersAndSelf(new DamageEventPacket(
@@ -438,7 +439,7 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         SoundEvent sound = damage.getSound(living);
         if (sound == null) return;
         Sound.Source category = living instanceof Player ? Sound.Source.PLAYER : Sound.Source.HOSTILE;
-        FxContext.of(living).emit(Recipients.VIEWERS, FxEffect.sound(sound, category, 1.0f, 1.0f));
+        at.emit(Recipients.VIEWERS, FxEffect.sound(sound, category, 1.0f, 1.0f));
     }
 
     /**

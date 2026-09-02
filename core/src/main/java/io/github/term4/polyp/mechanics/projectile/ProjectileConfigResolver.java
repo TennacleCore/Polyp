@@ -93,6 +93,7 @@ public final class ProjectileConfigResolver {
                 FieldValue.resolve(tc.momentumHorizontal, ctx, 0.0), // vanilla 1.8 adds no shooter momentum (26.1 = 1.0)
                 FieldValue.resolve(tc.momentumVertical, ctx, 0.0),
                 FieldValue.resolve(tc.shooterImmunityTicks, ctx, 5),
+                FieldValue.resolve(tc.stuckDespawnTicks, ctx, 1200), // vanilla EntityArrow ticksInGround
                 FieldValue.resolve(tc.entityHitGrow, ctx, 0.3), // vanilla 1.8 Entity{Arrow,Projectile}: target grow 0.3 each side
                 FieldValue.resolve(tc.broadcastMovement, ctx, Boolean.FALSE), // vanilla trackers broadcast per tick; silent = the client-prediction mode
                 FieldValue.resolve(tc.syncInterval, ctx, 20),
@@ -153,6 +154,7 @@ public final class ProjectileConfigResolver {
             double momentumHorizontal,
             double momentumVertical,
             int shooterImmunityTicks,
+            int stuckDespawnTicks,
             double entityHitGrow,
             boolean broadcastMovement,
             int syncInterval,

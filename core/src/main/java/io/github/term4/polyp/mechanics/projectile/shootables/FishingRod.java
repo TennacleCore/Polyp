@@ -43,7 +43,6 @@ public final class FishingRod implements Shootable {
 
     /** Bobber aliveTicks at end-of-cast; the cast tick includes the first step, so aliveTicks alone can't spot a same-tick retract. */
     private static final Tag<Long> CAST_TICKS = Tag.Long("polyp:cast_ticks");
-
     private void onUse(Player p, PlayerHand hand, ItemStack item, ProjectileSystem system) {
         if (item.material() != Material.FISHING_ROD) return;
         FishingBobberEntity active = p.getTag(FishingBobberEntity.ACTIVE_BOBBER);

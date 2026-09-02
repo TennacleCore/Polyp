@@ -62,7 +62,23 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
 
     @Override public void tick(long time) {
         if (!MechanicsWorld.ownsCurrentTick(this)) return;
+        if (despawnTicks < 0) despawnTicks = resolveDespawnTicks();
+        if (despawnTicks > 0 && ++age >= despawnTicks) {
+            remove();
+            return;
+        }
         super.tick(time);
+    }
+
+    private static final int VANILLA_DESPAWN_TICKS = 6000;
+    private int age;
+    private int despawnTicks = -1;
+
+    private int resolveDespawnTicks() {
+        var cfg = io.github.term4.polyp.Polyp.getInstance().profiles().resolve(this, io.github.term4.polyp.MechanicsKeys.ITEM_DAMAGE);
+        int ticks = cfg == null ? VANILLA_DESPAWN_TICKS : io.github.term4.polyp.config.FieldValue.resolve(cfg.despawnTicks,
+                new io.github.term4.polyp.mechanics.itemdamage.ItemDamageConfig.ItemDamageContext(this), VANILLA_DESPAWN_TICKS);
+        return io.github.term4.polyp.util.tick.TickScaler.duration(this, ticks, io.github.term4.polyp.mechanics.itemdamage.ItemDamageSystem.KEY);
     }
 
     /** The item's per-tick physics; resolved once per item from {@code MechanicsKeys.ITEM_PHYSICS}. */

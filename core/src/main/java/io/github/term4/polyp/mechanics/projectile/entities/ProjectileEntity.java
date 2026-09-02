@@ -138,6 +138,11 @@ public abstract class ProjectileEntity extends MechanicsEntity {
     private int powerLevel;
     private int punchLevel;
     private int flameLevel;
+    /** Flame rides the projectile's burning state, not the enchant: a doused one ignites nobody, and vanilla
+     *  wires the fire boolean to viewers ({@code setOnFire(100)} at shoot). */
+    private boolean burning;
+    private int stuckDespawnTicks = 1200;
+    private int stuckTicks;
 
     protected ProjectileEntity(@Nullable Entity shooter, @NotNull EntityType entityType) {
         super(entityType);
@@ -287,7 +292,25 @@ public abstract class ProjectileEntity extends MechanicsEntity {
     public int powerLevel() { return powerLevel; }
     public int punchLevel() { return punchLevel; }
     public int flameLevel() { return flameLevel; }
-    public void setProjectileEnchants(int power, int punch, int flame) { this.powerLevel = power; this.punchLevel = punch; this.flameLevel = flame; }
+    public void setProjectileEnchants(int power, int punch, int flame) {
+        this.powerLevel = power;
+        this.punchLevel = punch;
+        this.flameLevel = flame;
+        if (flame > 0 && !burning) {
+            burning = true;
+            getEntityMeta().setOnFire(true);
+        }
+    }
+
+    public boolean burning() { return burning; }
+
+    public void extinguish() {
+        burning = false;
+        getEntityMeta().setOnFire(false);
+    }
+
+    /** {@code 0} = never. */
+    public void setStuckDespawnTicks(int ticks) { this.stuckDespawnTicks = ticks; }
 
     /** Re-arms shooter immunity for another {@link #shooterImmunityTicks} (vanilla {@code as = 0} after a deflect, so
      *  a bounced-back arrow can't instantly re-hit the shooter / loop on a self-deflect). */
@@ -329,6 +352,10 @@ public abstract class ProjectileEntity extends MechanicsEntity {
         if (!MechanicsWorld.ownsCurrentTick(this)) return;
         if (isStuck()) {
             if (isRemoved()) return;
+            if (stuckDespawnTicks > 0 && ++stuckTicks >= stuckDespawnTicks) {
+                remove();
+                return;
+            }
             updateProjectile(time);
             if (isRemoved()) return;
             if (stuckSyncCounter++ % Math.max(1L, getSynchronizationTicks()) == 0) resyncStuck();

@@ -1,5 +1,11 @@
 package io.github.term4.polyp.mechanics.projectile.entities;
 
+import net.minestom.server.entity.LivingEntity;
+import io.github.term4.polyp.fx.FxContext;
+import io.github.term4.polyp.fx.Fx;
+import io.github.term4.polyp.mechanics.projectile.ProjectileSystem;
+import io.github.term4.polyp.mechanics.damage.types.burning.Ignite;
+import io.github.term4.polyp.mechanics.attribute.catalog.enchant.Flame;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.api.event.projectile.ProjectileHitEvent;
@@ -148,7 +154,10 @@ public class ManagedProjectile extends ProjectileEntity {
 
     /** Impact effect once a hit lands, after damage/knockback and before removal. {@code hitEntity} {@code null} = block hit. */
     /** Runs before the damage roll, so it fires even when the hit then i-frame-deflects (vanilla arrow flame order). */
-    protected void beforeEntityDamage(@NotNull Entity target) {}
+    protected void beforeEntityDamage(@NotNull Entity target) {
+        if (burning() && target instanceof LivingEntity le) Ignite.ignite(le, Flame.FIRE_TICKS, ProjectileSystem.KEY);
+    }
+
 
     protected void onImpact(@Nullable Entity hitEntity) {}
 
@@ -166,6 +175,10 @@ public class ManagedProjectile extends ProjectileEntity {
     @Override
     protected void updateProjectile(long time) {
         super.updateProjectile(time);
+        if (burning() && inWater()) {
+            extinguish();
+            Fx.play(services(), Fx.FIRE_EXTINGUISH, FxContext.of(this)); // 1.8 fizzes any doused entity
+        }
         if (!spawned) { spawned = true; behavior.onSpawn(this); }
         behavior.onTick(this, time);
     }

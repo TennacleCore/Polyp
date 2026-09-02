@@ -4,8 +4,6 @@ import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.world.WorldPolicy;
 import io.github.term4.polyp.fx.FxContext;
 import io.github.term4.polyp.fx.Fx;
-import io.github.term4.polyp.mechanics.attribute.catalog.enchant.Flame;
-import io.github.term4.polyp.mechanics.damage.types.burning.Ignite;
 import io.github.term4.polyp.mechanics.projectile.ProjectileConfigResolver.ResolvedHit;
 import io.github.term4.polyp.mechanics.attribute.catalog.VanillaPotions;
 import io.github.term4.polyp.config.FieldValue;
@@ -69,17 +67,22 @@ public class ArrowEntity extends ManagedProjectile {
     /** The item's {@code potion_duration_scale} (vanilla bakes {@code 0.125} = 1/8 onto a crafted tipped arrow); default {@code 1.0}. */
     private float potionDurationScale = 1.0f;
 
+    /** Whether a kept shot (Infinity, creative) still lands a collectable arrow. */
+    public boolean infinityPickup() { return infinityPickup; }
+
     /** Who may pick up a stuck arrow (vanilla {@code AbstractArrow.Pickup}): none, any player (survival gets the item), or creative only. */
     public enum Pickup { DISALLOWED, ALLOWED, CREATIVE_ONLY }
 
     /** {@code critParticles} resolved at launch: the flag is a spawn-time visual, not a per-hit value. */
     private final @Nullable Boolean critParticles;
+    private final boolean infinityPickup;
 
     public ArrowEntity(@Nullable Entity shooter, @NotNull EntityType entityType,
                        ProjectileSnapshot snap, ProjectileTypeConfig effectiveConfig) {
         super(shooter, entityType, snap, effectiveConfig);
-        this.critParticles = FieldValue.resolve(effectiveConfig.critParticles,
-                ProjectileConfigResolver.ProjectileContext.of(snap, services()));
+        ProjectileConfigResolver.ProjectileContext ctx = ProjectileConfigResolver.ProjectileContext.of(snap, services());
+        this.critParticles = FieldValue.resolve(effectiveConfig.critParticles, ctx);
+        this.infinityPickup = FieldValue.resolve(effectiveConfig.infinityPickup, ctx, Boolean.FALSE);
     }
 
     /**
@@ -129,25 +132,6 @@ public class ArrowEntity extends ManagedProjectile {
 
     public void setShakeTicks(int ticks) { this.shakeTicks = ticks; }
 
-    /** Flame rides the ARROW's burning state, not the enchant: a doused arrow ignites nobody, and vanilla wires
-     *  the fire boolean to viewers ({@code setOnFire(100)} at shoot). */
-    private boolean burning;
-
-    @Override
-    public void setProjectileEnchants(int power, int punch, int flame) {
-        super.setProjectileEnchants(power, punch, flame);
-        if (flame > 0 && !burning) {
-            burning = true;
-            getEntityMeta().setOnFire(true);
-        }
-    }
-
-    // vanilla ignites BEFORE the damage roll, so an i-frame deflect still burns (EntityArrow sets fire, then damageEntity)
-    @Override
-    protected void beforeEntityDamage(@NotNull Entity target) {
-        if (burning && target instanceof LivingEntity le) Ignite.ignite(le, Flame.FIRE_TICKS, ProjectileSystem.KEY);
-    }
-
     @Override
     protected void onImpact(@Nullable Entity hitEntity) {
         if (hitEntity != null) Fx.play(services(), Fx.ARROW_HIT, FxContext.of(this)); // block hits go through onStuck
@@ -188,11 +172,6 @@ public class ArrowEntity extends ManagedProjectile {
     @Override
     protected void updateProjectile(long time) {
         super.updateProjectile(time);
-        if (burning && inWater()) {
-            burning = false;
-            getEntityMeta().setOnFire(false);
-            Fx.play(services(), Fx.FIRE_EXTINGUISH, FxContext.of(this)); // 1.8 fizzes any doused entity, arrows included
-        }
         if (deflectVisible && !isStuck()) spawnDeflectTrail();
         if (!isStuck()) return;
         if (shake > 0) { shake--; return; } // vanilla pickup delay: no collecting while the arrow is still shaking
