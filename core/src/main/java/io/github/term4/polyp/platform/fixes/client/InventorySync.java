@@ -241,7 +241,7 @@ public final class InventorySync {
         }
     }
 
-    /** Shift-click: equip if armour, else merge/fill into the target section, matching Minestom's {@code PlayerInventory.shiftClick} + {@code TransactionType.ADD}. */
+    /** Shift-click: equip if armor, else merge/fill into the target section, matching Minestom's {@code PlayerInventory.shiftClick} + {@code TransactionType.ADD}. */
     private void shiftMove(int slot) {
         final ItemStack clicked = believed[slot];
         if (clicked.isAir()) return;
@@ -310,12 +310,12 @@ public final class InventorySync {
         return moving;
     }
 
-    /** The target section(s) a shift-click scans, in Minestom's order (hotbar<->main, crafting/armour into inventory then hotbar). */
+    /** The target section(s) a shift-click scans, in Minestom's order (hotbar<->main, crafting/armor into inventory then hotbar). */
     private static int[][] shiftRanges(int slot) {
         if (slot < 9) return new int[][]{{9, PlayerInventory.INNER_INVENTORY_SIZE, 1}};       // hotbar -> main
         if (slot < PlayerInventory.INNER_INVENTORY_SIZE) return new int[][]{{0, 9, 1}};       // main -> hotbar
         if (slot == PlayerInventoryUtils.CRAFT_RESULT) return new int[][]{{8, -1, -1}, {PlayerInventory.INNER_INVENTORY_SIZE - 1, 8, -1}};
-        return new int[][]{{9, PlayerInventory.INNER_INVENTORY_SIZE, 1}, {0, 9, 1}};          // craft grid / armour / offhand
+        return new int[][]{{9, PlayerInventory.INNER_INVENTORY_SIZE, 1}, {0, 9, 1}};          // craft grid / armor / offhand
     }
 
     private static int equipmentSlot(EquipmentSlot slot) {
