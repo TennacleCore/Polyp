@@ -1,7 +1,6 @@
 package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.Polyp;
-import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
 import net.minestom.server.network.packet.server.SendablePacket;
 import net.minestom.server.network.packet.server.play.ChangeGameStatePacket;
@@ -9,12 +8,13 @@ import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * The health, hunger and armor bars off a player's screen while the server keeps them in survival or
- * adventure - the scrims spectator: the client is told a game mode it has no case for. A 1.8 client reads
- * {@code -1} as NOT_SET, which draws no stat bars, keeps the hotbar, and opens the ordinary inventory on E
- * (captured on na.scrims.network). A modern client clamps unknown ids to survival, so it is told spectator
- * instead: bars and hotbar off, the ordinary inventory on E. The server never changes its own mind: every
- * game-mode change and every respawn the client is sent is re-told the spoof until {@link #show}.
+ * The health, hunger and armor bars off a 1.8 client's screen while the server keeps the player in survival
+ * or adventure - the scrims spectator: the client is told game mode {@code -1}, which a 1.8 client reads as
+ * NOT_SET and draws no stat bars, keeps the hotbar, and opens the ordinary inventory on E (captured on
+ * na.scrims.network). A MODERN client has no such lever - its HUD hides the bars only in creative or
+ * spectator, both of which change the inventory - so it is left alone (bars visible). The server never
+ * changes its own mind: every game-mode change and every respawn the 1.8 client is sent is re-told the
+ * spoof until {@link #show}.
  */
 public final class SpectatorHud {
 
@@ -24,6 +24,7 @@ public final class SpectatorHud {
     private SpectatorHud() {}
 
     public static void hide(@NotNull Player player) {
+        if (!legacy(player)) return; // no modern lever keeps the survival inventory AND drops the bars
         player.setTag(HIDDEN, true);
         player.sendPacket(spoof(player));
     }
@@ -38,11 +39,13 @@ public final class SpectatorHud {
         return Boolean.TRUE.equals(player.getTag(HIDDEN));
     }
 
-    /** What the client is told its game mode is. */
+    /** A 1.8 client is told NOT_SET; only a hidden (hence legacy) player is ever sent this. */
     public static @NotNull ChangeGameStatePacket spoof(@NotNull Player player) {
-        boolean legacy = Polyp.getInstance().clientInfo() != null && Polyp.getInstance().clientInfo().isLegacy(player);
-        return new ChangeGameStatePacket(ChangeGameStatePacket.Reason.CHANGE_GAMEMODE,
-                legacy ? LEGACY_NOT_SET : GameMode.SPECTATOR.ordinal());
+        return new ChangeGameStatePacket(ChangeGameStatePacket.Reason.CHANGE_GAMEMODE, LEGACY_NOT_SET);
+    }
+
+    private static boolean legacy(Player player) {
+        return Polyp.getInstance().clientInfo() != null && Polyp.getInstance().clientInfo().isLegacy(player);
     }
 
     /** The outgoing game-mode change, re-told as the spoof while hidden. */

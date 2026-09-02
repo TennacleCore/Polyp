@@ -87,6 +87,13 @@ public class ManagedProjectile extends ProjectileEntity {
         if (!result.landed()) {
             ProjectileTypeConfig.InvulnResponse ir = hit.invulnHit();
             ProjectileTypeConfig.HitResponse blocked = result == DamageSystem.DamageOutcome.IMMUNE ? ir.immune() : ir.invulWindow();
+            // the 1.8 arrow-visibility regime never lets an arrow visibly bounce off a player (the shared-team fix
+            // presents arrows flying past): a no-damage hit passes through instead of deflecting, so no bounce sound
+            // and no crit-trail visibility marker fire off a teammate or an i-framed target
+            if (blocked == ProjectileTypeConfig.HitResponse.DEFLECT && target instanceof net.minestom.server.entity.Player
+                    && arrowVisibility()) {
+                blocked = ProjectileTypeConfig.HitResponse.PASS_THROUGH;
+            }
             switch (blocked) {
                 case PASS_THROUGH -> { passThrough(target); return false; }
                 case DEFLECT -> { bounce(hit, target); return false; }
@@ -114,6 +121,12 @@ public class ManagedProjectile extends ProjectileEntity {
             s.knockback().apply(buildKnockback(target, ev.knockbackSource(), ev.knockback()));
         }
         return result;
+    }
+
+    // the arrow-visibility compat keys on the shooter's context, like the deflect-trail fix
+    private boolean arrowVisibility() {
+        Services s = services();
+        return s != null && s.fixes() != null && s.fixes().legacyArrowVisibilityEnabled(shooter);
     }
 
     private void bounce(ResolvedHit hit, @Nullable Entity hitEntity) {
