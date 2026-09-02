@@ -514,7 +514,7 @@ public final class MotionTracker implements Tracker {
         return 0;
     }
 
-    /** Any colour, via the {@code #minecraft:beds} tag with a {@code _bed} key-suffix fallback. */
+    /** Any color, via the {@code #minecraft:beds} tag with a {@code _bed} key-suffix fallback. */
     private static boolean isBed(Block b) {
         return BEDS != null ? BEDS.contains(b) : b.key().value().endsWith("_bed");
     }
