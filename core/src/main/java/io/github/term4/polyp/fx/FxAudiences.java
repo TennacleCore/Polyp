@@ -30,7 +30,10 @@ public final class FxAudiences {
      * client-predicted effect takes, whichever set of onlookers it starts from.
      */
     public static Recipients predictedFor(Recipients base) {
-        return Recipients.both(Recipients.except(base, Recipients.SOURCE), LEGACY_SOURCE);
+        return (world, at, source, to) -> {
+            base.each(world, at, source, (p, point) -> { if (p != source) to.accept(p, point); });
+            LEGACY_SOURCE.each(world, at, source, to);
+        };
     }
 
     /** Entity-anchored prediction: the source's viewers, plus a legacy source. */
@@ -45,12 +48,16 @@ public final class FxAudiences {
         FieldFns.register(Recipients.class, "viewers", "the source's viewers, not the source itself", args -> Recipients.VIEWERS);
         FieldFns.register(Recipients.class, "source", "the source player alone", args -> Recipients.SOURCE);
         FieldFns.register(Recipients.class, "block-viewers", "everyone rendering the world's blocks", args -> Recipients.BLOCK_VIEWERS);
-        FieldFns.register(Recipients.class, "nobody", "no one - the identity for both()", args -> Recipients.NOBODY);
         FieldFns.register(Recipients.class, "predicted-for(recipients)", "those, minus the source unless its client cannot predict the effect",
                 args -> predictedFor(args.arity(1).of(0, Recipients.class)));
 
-        FieldFns.register(Recipients.class, "both(a, b)", "everyone either side reaches",
-                args -> Recipients.both(args.arity(2).of(0, Recipients.class), args.of(1, Recipients.class)));
+        FieldFns.register(Recipients.class, "both(recipients...)", "everyone any of them reaches; both() is nobody",
+                args -> {
+                    if (args.size() == 0) return Recipients.NOBODY;
+                    Recipients out = args.of(0, Recipients.class);
+                    for (int i = 1; i < args.size(); i++) out = Recipients.both(out, args.of(i, Recipients.class));
+                    return out;
+                });
         FieldFns.register(Recipients.class, "except(a, b)", "everyone in a that b does not reach",
                 args -> Recipients.except(args.arity(2).of(0, Recipients.class), args.of(1, Recipients.class)));
         FieldFns.register(Recipients.class, "only(a, b)", "everyone both sides reach",

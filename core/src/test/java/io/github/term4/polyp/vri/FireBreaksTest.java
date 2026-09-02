@@ -1,5 +1,8 @@
 package io.github.term4.polyp.vri;
 
+import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.MechanicsProfile;
+import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.coordinate.BlockVec;
@@ -25,6 +28,8 @@ class FireBreaksTest extends HeadlessServerTest {
     static void install() {
         Vri.install(polyp, VriConfig.builder().fireBreaks(true).build());
         miner = FakePlayer.connect(instance, new Pos(20.5, 43, 30.5), "FireBreaker");
+        // the fizz is an fx: the miner needs a registry that carries it
+        polyp.profiles().setPlayer(miner.player, MechanicsProfile.builder().set(MechanicsKeys.FX, Fx.vanilla18()).build());
     }
 
     private static long fizzes() {

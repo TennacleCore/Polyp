@@ -1,12 +1,13 @@
 package io.github.term4.polyp.vri;
 
+import io.github.term4.polyp.fx.Fx;
+import io.github.term4.polyp.fx.FxContext;
 import io.github.term4.polyp.world.FireSupport;
 import io.github.term4.polyp.vri.VriConfig;
 import io.github.term4.polyp.world.MechanicsWorld;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
-import net.minestom.server.network.packet.server.play.WorldEventPacket;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -23,7 +24,7 @@ final class FireBreaks {
             if (e.isCancelled() || !VriConfig.on(vri.configFor(e.getPlayer()).fireBreaks, e.getPlayer())) return;
             MechanicsWorld world = MechanicsWorld.of(e.getPlayer());
             if (FireSupport.isFire(e.getBlock())) {
-                world.broadcast(new WorldEventPacket(FireSupport.FIZZ, e.getBlockPosition(), 0, false));
+                Fx.play(vri.services(), Fx.FIRE_DOUSE, FxContext.at(world, e.getBlockPosition(), e.getPlayer()));
             }
             FireSupport.sweep(world, e.getBlockPosition());
         });

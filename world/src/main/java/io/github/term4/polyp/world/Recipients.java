@@ -91,6 +91,11 @@ public interface Recipients {
 
     /** {@code a} minus everyone {@code b} reaches. */
     static @NotNull Recipients except(@NotNull Recipients a, @NotNull Recipients b) {
+        if (b == SOURCE) { // the everyday exclusion: one known player, no set to build
+            return (world, at, source, to) -> a.each(world, at, source, (p, point) -> {
+                if (p != source) to.accept(p, point);
+            });
+        }
         return (world, at, source, to) -> {
             Set<Player> excluded = identitySet();
             b.each(world, at, source, (p, point) -> excluded.add(p));

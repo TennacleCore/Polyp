@@ -25,11 +25,13 @@ public interface FxHandler {
      * shared across recipients, so a variant sound picks the same variant for everyone.
      */
     static @NotNull FxHandler of(@NotNull Recipients audience, @NotNull FxEffect effect) {
-        return ctx -> {
-            long seed = java.util.concurrent.ThreadLocalRandom.current().nextLong();
-            audience.each(ctx.world(), ctx.position(), ctx.source(),
-                    (player, at) -> effect.send(ctx, player, at, seed));
-        };
+        return ctx -> play(audience, effect, ctx);
+    }
+
+    /** One delivery, no handler object: what {@link FxContext#emit} runs per effect. */
+    static void play(@NotNull Recipients audience, @NotNull FxEffect effect, @NotNull FxContext ctx) {
+        long seed = java.util.concurrent.ThreadLocalRandom.current().nextLong();
+        audience.each(ctx.world(), ctx.position(), ctx.source(), (player, at) -> effect.send(ctx, player, at, seed));
     }
 
     /** A positional sound at the context position, to everyone rendering the world ({@link Recipients#WATCHERS}). */

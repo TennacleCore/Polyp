@@ -80,8 +80,11 @@ public final class FxContext {
 
     /** Delivers {@code effect} to {@code audience} from this context - the one route every helper below takes. */
     public void emit(@NotNull Recipients audience, @NotNull FxEffect effect) {
-        FxHandler.of(audience, effect).play(this);
+        FxHandler.play(audience, effect, this);
     }
+
+    private static final Recipients VIEWERS_AND_SOURCE = Recipients.both(Recipients.VIEWERS, Recipients.SOURCE);
+    private static final Recipients LISTENERS = Recipients.atListener(Recipients.WATCHERS);
 
     /** A positional sound at {@link #position()} to everyone rendering the world. */
     public void sound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
@@ -114,7 +117,7 @@ public final class FxContext {
      * One shared seed, so variant-picking sounds pick the same variant for everyone.
      */
     public void globalSound(@NotNull SoundEvent sound, @NotNull Sound.Source src, float volume, float pitch) {
-        emit(Recipients.atListener(Recipients.WATCHERS), FxEffect.sound(sound, src, volume, pitch));
+        emit(LISTENERS, FxEffect.sound(sound, src, volume, pitch));
     }
 
     /** A particle burst at {@link #position()} to everyone rendering the world. */
@@ -124,7 +127,7 @@ public final class FxContext {
 
     /** An entity animation on the {@code source} to its viewers + itself; no-op without a source. */
     public void entityAnimation(EntityAnimationPacket.@NotNull Animation animation) {
-        emit(Recipients.both(Recipients.VIEWERS, Recipients.SOURCE), FxEffect.animation(animation));
+        emit(VIEWERS_AND_SOURCE, FxEffect.animation(animation));
     }
 
     /**
@@ -142,6 +145,6 @@ public final class FxContext {
      * client, so it predicts nothing and must be sent the sparkle too.
      */
     public void hitAnimationAll(EntityAnimationPacket.@NotNull Animation animation) {
-        emit(Recipients.both(Recipients.VIEWERS, Recipients.SOURCE), FxEffect.targetAnimation(animation));
+        emit(VIEWERS_AND_SOURCE, FxEffect.targetAnimation(animation));
     }
 }

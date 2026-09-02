@@ -1,6 +1,7 @@
 package io.github.term4.polyp.fx;
 
 import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.world.FireSupport;
 import io.github.term4.polyp.world.Recipients;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.api.event.fx.FxEvent;
@@ -67,6 +68,8 @@ public final class Fx {
     public static final Key ARROW_HIT_PLAYER = Key.key("polyp:arrow_hit_player");
     /** A burning entity doused by water (1.8 {@code random.fizz}); heard by viewers, never the doused player. */
     public static final Key FIRE_EXTINGUISH = Key.key("polyp:fire_extinguish");
+    /** The 1004 fizz of a doused fire BLOCK; the context position is the block. */
+    public static final Key FIRE_DOUSE = Key.key("polyp:fire_douse");
     /** TNT ignited (primed TNT spawned). */
     public static final Key TNT_PRIME = Key.key("polyp:tnt_prime");
     /** A footstep; the context detail is the stepped-on {@code Block}. */
@@ -120,6 +123,7 @@ public final class Fx {
                 // 1.8 random.fizz 0.7F / 1.6F +- 0.4 dual-rand
                 .register(FIRE_EXTINGUISH, ctx -> ctx.viewerSound(SoundEvent.ENTITY_GENERIC_EXTINGUISH_FIRE,
                         Sound.Source.NEUTRAL, 0.7f, 0.6f + jitterPitch(0.4f)))
+                .register(FIRE_DOUSE, ctx -> ctx.emit(Recipients.BLOCK_VIEWERS, FxEffect.worldEvent(FireSupport.FIZZ, 0)))
                 .register(THROW_SNOWBALL, throwSound(SoundEvent.ENTITY_SNOWBALL_THROW, Sound.Source.NEUTRAL))
                 .register(THROW_EGG, throwSound(SoundEvent.ENTITY_EGG_THROW, Sound.Source.PLAYER))
                 .register(THROW_PEARL, throwSound(SoundEvent.ENTITY_ENDER_PEARL_THROW, Sound.Source.NEUTRAL))

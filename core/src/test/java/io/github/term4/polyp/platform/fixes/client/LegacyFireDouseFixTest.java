@@ -1,5 +1,8 @@
 package io.github.term4.polyp.platform.fixes.client;
 
+import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.MechanicsProfile;
+import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.platform.fixes.FixToggleConfig;
 import io.github.term4.polyp.platform.fixes.FixesConfig;
 import io.github.term4.polyp.platform.fixes.FixesSystem;
@@ -31,6 +34,8 @@ class LegacyFireDouseFixTest extends HeadlessServerTest {
     static void install() {
         FixesSystem.install(polyp, FixesConfig.builder().legacyFireDouse(FixToggleConfig.on()).build());
         miner = FakePlayer.connect(instance, new Pos(20.5, 43, 20.5), "DouseMiner");
+        // the fizz is an fx: the miner needs a registry that carries it
+        polyp.profiles().setPlayer(miner.player, MechanicsProfile.builder().set(MechanicsKeys.FX, Fx.vanilla18()).build());
     }
 
     private static long fizzes() {

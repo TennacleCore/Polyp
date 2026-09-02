@@ -1,5 +1,7 @@
 package io.github.term4.polyp.platform.fixes.client;
 
+import io.github.term4.polyp.fx.Fx;
+import io.github.term4.polyp.fx.FxContext;
 import io.github.term4.polyp.platform.fixes.FixToggleConfig;
 import io.github.term4.polyp.platform.fixes.FixesSystem;
 import io.github.term4.polyp.world.FireSupport;
@@ -12,7 +14,6 @@ import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerStartDiggingEvent;
 import net.minestom.server.instance.block.Block;
-import net.minestom.server.network.packet.server.play.WorldEventPacket;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -30,11 +31,11 @@ public final class LegacyFireDouseFix {
         // slow digs: vanilla douses at dig START (survival then keeps digging the clicked block)
         node.addListener(PlayerStartDiggingEvent.class, e -> {
             if (e.isCancelled() || !douses(fixes, e.getPlayer())) return;
-            douse(e.getPlayer(), e.getBlockPosition().relative(e.getBlockFace()));
+            douse(fixes, e.getPlayer(), e.getBlockPosition().relative(e.getBlockFace()));
         });
         node.addListener(PlayerBlockBreakEvent.class, e -> {
             if (e.isCancelled() || !douses(fixes, e.getPlayer())) return;
-            if (douse(e.getPlayer(), e.getBlockPosition().relative(e.getBlockFace()))
+            if (douse(fixes, e.getPlayer(), e.getBlockPosition().relative(e.getBlockFace()))
                     && e.getPlayer().getGameMode() == GameMode.CREATIVE) {
                 e.setCancelled(true);
             }
@@ -48,12 +49,12 @@ public final class LegacyFireDouseFix {
         return cfg != null && cfg.enabled(miner);
     }
 
-    private static boolean douse(Player miner, Point at) {
+    private static boolean douse(FixesSystem fixes, Player miner, Point at) {
         MechanicsWorld world = MechanicsWorld.of(miner);
         if (!world.isChunkLoaded(at)) return false; // a horizontal face can cross into an unloaded neighbor
         if (!FireSupport.isFire(world.getBlock(at, Block.Getter.Condition.TYPE))) return false;
         world.setBlock(at, Block.AIR);
-        world.broadcast(new WorldEventPacket(FireSupport.FIZZ, at, 0, false));
+        Fx.play(fixes.services(), Fx.FIRE_DOUSE, FxContext.at(world, at, miner));
         return true;
     }
 }
