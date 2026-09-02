@@ -8,6 +8,7 @@ import io.github.term4.polyp.platform.compatibility.CompatConfig;
 import io.github.term4.polyp.platform.compatibility.CompatState;
 import io.github.term4.polyp.platform.fixes.RefreshPositionFix;
 import io.github.term4.polyp.platform.fixes.client.InventorySync;
+import io.github.term4.polyp.platform.fixes.client.LegacyInventorySlotFix;
 import io.github.term4.polyp.platform.fixes.client.EquipmentSlotsFix;
 import io.github.term4.polyp.platform.fixes.client.SelfMetaFilter;
 import io.github.term4.polyp.util.tick.TickScaler;
@@ -131,7 +132,8 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
                 && packet instanceof UpdateHealthPacket uh && uh.food() > 6) {
             packet = new UpdateHealthPacket(uh.health(), 6, uh.foodSaturation());
         }
-        SendablePacket p = EquipmentSlotsFix.rewrite(compat.rewriteItems(packet));
+        SendablePacket p = LegacyInventorySlotFix.rewrite(compat.legacyClient(),
+                EquipmentSlotsFix.rewrite(compat.rewriteItems(packet)));
         if (InventorySync.enabled()) {
             p = inventorySync.filter(p);
             if (p == null) return; // redundant slot echo: the client already shows it

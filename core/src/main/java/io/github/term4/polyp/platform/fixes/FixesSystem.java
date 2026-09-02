@@ -6,6 +6,7 @@ import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.platform.fixes.client.EquipmentSlotsFix;
 import io.github.term4.polyp.platform.fixes.client.InventorySync;
 import io.github.term4.polyp.platform.fixes.client.LegacyFireDouseFix;
+import io.github.term4.polyp.platform.fixes.client.LegacyInventorySlotFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyPlacementGhostFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyUseOnBlockFix;
 import io.github.term4.polyp.platform.fixes.client.UseItemInterruptFix;
@@ -78,6 +79,7 @@ public final class FixesSystem extends ScopedSystem<FixesConfig> {
         if (enabled(cfg.equipmentFix())) EquipmentSlotsFix.install();
         if (enabled(cfg.legacyTabCompleteFix())) LegacyTabCompleteFix.install();
         if (enabled(cfg.inventorySync())) InventorySync.install(system.node);
+        if (enabled(cfg.legacyInventorySlot())) LegacyInventorySlotFix.install();
         return polyp.installModule(system);
     }
 

@@ -17,6 +17,7 @@ public final class FixesConfig {
     private final @Nullable FixToggleConfig legacyConsume;
     private final @Nullable FixToggleConfig legacyFireDouse;
     private final @Nullable FixToggleConfig inventorySync;
+    private final @Nullable FixToggleConfig legacyInventorySlot;
 
     private FixesConfig(Builder b) {
         this.visuals = b.visuals;
@@ -26,6 +27,7 @@ public final class FixesConfig {
         this.legacyConsume = b.legacyConsume;
         this.legacyFireDouse = b.legacyFireDouse;
         this.inventorySync = b.inventorySync;
+        this.legacyInventorySlot = b.legacyInventorySlot;
     }
 
     public @Nullable VisualsConfig visuals() { return visuals; }
@@ -52,6 +54,9 @@ public final class FixesConfig {
     /** Remote-slot echo suppression ({@code InventorySync}); EXPERIMENTAL; server-wide - install config only. */
     public @Nullable FixToggleConfig inventorySync() { return inventorySync; }
 
+    /** Player-inventory slot updates as window 0 for legacy clients ({@code LegacyInventorySlotFix}); install-level. */
+    public @Nullable FixToggleConfig legacyInventorySlot() { return legacyInventorySlot; }
+
     /** Merges this config over {@code base} (each member: this if set, else base; both set -&gt; member-merged). */
     public FixesConfig fromBase(FixesConfig base) {
         VisualsConfig v = visuals == null ? base.visuals
@@ -63,6 +68,7 @@ public final class FixesConfig {
                 .legacyConsume(merge(legacyConsume, base.legacyConsume))
                 .legacyFireDouse(merge(legacyFireDouse, base.legacyFireDouse))
                 .inventorySync(merge(inventorySync, base.inventorySync))
+                .legacyInventorySlot(merge(legacyInventorySlot, base.legacyInventorySlot))
                 .build();
     }
 
@@ -72,7 +78,7 @@ public final class FixesConfig {
 
     /** The toggle names the {@code fixes/<toggle>/enabled} path addresses. */
     public static final java.util.List<String> TOGGLES = java.util.List.of("legacySelfPlacement", "equipmentFix",
-            "legacyTabCompleteFix", "legacyConsume", "legacyFireDouse", "inventorySync");
+            "legacyTabCompleteFix", "legacyConsume", "legacyFireDouse", "inventorySync", "legacyInventorySlot");
 
     public @Nullable FixToggleConfig toggle(String name) {
         return switch (name) {
@@ -82,6 +88,7 @@ public final class FixesConfig {
             case "legacyConsume" -> legacyConsume;
             case "legacyFireDouse" -> legacyFireDouse;
             case "inventorySync" -> inventorySync;
+            case "legacyInventorySlot" -> legacyInventorySlot;
             default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
         };
     }
@@ -96,6 +103,7 @@ public final class FixesConfig {
             case "legacyConsume" -> b.legacyConsume(toggle);
             case "legacyFireDouse" -> b.legacyFireDouse(toggle);
             case "inventorySync" -> b.inventorySync(toggle);
+            case "legacyInventorySlot" -> b.legacyInventorySlot(toggle);
             default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
         }
         return b.build();
@@ -120,9 +128,10 @@ public final class FixesConfig {
         private @Nullable FixToggleConfig legacyConsume;
         private @Nullable FixToggleConfig legacyFireDouse;
         private @Nullable FixToggleConfig inventorySync;
+        private @Nullable FixToggleConfig legacyInventorySlot;
 
         Builder() {}
-        Builder(FixesConfig c) { visuals = c.visuals; legacySelfPlacement = c.legacySelfPlacement; equipmentFix = c.equipmentFix; legacyTabCompleteFix = c.legacyTabCompleteFix; legacyConsume = c.legacyConsume; legacyFireDouse = c.legacyFireDouse; inventorySync = c.inventorySync; }
+        Builder(FixesConfig c) { visuals = c.visuals; legacySelfPlacement = c.legacySelfPlacement; equipmentFix = c.equipmentFix; legacyTabCompleteFix = c.legacyTabCompleteFix; legacyConsume = c.legacyConsume; legacyFireDouse = c.legacyFireDouse; inventorySync = c.inventorySync; legacyInventorySlot = c.legacyInventorySlot; }
 
         public Builder visuals(@Nullable VisualsConfig v) { this.visuals = v; return this; }
         public Builder legacySelfPlacement(@Nullable FixToggleConfig v) { this.legacySelfPlacement = v; return this; }
@@ -131,6 +140,7 @@ public final class FixesConfig {
         public Builder legacyConsume(@Nullable FixToggleConfig v) { this.legacyConsume = v; return this; }
         public Builder legacyFireDouse(@Nullable FixToggleConfig v) { this.legacyFireDouse = v; return this; }
         public Builder inventorySync(@Nullable FixToggleConfig v) { this.inventorySync = v; return this; }
+        public Builder legacyInventorySlot(@Nullable FixToggleConfig v) { this.legacyInventorySlot = v; return this; }
 
         public FixesConfig build() { return new FixesConfig(this); }
     }

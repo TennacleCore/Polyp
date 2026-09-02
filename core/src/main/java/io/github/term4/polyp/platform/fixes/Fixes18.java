@@ -20,6 +20,7 @@ public final class Fixes18 {
                 .legacyTabCompleteFix(FixToggleConfig.on())
                 .legacyConsume(FixToggleConfig.on())
                 .legacyFireDouse(FixToggleConfig.on())
+                .legacyInventorySlot(FixToggleConfig.on())
                 .build();
     }
 }
