@@ -55,6 +55,7 @@ public final class Compat18 {
                 .disableOffhand(false)
                 .restrictSprintSneak(false)
                 .restrictSprintUse(false)
+                .resetSprintOnSpawn(false)
                 .restrictSwimSpeed(false)
                 .legacyFluids(false)
                 .disableElytraFlight(false)

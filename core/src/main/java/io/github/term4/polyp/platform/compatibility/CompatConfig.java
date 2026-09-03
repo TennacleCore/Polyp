@@ -43,6 +43,9 @@ public final class CompatConfig {
     public final @Nullable FieldValue<CompatContext, Boolean> restrictSprintSneak;
     /** Cancel the sprint speed boost while using an item (1.8 can't sprint-use). */
     public final @Nullable FieldValue<CompatContext, Boolean> restrictSprintUse;
+    /** Clear the server's sprint flag on every arrival (a non-first spawn); off = it follows the client's entity,
+     *  cleared only where a respawn packet recreates it. */
+    public final @Nullable FieldValue<CompatContext, Boolean> resetSprintOnSpawn;
     /** Cancel the sprint speed boost while in water (caps modern fast-swim toward 1.8). */
     public final @Nullable FieldValue<CompatContext, Boolean> restrictSwimSpeed;
     /** Horizontal divisor for the {@link #restrictSwimSpeed} dampen (higher = slower); {@code null} = 1.25. */
@@ -110,6 +113,7 @@ public final class CompatConfig {
         disableOffhand = b.disableOffhand;
         restrictSprintSneak = b.restrictSprintSneak;
         restrictSprintUse = b.restrictSprintUse;
+        resetSprintOnSpawn = b.resetSprintOnSpawn;
         restrictSwimSpeed = b.restrictSwimSpeed;
         swimFactor = b.swimFactor;
         swimVerticalFactor = b.swimVerticalFactor;
@@ -153,6 +157,7 @@ public final class CompatConfig {
     public @Nullable Boolean disableOffhand(CompatContext ctx) { return FieldValue.resolve(disableOffhand, ctx); }
     public @Nullable Boolean restrictSprintSneak(CompatContext ctx) { return FieldValue.resolve(restrictSprintSneak, ctx); }
     public @Nullable Boolean restrictSprintUse(CompatContext ctx) { return FieldValue.resolve(restrictSprintUse, ctx); }
+    public @Nullable Boolean resetSprintOnSpawn(CompatContext ctx) { return FieldValue.resolve(resetSprintOnSpawn, ctx); }
     public @Nullable Boolean restrictSwimSpeed(CompatContext ctx) { return FieldValue.resolve(restrictSwimSpeed, ctx); }
     public @Nullable Double swimFactor(CompatContext ctx) { return FieldValue.resolve(swimFactor, ctx); }
     public @Nullable Double swimVerticalFactor(CompatContext ctx) { return FieldValue.resolve(swimVerticalFactor, ctx); }

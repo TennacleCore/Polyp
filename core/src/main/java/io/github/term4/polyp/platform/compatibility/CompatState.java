@@ -77,6 +77,7 @@ public final class CompatState {
     public @Nullable Float attackHitboxMargin() { return policy.attackHitboxMargin(ctx); }
     public boolean disableOffhand() { return on(policy.disableOffhand(ctx)); }
     public boolean restrictSprintSneak() { return on(policy.restrictSprintSneak(ctx)); }
+    public boolean resetSprintOnSpawn() { return on(policy.resetSprintOnSpawn(ctx)); }
     public boolean restrictSprintUse() { return on(policy.restrictSprintUse(ctx)); }
     public boolean restrictSwimSpeed() { return on(policy.restrictSwimSpeed(ctx)); }
     public double swimFactor() { return or(policy.swimFactor(ctx), 1.25); }

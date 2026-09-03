@@ -1,5 +1,8 @@
 package io.github.term4.polyp.tracking;
 
+import io.github.term4.polyp.platform.compatibility.CompatConfig;
+import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.util.tick.TickSystem;
 import io.github.term4.polyp.util.tick.TickState;
 import net.minestom.server.entity.Entity;
@@ -53,9 +56,18 @@ public final class SprintTracker implements Tracker {
         });
 
         // instance change reseeds the clock these stamps use, and isClientSprinting compares raw eventTicks (no
-        // TickState future-guard), so drop them or it misreads across instances. The flag itself is cleared where
-        // the client's entity is recreated - the respawn packet (OptimizedPlayer) - so a same-dimension move keeps it
-        node.addListener(PlayerSpawnEvent.class, e -> clearTransient(e.getPlayer()));
+        // TickState future-guard), so drop them or it misreads across instances. The flag itself follows the
+        // client's entity - cleared with the respawn packet (OptimizedPlayer) - unless the arrival's profile says
+        // every arrival lands un-sprinting
+        node.addListener(PlayerSpawnEvent.class, e -> {
+            Player p = e.getPlayer();
+            clearTransient(p);
+            if (e.isFirstSpawn()) return;
+            CompatConfig compat = Polyp.getInstance().profiles().resolve(p, MechanicsKeys.COMPAT);
+            if (compat != null && Boolean.TRUE.equals(compat.resetSprintOnSpawn(new CompatConfig.CompatContext(p)))) {
+                p.setSprinting(false);
+            }
+        });
 
         return node;
     }
