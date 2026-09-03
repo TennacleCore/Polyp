@@ -236,7 +236,7 @@ client-side inGround and ignores teleports until re-stuck.
 
 - Arrow/bow: Infinity + Flame enchants, draw gated on having arrows, bow durability + shoot sound, dedicated
   `minecraft:arrow` damage type, pickup nits (inventory-full, offhand-first, pop sound).
-- Pearl: cross-instance teleport, dedicated ender-pearl damage type (GenericDamage stand-in), 5% endermite.
+- Pearl: cross-instance teleport, lands as fall damage with the explicit amount (the modern `ender_pearl` type is not modeled), 5% endermite.
 - Snowball: 3 damage to a Blaze (needs entity-type-aware damage).
 - Spread distribution: 1.8 gaussian*0.0075 vs 26.1 `triangle(0, 0.0172275*uncertainty)` - a distribution knob + the
   26.1 value would make the modern preset exact.
@@ -332,7 +332,7 @@ IMPACT** against a context that carries the target, so plain config lambdas expr
 | Shooter immunity | 5 ticks | `leftOwner` (geometric) | `shooterImmunityTicks` (1.8) / `leftOwnerImmunity(true)` (26.1) |
 | Physics order | post-move drag/grav | pre-move grav/inertia | `physicsOrder` (`DRAG_AFTER_MOVE` 1.8 / `DRAG_BEFORE_MOVE` 26.1) |
 | Block collision | per-tick `world.rayTrace` | swept AABB (server-auth) | swept-only (a RAYTRACE knob was built then deleted - indistinguishable; see 3f) |
-| Pearl dmg type | FALL, 5 | `enderPearl`, 5 | amount yes; type = TODO (GenericDamage stand-in) |
+| Pearl dmg type | FALL, 5 | `enderPearl`, 5 | FALL with the explicit amount (armor-bypassing, Feather Falling); modern type TODO |
 | Pearl teleport target | pre-move pos | `oldPosition()` | ~same (pre-move) |
 | Sync interval | n/a here | `updateInterval(10)` | `syncInterval` (ours 20) |
 

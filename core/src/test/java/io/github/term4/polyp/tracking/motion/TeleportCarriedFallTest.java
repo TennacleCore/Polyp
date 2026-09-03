@@ -1,5 +1,8 @@
 package io.github.term4.polyp.tracking.motion;
 
+import net.minestom.server.coordinate.Vec;
+import io.github.term4.polyp.mechanics.damage.types.fall.FallDamage;
+import io.github.term4.polyp.mechanics.damage.DamageSnapshot;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.testsupport.FakePlayer;
@@ -69,6 +72,37 @@ class TeleportCarriedFallTest extends HeadlessServerTest {
         tick(inst);
         assertEquals(-0.08 * 0.98, MotionTracker.serverMotY(p, 0, true), 1e-12,
                 "the confirm step lands the fall at the grounded fixed point");
+        p.remove();
+    }
+
+    /** A pearl on mmc18: the teleport, then landing damage with {@code syncHurtVelocity} off. Nothing may touch the
+     *  tracked motion - 1.8 keeps server mot through both, and only a broadcast re-anchors it. */
+    @Test
+    void aLandingHurtWithoutABroadcastLeavesTheTrackedMotionAlone() {
+        var inst = flatInstance(MechanicsProfile.builder()
+                .set(MechanicsKeys.VELOCITY, VelocityRule.simulated(
+                        VelocityConfig.builder().motYOnMovePacket(true).build()))
+                .set(MechanicsKeys.DAMAGE, io.github.term4.polyp.presets.mmc18.Damage.config())
+                .build());
+        Player p = FakePlayer.connect(inst, new Pos(8.5, 64, 8.5), "PearlMot").player;
+        move(p, 64.0, true);
+        tick(inst);
+        p.setSprinting(true);
+        move(p, 64.42, false);                    // a sprint-jump: seeds the horizontal residual and the arc
+        tick(inst);
+        move(p, 64.75, false);
+        tick(inst);
+        Vec h = MotionTracker.horizontalMot(p, 0);
+        Double v = MotionTracker.serverMotY(p, 0, true);
+        assertNotNull(v);
+        assertTrue(h.z() > 0.1, "the sprint-jump residual is tracked: " + h);
+        p.teleport(new Pos(20.5, 70, 20.5)).join(); // the pearl lands, mid-air, no packets yet
+        tick(inst);
+        services.damage().apply(DamageSnapshot.of(p, FallDamage.INSTANCE).withAmount(5f));
+        tick(inst);
+        assertTrue(p.getHealth() < 20f, "the landing damage landed");
+        assertEquals(h, MotionTracker.horizontalMot(p, 0), "horizontal residual carried, not zeroed or re-anchored");
+        assertEquals(v, MotionTracker.serverMotY(p, 0, true), 0.0, "vertical sim carried through the hurt");
         p.remove();
     }
 

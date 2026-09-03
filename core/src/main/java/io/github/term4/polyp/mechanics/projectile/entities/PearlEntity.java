@@ -9,7 +9,6 @@ import io.github.term4.polyp.Services;
 import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.mechanics.damage.DamageSnapshot;
 import io.github.term4.polyp.mechanics.damage.types.fall.FallDamage;
-import io.github.term4.polyp.mechanics.damage.types.generic.GenericDamage;
 import io.github.term4.polyp.mechanics.projectile.ProjectileConfigResolver.ProjectileContext;
 import io.github.term4.polyp.mechanics.projectile.ProjectileSnapshot;
 import io.github.term4.polyp.mechanics.projectile.types.ProjectileTypeConfig;
@@ -101,8 +100,8 @@ public class PearlEntity extends ManagedProjectile {
         if (teleportDamage > 0 && shooter instanceof Player) {
             Services s = services();
             if (s != null && s.damage() != null) {
-                // GenericDamage stands in for a dedicated pearl/fall type. TODO(verify): hurt + invul in-game
-                s.damage().apply(DamageSnapshot.of(shooter, GenericDamage.INSTANCE).withAmount(teleportDamage).withSource(this));
+                // 1.8 DamageSource.fall: armor-bypassing, Feather Falling applies
+                s.damage().apply(DamageSnapshot.of(shooter, FallDamage.INSTANCE).withAmount(teleportDamage).withSource(this));
             }
         }
     }

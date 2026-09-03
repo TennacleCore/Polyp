@@ -1,5 +1,7 @@
 package io.github.term4.polyp.mechanics.projectile.entities;
 
+import net.minestom.server.item.Material;
+import net.minestom.server.item.ItemStack;
 import io.github.term4.polyp.mechanics.damage.DamageSystem;
 import io.github.term4.polyp.mechanics.projectile.ProjectileSnapshot;
 import io.github.term4.polyp.mechanics.projectile.types.Pearl;
@@ -26,6 +28,27 @@ class PearlTeleportDamageTest extends HeadlessServerTest {
         try {
             pearl.onImpact(null);
             assertEquals(before - 5f, shooter.player.getHealth(), 1e-4, "vanilla pearl landing = 5 fall damage");
+        } finally {
+            pearl.remove();
+            shooter.player.remove();
+        }
+    }
+
+    @Test
+    void armorDoesNotSoftenTheLanding() {
+        FakePlayer shooter = FakePlayer.connect(instance, new Pos(5.5, 65, 5.5), "PearlArmored");
+        shooter.player.setHelmet(ItemStack.of(Material.DIAMOND_HELMET));
+        shooter.player.setChestplate(ItemStack.of(Material.DIAMOND_CHESTPLATE));
+        shooter.player.setLeggings(ItemStack.of(Material.DIAMOND_LEGGINGS));
+        shooter.player.setBoots(ItemStack.of(Material.DIAMOND_BOOTS));
+        float before = shooter.player.getHealth();
+        PearlEntity pearl = new PearlEntity(shooter.player, EntityType.ENDER_PEARL,
+                ProjectileSnapshot.of(shooter.player, Pearl.INSTANCE), ProjectileTypeConfig.builder().build());
+        pearl.setInstance(instance, new Pos(10.5, 65, 10.5)).join();
+        try {
+            pearl.onImpact(null);
+            // 1.8 DamageSource.fall bypasses armor: full diamond still takes the whole 5
+            assertEquals(before - 5f, shooter.player.getHealth(), 1e-4, "armor never touches a pearl landing");
         } finally {
             pearl.remove();
             shooter.player.remove();
