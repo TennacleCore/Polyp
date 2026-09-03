@@ -1,5 +1,6 @@
 package io.github.term4.polyp;
 
+import io.github.term4.polyp.platform.compatibility.SpectatorMode;
 import io.github.term4.polyp.mechanics.attack.FakeHits;
 import io.github.term4.polyp.platform.SharedTeam;
 import io.github.term4.polyp.platform.compatibility.CompatAnimatium;
@@ -157,6 +158,7 @@ public final class Polyp {
         }
         // the one lib scoreboard team; features enroll, this cleans up on disconnect
         SharedTeam.install(this);
+        SpectatorMode.install(this);
         // inert unless AttackConfig.fakeHits or CompatConfig.fistRayHits
         FakeHits.install(this);
         if (installWorldSounds) WorldSounds.install(this);

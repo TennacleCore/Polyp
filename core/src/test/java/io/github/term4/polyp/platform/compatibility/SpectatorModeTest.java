@@ -1,5 +1,6 @@
 package io.github.term4.polyp.platform.compatibility;
 
+import io.github.term4.polyp.world.WorldPolicy;
 import net.minestom.server.MinecraftServer;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
@@ -35,11 +36,21 @@ class SpectatorModeTest extends HeadlessServerTest {
             assertEquals(GameMode.SPECTATOR, w.player.getGameMode());
             assertFalse(SpectatorHud.hidden(w.player), "the spoof is lifted: it would have swallowed the change");
             assertEquals(SpectatorMode.Mode.TRUE, SpectatorMode.mode(w.player));
+            assertTrue(w.player.isInvisible(), "a spectator wears the invisible flag: no own shadow on 1.8, a translucent head to co-spectators");
+            // the law under every policy: spectator eyes alone see a spectator's body, none while its camera rides
+            assertFalse(WorldPolicy.canSee(a.player, w.player), "a survival viewer never sees a spectator");
+            a.player.setGameMode(GameMode.SPECTATOR);
+            assertTrue(WorldPolicy.canSee(a.player, w.player), "a spectator viewer does");
+            assertTrue(WorldPolicy.canSee(w.player, a.player));
+            a.player.setGameMode(GameMode.SURVIVAL);
 
             w.sent.clear();
             assertTrue(SpectatorMode.camera(w.player, a.player));
             assertSame(a.player, SpectatorMode.camera(w.player));
             assertEquals(a.player.getEntityId(), w.sent(CameraPacket.class).getLast().cameraId(), "the camera rides the target");
+            a.player.setGameMode(GameMode.SPECTATOR);
+            assertFalse(WorldPolicy.canSee(a.player, w.player), "a rider's body reaches no one, spectator eyes included");
+            a.player.setGameMode(GameMode.SURVIVAL);
             assertEquals(a.player.getPosition(), w.player.getPosition(), "the body lands on the target");
             a.player.refreshPosition(new Pos(12.5, 64, 12.5));
             MinecraftServer.getSchedulerManager().processTick();
@@ -72,6 +83,7 @@ class SpectatorModeTest extends HeadlessServerTest {
 
             assertTrue(SpectatorMode.exit(w.player));
             assertEquals(GameMode.SURVIVAL, w.player.getGameMode(), "the body walked in with comes back");
+            assertFalse(w.player.isInvisible(), "and the flag goes with the mode");
             assertFalse(w.player.isFlying());
             assertFalse(SpectatorHud.hidden(w.player));
             assertNull(SpectatorMode.mode(w.player));

@@ -1,5 +1,6 @@
 package io.github.term4.polyp.world;
 
+import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -26,6 +27,12 @@ public interface WorldPolicy {
         return MechanicsWorld.binding(viewer) == MechanicsWorld.binding(subject);
     }
 
+    /** {@link #refreshSight}: the plain rules re-stamped; a policy holding its own rule lock overrides this. */
+    default void sightChanged(@NotNull Player player) {
+        player.updateViewableRule(v -> WorldPolicy.canSee(v, player));
+        player.updateViewerRule(e -> WorldPolicy.canSee(player, e));
+    }
+
     /** Whether {@code player} may edit blocks of a world they view without belonging to it (staff build mode). */
     default boolean edits(@NotNull Player player, @NotNull MechanicsWorld viewed) {
         return false;
@@ -41,8 +48,19 @@ public interface WorldPolicy {
         return Holder.POLICY.affects(actor, target);
     }
 
+    /**
+     * Vanilla's spectator law sits under every policy: a spectator's body reaches spectator eyes alone, and none
+     * while its camera rides ({@code ServerPlayer.broadcastToPlayer}; 1.8 {@code EntityPlayerMP.isSpectatedByPlayer}).
+     */
     static boolean canSee(@NotNull Player viewer, @NotNull Entity subject) {
+        if (subject instanceof Player body && body.getGameMode() == GameMode.SPECTATOR
+                && (viewer.getGameMode() != GameMode.SPECTATOR || SpectatorCamera.rides(body))) return false;
         return Holder.POLICY.sees(viewer, subject);
+    }
+
+    /** Re-evaluates both of {@code player}'s visibility directions: an input of {@link #canSee} changed. */
+    static void refreshSight(@NotNull Player player) {
+        Holder.POLICY.sightChanged(player);
     }
 
     static boolean canEdit(@NotNull Player player, @NotNull MechanicsWorld viewed) {

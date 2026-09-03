@@ -4,6 +4,12 @@ import net.minestom.server.entity.LivingEntity;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.tracking.ClientInfoTracker;
 import io.github.term4.polyp.tracking.ClientVersion;
+import io.github.term4.polyp.world.SpectatorCamera;
+import io.github.term4.polyp.world.WorldPolicy;
+import net.minestom.server.event.EventFilter;
+import net.minestom.server.event.EventNode;
+import net.minestom.server.event.player.PlayerGameModeChangeEvent;
+import net.minestom.server.event.trait.PlayerEvent;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.GameMode;
@@ -19,9 +25,11 @@ import org.jetbrains.annotations.Nullable;
  * bars off a 1.8 screen ({@link SpectatorHud}) - the scrims spectator, still drawn their own body. {@link Mode#TRUE}:
  * the client's own spectator mode - noclip, and the camera inside whoever they click ({@link #camera}). While it
  * rides, the body follows the target every tick and sneaking brings the camera home, as {@code ServerPlayer.tick}
- * does (1.8: {@code EntityPlayerMP.onUpdate}). 1.7 has no spectator mode, so TRUE is refused there
- * ({@link #supports}) and the app falls back to GHOST. The first {@link #enter} keeps the body the player walked
- * in with; {@link #exit} hands it back.
+ * does (1.8: {@code EntityPlayerMP.onUpdate}). A spectator wears the invisible flag, as vanilla's does: it is what
+ * keeps a 1.8 client from drawing its own shadow while the camera is elsewhere, and what a co-spectator's client
+ * draws as the translucent head; who sees the body at all is {@link WorldPolicy#canSee}'s law. 1.7 has no
+ * spectator mode, so TRUE is refused there ({@link #supports}) and the app falls back to GHOST. The first
+ * {@link #enter} keeps the body the player walked in with; {@link #exit} hands it back.
  */
 public final class SpectatorMode {
 
@@ -31,11 +39,25 @@ public final class SpectatorMode {
 
     private static final Tag<String> MODE = Tag.Transient("polyp:spectator-mode");
     private static final Tag<Worn> WORN = Tag.Transient("polyp:spectator-worn");
-    private static final Tag<Entity> CAMERA = Tag.Transient("polyp:spectator-camera");
+    private static final Tag<Entity> CAMERA = SpectatorCamera.RIDING;
     private static final Tag<Task> RIDE = Tag.Transient("polyp:spectator-ride");
     private static final int FIRST_SPECTATOR_PROTOCOL = 47; // 1.8
 
     private SpectatorMode() {}
+
+    /** Every game-mode change, this API's or a bare one: the flag, then the sight rules once the mode has landed. */
+    public static void install(Polyp polyp) {
+        EventNode<@NotNull PlayerEvent> node = EventNode.type("polyp:spectator-mode", EventFilter.PLAYER);
+        node.addListener(PlayerGameModeChangeEvent.class, e -> {
+            Player player = e.getPlayer();
+            boolean spectator = e.getNewGameMode() == GameMode.SPECTATOR;
+            if (spectator != (player.getGameMode() == GameMode.SPECTATOR)) player.setInvisible(spectator);
+            MinecraftServer.getSchedulerManager().scheduleNextTick(() -> {
+                if (player.isOnline()) WorldPolicy.refreshSight(player);
+            });
+        });
+        polyp.install(node);
+    }
 
     /** Null when not spectating. */
     public static @Nullable Mode mode(@NotNull Player player) {
@@ -71,6 +93,7 @@ public final class SpectatorMode {
                 player.setGameMode(GameMode.SPECTATOR);
             }
         }
+        WorldPolicy.refreshSight(player);
         return true;
     }
 
@@ -87,6 +110,7 @@ public final class SpectatorMode {
             player.setAllowFlying(was.allowFlying());
             player.setFlying(was.flying() && was.allowFlying());
         }
+        WorldPolicy.refreshSight(player);
         return true;
     }
 
@@ -94,6 +118,7 @@ public final class SpectatorMode {
     public static boolean camera(@NotNull Player player, @NotNull Entity target) {
         if (mode(player) != Mode.TRUE || target == player || target.isRemoved()) return false;
         player.setTag(CAMERA, target);
+        WorldPolicy.refreshSight(player); // a rider's body reaches no one
         if (target.getInstance() == player.getInstance()) player.teleport(target.getPosition());
         player.spectate(target);
         if (player.getTag(RIDE) == null) {
@@ -131,6 +156,7 @@ public final class SpectatorMode {
         if (riding == null) return;
         player.removeTag(CAMERA);
         if (!player.isOnline()) return;
+        WorldPolicy.refreshSight(player);
         if (!riding.isRemoved() && riding.getInstance() == player.getInstance()) player.teleport(riding.getPosition());
         player.stopSpectating();
     }
