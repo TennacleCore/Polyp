@@ -1,22 +1,27 @@
 package io.github.term4.polyp.platform.compatibility;
 
+import net.minestom.server.entity.LivingEntity;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.tracking.ClientInfoTracker;
 import io.github.term4.polyp.tracking.ClientVersion;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
 import net.minestom.server.tag.Tag;
+import net.minestom.server.timer.Task;
+import net.minestom.server.timer.TaskSchedule;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
  * The body a spectator wears, and the switch between the two. {@link Mode#GHOST}: adventure, hovering, the stat
  * bars off a 1.8 screen ({@link SpectatorHud}) - the scrims spectator, still drawn their own body. {@link Mode#TRUE}:
- * the client's own spectator mode - noclip, and the camera inside whoever they attack-click ({@link #camera});
- * shift brings it home, the vanilla way. 1.7 has no spectator mode, so TRUE is refused there ({@link #supports})
- * and the app falls back to GHOST. The first {@link #enter} keeps the body the player walked in with; {@link #exit}
- * hands it back.
+ * the client's own spectator mode - noclip, and the camera inside whoever they click ({@link #camera}). While it
+ * rides, the body follows the target every tick and sneaking brings the camera home, as {@code ServerPlayer.tick}
+ * does (1.8: {@code EntityPlayerMP.onUpdate}). 1.7 has no spectator mode, so TRUE is refused there
+ * ({@link #supports}) and the app falls back to GHOST. The first {@link #enter} keeps the body the player walked
+ * in with; {@link #exit} hands it back.
  */
 public final class SpectatorMode {
 
@@ -27,6 +32,7 @@ public final class SpectatorMode {
     private static final Tag<String> MODE = Tag.Transient("polyp:spectator-mode");
     private static final Tag<Worn> WORN = Tag.Transient("polyp:spectator-worn");
     private static final Tag<Entity> CAMERA = Tag.Transient("polyp:spectator-camera");
+    private static final Tag<Task> RIDE = Tag.Transient("polyp:spectator-ride");
     private static final int FIRST_SPECTATOR_PROTOCOL = 47; // 1.8
 
     private SpectatorMode() {}
@@ -84,13 +90,30 @@ public final class SpectatorMode {
         return true;
     }
 
-    /** The camera rides {@code target}; TRUE mode only. The body follows, as vanilla moves it. */
+    /** The camera rides {@code target}; TRUE mode only. */
     public static boolean camera(@NotNull Player player, @NotNull Entity target) {
-        if (mode(player) != Mode.TRUE || target == player) return false;
+        if (mode(player) != Mode.TRUE || target == player || target.isRemoved()) return false;
         player.setTag(CAMERA, target);
         if (target.getInstance() == player.getInstance()) player.teleport(target.getPosition());
         player.spectate(target);
+        if (player.getTag(RIDE) == null) {
+            player.setTag(RIDE, MinecraftServer.getSchedulerManager().scheduleTask(() -> ride(player), TaskSchedule.tick(1), TaskSchedule.tick(1)));
+        }
         return true;
+    }
+
+    private static void ride(Player player) {
+        Entity riding = player.getTag(CAMERA);
+        if (riding == null || !player.isOnline()) {
+            cameraHome(player);
+            return;
+        }
+        boolean alive = !riding.isRemoved() && !(riding instanceof LivingEntity living && living.isDead());
+        if (!alive || riding.getInstance() != player.getInstance() || player.isSneaking()) {
+            cameraHome(player);
+            return;
+        }
+        player.refreshPosition(riding.getPosition()); // no packet: the client rides the camera, not its body
     }
 
     public static @Nullable Entity camera(@NotNull Player player) {
@@ -99,9 +122,15 @@ public final class SpectatorMode {
 
     /** The camera back in the player's own eyes, where the ride left them. */
     public static void cameraHome(@NotNull Player player) {
+        Task task = player.getTag(RIDE);
+        if (task != null) {
+            task.cancel();
+            player.removeTag(RIDE);
+        }
         Entity riding = player.getTag(CAMERA);
         if (riding == null) return;
         player.removeTag(CAMERA);
+        if (!player.isOnline()) return;
         if (!riding.isRemoved() && riding.getInstance() == player.getInstance()) player.teleport(riding.getPosition());
         player.stopSpectating();
     }

@@ -1,5 +1,6 @@
 package io.github.term4.polyp.platform.compatibility;
 
+import net.minestom.server.MinecraftServer;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.coordinate.Pos;
@@ -39,12 +40,33 @@ class SpectatorModeTest extends HeadlessServerTest {
             assertTrue(SpectatorMode.camera(w.player, a.player));
             assertSame(a.player, SpectatorMode.camera(w.player));
             assertEquals(a.player.getEntityId(), w.sent(CameraPacket.class).getLast().cameraId(), "the camera rides the target");
-            assertEquals(a.player.getPosition(), w.player.getPosition(), "the body follows the ride");
+            assertEquals(a.player.getPosition(), w.player.getPosition(), "the body lands on the target");
+            a.player.refreshPosition(new Pos(12.5, 64, 12.5));
+            MinecraftServer.getSchedulerManager().processTick();
+            assertEquals(a.player.getPosition(), w.player.getPosition(), "and follows it every tick");
+
+            // sneaking brings the camera home: the level, checked on the tick, as vanilla does
+            w.sent.clear();
+            w.player.refreshInput(false, false, false, false, false, true, false);
+            MinecraftServer.getSchedulerManager().processTick();
+            assertNull(SpectatorMode.camera(w.player), "sneak dismounts the camera");
+            assertEquals(w.player.getEntityId(), w.sent(CameraPacket.class).getLast().cameraId());
+            w.player.refreshInput(false, false, false, false, false, false, false);
+
+            // a target that leaves brings it home too
+            assertTrue(SpectatorMode.camera(w.player, a.player));
+            a.player.remove();
+            MinecraftServer.getSchedulerManager().processTick();
+            assertNull(SpectatorMode.camera(w.player), "a removed target ends the ride");
+
+            FakePlayer b = FakePlayer.connect(instance, new Pos(6.5, 64, 6.5), "ModeTargetB");
+            assertTrue(SpectatorMode.camera(w.player, b.player));
 
             w.sent.clear();
             assertTrue(SpectatorMode.enter(w.player, SpectatorMode.Mode.GHOST), "back to the ghost body");
             assertEquals(w.player.getEntityId(), w.sent(CameraPacket.class).getFirst().cameraId(), "the camera comes home first");
             assertNull(SpectatorMode.camera(w.player));
+            b.player.remove();
             assertEquals(GameMode.ADVENTURE, w.player.getGameMode());
             assertTrue(SpectatorHud.hidden(w.player));
 
@@ -56,7 +78,7 @@ class SpectatorModeTest extends HeadlessServerTest {
             assertFalse(SpectatorMode.exit(w.player), "nothing to give back twice");
         } finally {
             w.player.remove();
-            a.player.remove();
+            if (!a.player.isRemoved()) a.player.remove();
         }
     }
 
