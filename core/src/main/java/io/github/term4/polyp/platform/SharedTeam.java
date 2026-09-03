@@ -1,5 +1,7 @@
 package io.github.term4.polyp.platform;
 
+import java.util.Set;
+import java.util.HashSet;
 import io.github.term4.polyp.Polyp;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
@@ -34,6 +36,9 @@ import java.util.Map;
  * <p>An app that runs its own scoreboard teams (nametag colors, spectator groups) must keep players off this roster
  * (disable the knobs) and set {@code collisionRule NEVER} / friendly-fire flags on ITS teams instead. Scoreboard teams
  * cannot express per-pair behavior at all, only partitions - see the compat docs.
+ *
+ * <p>A game's own scoreboard teams (Grotto's tab ordering) {@link #suspend} a member here for their stay: the
+ * client's one team slot is theirs, and the member's no-push rides that team's collision rule ({@link #wantsNoPush}).
  */
 public final class SharedTeam {
 
@@ -55,6 +60,7 @@ public final class SharedTeam {
     private static final Map<String, EnumSet<Reason>> roster = new HashMap<>();
     // username -> the profile name their 1.8 tab entry carries (a game's sort name), while it differs
     private static final Map<String, String> aliases = new HashMap<>();
+    private static final Set<String> suspended = new HashSet<>();
 
     private SharedTeam() {}
 
@@ -106,15 +112,31 @@ public final class SharedTeam {
         if (team != null) refresh(player);
     }
 
+    /** Off the wire while a game's own team holds the client's slot; the reasons stay and return on {@code false}. */
+    public static synchronized void suspend(@NotNull Player player, boolean on) {
+        String name = player.getUsername();
+        if (!(on ? suspended.add(name) : suspended.remove(name))) return;
+        sync(name);
+        if (team != null) refresh(player);
+    }
+
+    /** Enrolled for no-push ({@link Reason#NO_PUSH}, or a {@link Reason#SPECTATOR} inside a body): what a game's own
+     *  team's collision rule carries while it holds {@code player}. */
+    public static synchronized boolean wantsNoPush(@NotNull Player player) {
+        EnumSet<Reason> reasons = roster.get(player.getUsername());
+        return reasons != null && (reasons.contains(Reason.NO_PUSH) || reasons.contains(Reason.SPECTATOR));
+    }
+
     private static synchronized void onDisconnect(Player player) {
         String name = player.getUsername();
         if (roster.remove(name) != null) sync(name); // with the alias still mapped, so it leaves the team too
         aliases.remove(name);
+        suspended.remove(name);
     }
 
     /** Reconciles the Minestom team with the roster: membership for {@code name}, collision rule for everyone. */
     private static void sync(String name) {
-        boolean member = roster.containsKey(name);
+        boolean member = roster.containsKey(name) && !suspended.contains(name);
         if (team == null) {
             if (!member) return;
             // default team flags = friendly fire off; registration broadcasts to everyone online, and Minestom
