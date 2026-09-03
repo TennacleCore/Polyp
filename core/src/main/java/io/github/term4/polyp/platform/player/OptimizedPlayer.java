@@ -1,5 +1,6 @@
 package io.github.term4.polyp.platform.player;
 
+import io.github.term4.polyp.tracking.SprintTracker;
 import net.minestom.server.network.packet.server.play.RespawnPacket;
 import net.minestom.server.network.packet.server.play.JoinGamePacket;
 import io.github.term4.polyp.platform.compatibility.SpectatorHud;
@@ -146,6 +147,11 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         // a respawn or join carries the real game mode; the spoof follows it
         if ((p instanceof RespawnPacket || p instanceof JoinGamePacket) && SpectatorHud.hidden(this)) {
             super.sendPacket(SpectatorHud.spoof(this));
+        }
+        // the client's player entity is recreated here, not sprinting and never saying so: a stale flag lands a w-tap
+        if (p instanceof RespawnPacket) {
+            SprintTracker.clearTransient(this);
+            if (isSprinting()) setSprinting(false);
         }
     }
 

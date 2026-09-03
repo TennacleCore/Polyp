@@ -1,5 +1,7 @@
 package io.github.term4.polyp.mechanics.projectile.entities;
 
+import java.util.List;
+import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.tracking.motion.VelocityContext;
 import io.github.term4.polyp.entity.MechanicsEntity;
@@ -143,6 +145,10 @@ public abstract class ProjectileEntity extends MechanicsEntity {
     private boolean burning;
     private int stuckDespawnTicks = 1200;
     private int stuckTicks;
+    // a 1.8 client counts its own ticksInGround and setDead()s at 1200 from ITS stick; a longer server life
+    // (or none) leaves an invisible, still collectable arrow there unless the spawn is re-sent under that window
+    private static final int LEGACY_STUCK_LIFE = 1200;
+    private static final int LEGACY_STUCK_REARM = 1000;
 
     protected ProjectileEntity(@Nullable Entity shooter, @NotNull EntityType entityType) {
         super(entityType);
@@ -352,9 +358,13 @@ public abstract class ProjectileEntity extends MechanicsEntity {
         if (!MechanicsWorld.ownsCurrentTick(this)) return;
         if (isStuck()) {
             if (isRemoved()) return;
-            if (stuckDespawnTicks > 0 && ++stuckTicks >= stuckDespawnTicks) {
+            stuckTicks++;
+            if (stuckDespawnTicks > 0 && stuckTicks >= stuckDespawnTicks) {
                 remove();
                 return;
+            }
+            if ((stuckDespawnTicks <= 0 || stuckDespawnTicks > LEGACY_STUCK_LIFE) && stuckTicks % LEGACY_STUCK_REARM == 0) {
+                rearmLegacyViewers();
             }
             updateProjectile(time);
             if (isRemoved()) return;
@@ -371,6 +381,16 @@ public abstract class ProjectileEntity extends MechanicsEntity {
         }
         if (!isRemoved()) updateProjectile(time);
         if (!isRemoved()) anchorLegacyViewersUnderDilation();
+    }
+
+    // removeViewer no-ops on an auto-viewable entity: drive the destroy + spawn, a fresh spawn restarts the client's count
+    private void rearmLegacyViewers() {
+        for (Player viewer : List.copyOf(getViewers())) {
+            if (viewer instanceof OptimizedPlayer op && op.compat().legacyClient()) {
+                updateOldViewer(viewer);
+                updateNewViewer(viewer);
+            }
+        }
     }
 
     /** A 1.8 client runs NATIVE local physics on a dilated projectile (it can't be told the tick rate), so its arc
