@@ -1,5 +1,7 @@
 package io.github.term4.polyp.world;
 
+import net.minestom.server.MinecraftServer;
+import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.fx.FxContext;
@@ -16,10 +18,9 @@ import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Place and footstep sounds Minestom doesn't emit, played through the {@link Fx} registry
- * ({@link Fx#STEP} / {@link Fx#BLOCK_PLACE}, the block as the context detail). Owns only the cadence and
- * block resolution; look and audience live in the registered handlers. Breaks are emitted by the world
- * layer (the app's shard bridge routes them into {@link Fx#BLOCK_BREAK}).
+ * Place, break and footstep sounds Minestom doesn't emit, played through the {@link Fx} registry
+ * ({@link Fx#STEP} / {@link Fx#BLOCK_PLACE} / {@link Fx#BLOCK_BREAK}, the block as the context detail). Owns only
+ * the cadence and block resolution; look and audience live in the registered handlers.
  */
 public final class WorldSounds {
 
@@ -32,6 +33,7 @@ public final class WorldSounds {
     public static void install(Polyp polyp) {
         EventNode<@NotNull PlayerEvent> node = EventNode.type("polyp:world-sounds", EventFilter.PLAYER);
         node.addListener(PlayerBlockPlaceEvent.class, e -> onPlace(polyp, e));
+        node.addListener(PlayerBlockBreakEvent.class, e -> onBreak(polyp, e));
         node.addListener(PlayerMoveEvent.class, e -> onMove(polyp, e));
         polyp.install(node);
     }
@@ -42,6 +44,16 @@ public final class WorldSounds {
         Fx.play(polyp.services(), Fx.BLOCK_PLACE,
                 FxContext.at(MechanicsWorld.of(e.getPlayer()), e.getBlockPosition().add(0.5, 0.5, 0.5), e.getPlayer())
                         .withDetail(e.getBlock()));
+    }
+
+    private static void onBreak(Polyp polyp, PlayerBlockBreakEvent e) {
+        // a guard on a node registered after this one (a spectator, a dead seat) still cancels: read the verdict at end of tick
+        MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
+            if (e.isCancelled()) return;
+            Fx.play(polyp.services(), Fx.BLOCK_BREAK,
+                    FxContext.at(MechanicsWorld.of(e.getPlayer()), e.getBlockPosition().add(0.5, 0.5, 0.5), e.getPlayer())
+                            .withDetail(e.getBlock()));
+        });
     }
 
     private static void onMove(Polyp polyp, PlayerMoveEvent e) {

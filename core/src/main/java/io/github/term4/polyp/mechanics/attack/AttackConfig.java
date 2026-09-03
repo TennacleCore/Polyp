@@ -31,7 +31,8 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
      * fold, never the damage/KB dealt. {@code 1.0} = none; vanilla {@link #VANILLA_FULL_HIT_SCALE}.
      */
     public final FieldValue<AttackContext, Double> fullHitScale;
-    /** Vanilla's server gate: eye to the target's box within {@code entity_interaction_range + padding} (modern 3.0; 1.8's 6-block rule lands the same). {@code null}/negative = off. */
+    /** Vanilla's server gate: eye to the target's box within {@code entity_interaction_range + padding} (modern 3.0; 1.8's 6-block rule lands the same). {@code null}/negative = off.
+     *  Minestom's own gate ({@code minestom.enforce-entity-interaction-range}, range + 1) runs first while on: a host turns it off or nothing above 1 applies. */
     public final @Nullable FieldValue<AttackContext, Double> reachPadding;
 
     private AttackConfig(Builder b) {

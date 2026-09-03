@@ -1,5 +1,8 @@
 package io.github.term4.polyp.world;
 
+import net.minestom.server.coordinate.BlockVec;
+import net.minestom.server.MinecraftServer;
+import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.Polyp;
@@ -21,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class PlaceSoundPositionTest extends HeadlessServerTest {
@@ -35,6 +39,31 @@ class PlaceSoundPositionTest extends HeadlessServerTest {
     void restoreScope() { Polyp.getInstance().profiles().setGlobal(previous); }
 
     /** Vanilla's ItemBlock/BlockItem sounds the block CENTER; client-side-sound mods dedup against it. */
+    @Test
+    void breakSoundsAtTheBlockCenterUnlessCancelled() {
+        AtomicReference<Point> at = new AtomicReference<>();
+        Polyp.getInstance().profiles().setGlobal(MechanicsProfile.builder()
+                .set(MechanicsKeys.FX, FxRegistry.empty().register(Fx.BLOCK_BREAK, ctx -> at.set(ctx.position())))
+                .build());
+        FakePlayer breaker = FakePlayer.connect(instance, new Pos(0.5, 41, 0.5), "Breaker");
+        try {
+            var refused = new PlayerBlockBreakEvent(breaker.player, instance, Block.STONE, Block.AIR, new BlockVec(-4, 40, 10), BlockFace.TOP);
+            EventDispatcher.call(refused);
+            refused.setCancelled(true); // a guard that runs after the emitter's node
+            MinecraftServer.getSchedulerManager().processTickEnd();
+            assertNull(at.get(), "a refused dig makes no sound");
+
+            EventDispatcher.call(new PlayerBlockBreakEvent(breaker.player, instance, Block.STONE, Block.AIR, new BlockVec(-4, 40, 10), BlockFace.TOP));
+            MinecraftServer.getSchedulerManager().processTickEnd();
+            assertNotNull(at.get(), "the break emitter ran");
+            assertEquals(-3.5, at.get().x(), 1e-9);
+            assertEquals(40.5, at.get().y(), 1e-9);
+            assertEquals(10.5, at.get().z(), 1e-9);
+        } finally {
+            breaker.player.remove();
+        }
+    }
+
     @Test
     void placeSoundsAtTheBlockCenter() {
         AtomicReference<Point> at = new AtomicReference<>();
