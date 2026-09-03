@@ -1,6 +1,5 @@
 package io.github.term4.polyp.presets.scrims18;
 
-import io.github.term4.polyp.mechanics.damage.DamageConfig;
 import io.github.term4.polyp.presets.hypixel.Hypixel;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
@@ -17,7 +16,7 @@ public final class Scrims18 {
 
     public static MechanicsProfile profile() {
         return Hypixel.profile().toBuilder()
-                .mutate(MechanicsKeys.DAMAGE, damage -> DamageConfig.builder(damage).invulTicks(10).build())
+                .mutate(MechanicsKeys.DAMAGE, Damage::config)
                 .set(MechanicsKeys.PROJECTILES, Projectiles.config())
                 .build();
     }
