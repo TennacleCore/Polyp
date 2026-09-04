@@ -66,9 +66,10 @@ public final class Bow implements Shootable {
         ItemStack arrowItem = slot >= 0 ? p.getInventory().getItemStack(slot) : ItemStack.AIR;
         // Infinity keeps only PLAIN arrows (vanilla); tipped/spectral are always consumed.
         boolean keepArrow = creative || (Enchants.level(e.getItemStack(), Infinity.KEY) > 0 && arrowItem.material() == Material.ARROW);
-        if (!keepArrow && slot >= 0) p.getInventory().setItemStack(slot, arrowItem.withAmount(arrowItem.amount() - 1));
         ProjectileSnapshot snap = ProjectileSnapshot.of(p, arrowType).withPower(power).withItem(e.getItemStack());
         ProjectileEntity proj = system.launch(snap);
+        if (proj == null) return; // a refused launch costs no arrow and makes no sound
+        if (!keepArrow && slot >= 0) p.getInventory().setItemStack(slot, arrowItem.withAmount(arrowItem.amount() - 1));
         Fx.play(system.services(), Fx.BOW_SHOOT, FxContext.of(p));
         if (proj instanceof ArrowEntity arrow) {
             arrow.setCritical(power >= 1f && rollCrit(system.resolveFlight(snap).critChance()));
