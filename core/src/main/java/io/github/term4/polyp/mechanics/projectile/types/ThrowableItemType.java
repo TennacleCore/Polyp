@@ -80,9 +80,10 @@ public abstract class ThrowableItemType extends ProjectileType {
         CooldownSystem cooldowns = polyp != null ? polyp.module(CooldownSystem.class) : null;
         if (cooldowns != null && !cooldowns.tryUse(p, material)) return;
         p.setTag(LAST_THROW_AGE, age);
+        var proj = system.launch(ProjectileSnapshot.of(p, this).withItem(item));
+        if (proj == null) return; // a refused launch costs no item and makes no sound
         Key sound = throwSound();
         if (sound != null && polyp != null) Fx.play(polyp.services(), sound, FxContext.of(p));
-        var proj = system.launch(ProjectileSnapshot.of(p, this).withItem(item));
         HeldItems.consumeOne(p, hand);
         system.firstStep(proj);
     }
