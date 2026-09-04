@@ -7,6 +7,7 @@ import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventDispatcher;
+import net.minestom.server.event.inventory.CreativeInventoryActionEvent;
 import net.minestom.server.event.player.PlayerPickBlockEvent;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
@@ -14,6 +15,7 @@ import net.minestom.server.item.Material;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Vanilla's {@code tryPickItem}: snap to a hotbar match, swap up an inventory match, create one in creative. */
@@ -83,6 +85,39 @@ class CompatPickBlockTest extends HeadlessServerTest {
             assertEquals(Material.STONE, creative.getInventory().getItemStack(creative.getHeldSlot()).material());
         } finally {
             creative.remove();
+        }
+    }
+
+    @Test
+    void aLegacyClientsOwnWriteIsTurnedBackIntoASnap() {
+        Player player = builder("PickLegacy", GameMode.CREATIVE, (byte) 3);
+        try {
+            player.getInventory().setItemStack(1, ItemStack.of(Material.STONE, 64));
+            player.getInventory().setItemStack(3, ItemStack.of(Material.DIAMOND_SWORD));
+
+            // what a 1.8 client sends after missing its own hotbar: the block, into the slot it was holding
+            var wrote = new CreativeInventoryActionEvent(player, 3, ItemStack.of(Material.STONE));
+            EventDispatcher.call(wrote);
+
+            assertTrue(wrote.isCancelled(), "the write is refused");
+            assertEquals(1, player.getHeldSlot(), "and the selected slot moves to the stone it already had");
+            assertEquals(Material.DIAMOND_SWORD, player.getInventory().getItemStack(3).material(),
+                    "the held item survives");
+        } finally {
+            player.remove();
+        }
+    }
+
+    @Test
+    void aWriteWithNothingToSnapToStands() {
+        Player player = builder("PickLegacyFresh", GameMode.CREATIVE, (byte) 3);
+        try {
+            var wrote = new CreativeInventoryActionEvent(player, 3, ItemStack.of(Material.STONE));
+            EventDispatcher.call(wrote);
+            assertFalse(wrote.isCancelled(), "nothing to snap to: the client's own write is right");
+            assertEquals(3, player.getHeldSlot());
+        } finally {
+            player.remove();
         }
     }
 

@@ -6,6 +6,7 @@ import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
+import net.minestom.server.event.inventory.CreativeInventoryActionEvent;
 import net.minestom.server.event.player.PlayerPickBlockEvent;
 import net.minestom.server.event.trait.PlayerEvent;
 import net.minestom.server.instance.block.Block;
@@ -24,8 +25,10 @@ import org.jetbrains.annotations.NotNull;
  * infinite materials. The slot it lands in walks forward from the selected one, taking the first empty, else
  * the first unenchanted, else the selected one.
  *
- * <p>1.8 is out of reach here and always will be: that client picks inside its own inventory and sends no pick
- * packet, so the server is never told one happened.
+ * <p>A 1.8 client has no pick packet: it decides inside its own inventory and only reports the creative slot it
+ * wrote. It decides by 1.8 item id and damage, which a stack that came down the Via item chain does not always
+ * match, so it misses its own hotbar and overwrites the held slot. The second listener reads that report and
+ * applies the same rule the modern path does, which is the outcome the player expected either way.
  */
 public final class CompatPickBlock {
 
@@ -37,12 +40,29 @@ public final class CompatPickBlock {
             Material material = blockItem(event.getBlock());
             if (material != null) pick(event.getPlayer(), ItemStack.of(material));
         });
+        // a 1.8 pick arrives as the creative write it already made: one block, into a hotbar slot. Not gated on
+        // the client's version - a modern pick never comes this way, and legacy detection lands after login
+        node.addListener(CreativeInventoryActionEvent.class, event -> {
+            Player player = event.getPlayer();
+            ItemStack wrote = event.getClickedItem();
+            int slot = event.getSlot();
+            if (slot < 0 || slot > 8 || wrote.amount() != 1 || wrote.material().block() == null) return;
+            PlayerInventory inventory = player.getInventory();
+            // by material, not by components: item identity is what survives the 1.8 round trip
+            if (inventory.getItemStack(slot).material() == wrote.material()) return; // it landed where it belongs
+            for (byte held = 0; held < 9; held++) {
+                if (inventory.getItemStack(held).material() != wrote.material()) continue;
+                event.setCancelled(true); // the library refreshes the slot the client wrote behind our back
+                player.setHeldItemSlot(held);
+                return;
+            }
+        });
         polyp.install(node);
     }
 
     // getCloneItemStack, as far as the block registry carries it - block entity data is not modelled here
     private static Material blockItem(Block block) {
-        Material material = block.registry().material();
+        Material material = block.material();
         return material == null || material == Material.AIR ? null : material;
     }
 
