@@ -52,14 +52,13 @@ public final class CompatPickBlock {
     }
 
     /**
-     * What the client did to itself, undone. It writes into the slot it holds (or an empty one it moved to
-     * first) because it failed to recognise its own stack; when the same block IS in the hotbar by the server's
-     * reckoning, the write is refused and the selected slot moves there instead - which is all vanilla would
-     * have done.
+     * A 1.8 pick that missed, made non-destructive. The client writes the block into the slot it holds because
+     * it failed to recognise its own stack, and whatever was there is gone; this moves that item into the
+     * inventory first and lets the write land.
      *
-     * <p>Only ever a cancel and a slot change, never a write of our own. The client and the server disagree
-     * about this inventory the moment a pick misfires, and a correcting write lands on whichever slot the
-     * SERVER thinks is which, destroying whatever was there.
+     * <p>It does NOT cancel and it does NOT move the selected slot. Creative slots are client-authoritative on
+     * 1.8 - Paper's own handler just applies what it is told - so a server that refuses the write is overruled
+     * the moment the client re-asserts it, and the item is lost anyway. Nothing here fights the client.
      */
     private static void legacyReport(CreativeInventoryActionEvent event) {
         Player player = event.getPlayer();
@@ -69,16 +68,11 @@ public final class CompatPickBlock {
         if (slot < 0 || slot > 8 || wrote.isAir() || wrote.material().block() == null) return;
         PlayerInventory inventory = player.getInventory();
         ItemStack displaced = inventory.getItemStack(slot);
-        // a pick lands in the held slot, or in one that was empty; a drag onto an occupied slot is not ours
-        if (slot != player.getHeldSlot() && !displaced.isAir()) return;
-        // by material, not by components: item identity is what survives the 1.8 round trip
-        if (displaced.material() == wrote.material()) return; // it landed where it belongs
-        int hotbar = find(inventory, wrote.material(), 0, 9);
-        debug(player, hotbar >= 0 ? "snap" : "wrote", slot, wrote, hotbar);
-        if (hotbar < 0) return; // nothing to snap to: the client's own write is what vanilla would do too
-        event.setCancelled(true);
-        player.setHeldItemSlot((byte) hotbar);
-        inventory.update(); // the client still believes it wrote a block; put it back in step
+        if (displaced.isAir() || displaced.material() == wrote.material()) return; // nothing of theirs is at stake
+        if (slot != player.getHeldSlot()) return; // a pick always lands in the slot they hold
+        int free = find(inventory, Material.AIR, 9, 36);
+        debug(player, free >= 0 ? "rescue" : "lost", slot, wrote, free);
+        if (free >= 0) inventory.setItemStack(free, displaced);
     }
 
     private static int find(PlayerInventory inventory, Material material, int from, int to) {
