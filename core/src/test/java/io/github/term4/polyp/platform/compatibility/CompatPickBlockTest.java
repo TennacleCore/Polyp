@@ -7,7 +7,6 @@ import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventDispatcher;
-import net.minestom.server.event.inventory.CreativeInventoryActionEvent;
 import net.minestom.server.event.player.PlayerPickBlockEvent;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
@@ -15,7 +14,6 @@ import net.minestom.server.item.Material;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Vanilla's {@code tryPickItem}: snap to a hotbar match, swap up an inventory match, create one in creative. */
@@ -85,58 +83,6 @@ class CompatPickBlockTest extends HeadlessServerTest {
             assertEquals(Material.STONE, creative.getInventory().getItemStack(creative.getHeldSlot()).material());
         } finally {
             creative.remove();
-        }
-    }
-
-    @Test
-    void aLegacyWriteKeepsWhatItLandsOn() {
-        Player player = builder("PickLegacy", GameMode.CREATIVE, (byte) 5);
-        try {
-            player.getInventory().setItemStack(0, ItemStack.of(Material.STONE, 64));
-            player.getInventory().setItemStack(5, ItemStack.of(Material.BOW));
-
-            // the client missed its own stone and wrote into the slot it was holding
-            var wrote = new CreativeInventoryActionEvent(player, 5, ItemStack.of(Material.STONE));
-            EventDispatcher.call(wrote);
-
-            assertFalse(wrote.isCancelled(), "refusing it only makes the client re-assert and win");
-            assertEquals(5, player.getHeldSlot(), "and we do not move their selector under them");
-            assertEquals(Material.BOW, player.getInventory().getItemStack(9).material(),
-                    "the bow went to the inventory instead of being destroyed");
-        } finally {
-            player.remove();
-        }
-    }
-
-    @Test
-    void aWriteOntoAirOrOntoItsOwnMaterialTouchesNothing() {
-        Player player = builder("PickLegacyQuiet", GameMode.CREATIVE, (byte) 5);
-        try {
-            player.getInventory().setItemStack(5, ItemStack.of(Material.STONE, 64));
-            EventDispatcher.call(new CreativeInventoryActionEvent(player, 5, ItemStack.of(Material.STONE)));
-            assertTrue(player.getInventory().getItemStack(9).isAir(), "the same material is a no-op write");
-
-            player.getInventory().setItemStack(5, ItemStack.AIR);
-            EventDispatcher.call(new CreativeInventoryActionEvent(player, 5, ItemStack.of(Material.STONE)));
-            assertTrue(player.getInventory().getItemStack(9).isAir(), "an empty slot has nothing to rescue");
-
-            player.getInventory().setItemStack(5, ItemStack.of(Material.BOW));
-            EventDispatcher.call(new CreativeInventoryActionEvent(player, 5, ItemStack.AIR));
-            assertTrue(player.getInventory().getItemStack(9).isAir(), "clearing a slot is not a pick");
-        } finally {
-            player.remove();
-        }
-    }
-
-    @Test
-    void aWriteIntoASlotTheyAreNotHoldingIsTheirOwnArrangement() {
-        Player player = builder("PickLegacyDrag", GameMode.CREATIVE, (byte) 3);
-        try {
-            player.getInventory().setItemStack(5, ItemStack.of(Material.BOW));
-            EventDispatcher.call(new CreativeInventoryActionEvent(player, 5, ItemStack.of(Material.STONE, 64)));
-            assertTrue(player.getInventory().getItemStack(9).isAir(), "a drag, not a pick");
-        } finally {
-            player.remove();
         }
     }
 
