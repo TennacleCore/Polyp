@@ -1,6 +1,10 @@
 package io.github.term4.polyp.mechanics.projectile;
 
+import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.Polyp;
+import io.github.term4.polyp.mechanics.cooldown.CooldownConfig;
+import io.github.term4.polyp.mechanics.cooldown.CooldownSystem;
 import io.github.term4.polyp.api.event.projectile.ProjectileLaunchEvent;
 import io.github.term4.polyp.mechanics.projectile.types.Fireball;
 import io.github.term4.polyp.mechanics.projectile.types.Snowball;
@@ -16,6 +20,7 @@ import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.event.player.PlayerUseItemOnBlockEvent;
+import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.block.BlockFace;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -24,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * One click = one throw: a block-aimed click arrives as use_item_on_block FOLLOWED by use_item (a plain throwable has
@@ -55,6 +61,35 @@ class ThrowableItemTypeTest extends HeadlessServerTest {
             system.disable(Snowball.KEY);
             system.disable(Fireball.KEY);
             handler.removeChild(counter);
+            handler.removeChild(system.node());
+        }
+    }
+
+    @Test
+    void refusedThrowCostsNothing() {
+        CooldownSystem cooldowns = CooldownSystem.install(polyp);
+        InstanceContainer inst = flatInstance(MechanicsProfile.builder()
+                .set(MechanicsKeys.COOLDOWNS, CooldownConfig.builder().cooldown(Material.SNOWBALL, 20).build())
+                .build());
+        var system = new ProjectileSystem(Polyp.getInstance(), Vanilla18.projectiles());
+        system.registerVanillaDefaults();
+        system.enable(Snowball.KEY);
+        var handler = MinecraftServer.getGlobalEventHandler();
+        handler.addChild(system.node());
+        EventNode<Event> refuse = EventNode.all("test:refuse-launch");
+        refuse.addListener(ProjectileLaunchEvent.class, e -> e.setCancelled(true));
+        handler.addChild(refuse);
+        try {
+            var p = FakePlayer.connect(inst, new Pos(8.5, 65, 8.5), "RefusedThrower").player;
+            ItemStack snowballs = ItemStack.of(Material.SNOWBALL, 16);
+            p.setItemInMainHand(snowballs);
+            EventDispatcher.call(new PlayerUseItemEvent(p, PlayerHand.MAIN, snowballs, 0));
+            assertEquals(16, p.getItemInMainHand().amount(), "the snowball stays in hand");
+            assertFalse(cooldowns.isOnCooldown(p, Material.SNOWBALL), "and the cooldown is never armed");
+            p.remove();
+        } finally {
+            handler.removeChild(refuse);
+            system.disable(Snowball.KEY);
             handler.removeChild(system.node());
         }
     }

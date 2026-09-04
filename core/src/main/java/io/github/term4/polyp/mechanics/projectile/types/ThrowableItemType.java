@@ -78,10 +78,11 @@ public abstract class ThrowableItemType extends ProjectileType {
         if (last != null && last == age) return; // the same click's second packet
         // server-authoritative cooldown (the client's own overlay is prediction-only and spammable)
         CooldownSystem cooldowns = polyp != null ? polyp.module(CooldownSystem.class) : null;
-        if (cooldowns != null && !cooldowns.tryUse(p, material)) return;
+        if (cooldowns != null && cooldowns.isOnCooldown(p, material)) return;
         p.setTag(LAST_THROW_AGE, age);
         var proj = system.launch(ProjectileSnapshot.of(p, this).withItem(item));
-        if (proj == null) return; // a refused launch costs no item and makes no sound
+        if (proj == null) return; // a refused launch costs no item, no sound and no cooldown
+        if (cooldowns != null) cooldowns.arm(p, material);
         Key sound = throwSound();
         if (sound != null && polyp != null) Fx.play(polyp.services(), sound, FxContext.of(p));
         HeldItems.consumeOne(p, hand);

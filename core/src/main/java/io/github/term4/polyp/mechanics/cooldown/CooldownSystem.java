@@ -19,8 +19,8 @@ import java.util.Map;
 /**
  * Server-authoritative item-use cooldowns. Vanilla's are client-predicted only (the {@code use_cooldown} component) -
  * the server happily honors a use packet from a client that ignores its own overlay. This system is the authority:
- * consumers ({@code ThrowableItemType} etc.) gate on {@link #tryUse}, which also sends the client overlay
- * ({@code set_cooldown}). Legacy 1.8 clients have no cooldown wire - enforcement still applies, the overlay just
+ * consumers gate on {@link #isOnCooldown} or {@link #tryUse} and {@link #arm} once the use actually lands,
+ * which also sends the client overlay ({@code set_cooldown}). Legacy 1.8 clients have no cooldown wire - enforcement still applies, the overlay just
  * doesn't render.
  */
 public final class CooldownSystem implements MechanicsModule {
@@ -66,21 +66,33 @@ public final class CooldownSystem implements MechanicsModule {
      * client overlay. No config for the material = always allowed.
      */
     public boolean tryUse(Player player, Material material) {
+        Integer ticks = ticks(player, material);
+        if (ticks == null) return true;
+        if (isOnCooldown(player, material)) return false;
+        arm(player, material, ticks);
+        return true;
+    }
+
+    /** Arms the cooldown without gating on it - for a use that only knows it went through after the fact. */
+    public void arm(Player player, Material material) {
+        Integer ticks = ticks(player, material);
+        if (ticks != null) arm(player, material, ticks);
+    }
+
+    private void arm(Player player, Material material, int ticks) {
+        String group = material.key().asString();
+        Map<String, Long> active = player.getTag(ACTIVE);
+        if (active == null) player.setTag(ACTIVE, active = new HashMap<>());
+        active.put(group, TickSystem.tick(player)
+                + TickScaler.duration(ticks, polyp.profiles().resolve(player, MechanicsKeys.TICK_SCALING), KEY));
+        // the overlay counts on the CLIENT's clock, so it gets the unscaled vanilla ticks (same real time)
+        player.sendPacket(new SetCooldownPacket(group, ticks));
+    }
+
+    private @Nullable Integer ticks(Player player, Material material) {
         CooldownConfig cfg = polyp.profiles().resolve(player, MechanicsKeys.COOLDOWNS);
         if (cfg == null) cfg = config;
         Integer ticks = cfg != null ? cfg.ticks(material) : null;
-        if (ticks == null || ticks <= 0) return true;
-
-        String group = material.key().asString();
-        long now = TickSystem.tick(player);
-        Map<String, Long> active = player.getTag(ACTIVE);
-        if (active == null) player.setTag(ACTIVE, active = new HashMap<>());
-        Long until = active.get(group);
-        if (until != null && now < until) return false;
-
-        active.put(group, now + TickScaler.duration(ticks, polyp.profiles().resolve(player, MechanicsKeys.TICK_SCALING), KEY));
-        // the overlay counts on the CLIENT's clock, so it gets the unscaled vanilla ticks (same real time)
-        player.sendPacket(new SetCooldownPacket(group, ticks));
-        return true;
+        return ticks == null || ticks <= 0 ? null : ticks;
     }
 }
