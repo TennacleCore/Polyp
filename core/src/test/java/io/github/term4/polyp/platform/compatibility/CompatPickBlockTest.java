@@ -109,6 +109,45 @@ class CompatPickBlockTest extends HeadlessServerTest {
     }
 
     @Test
+    void aMatchDeeperInTheInventoryKeepsWhatTheHeldSlotHeld() {
+        Player player = builder("PickLegacyDeep", GameMode.CREATIVE, (byte) 3);
+        try {
+            for (byte slot = 0; slot < 9; slot++) {
+                player.getInventory().setItemStack(slot, ItemStack.of(Material.DIRT, 1));
+            }
+            player.getInventory().setItemStack(3, ItemStack.of(Material.DIAMOND_SWORD));
+            player.getInventory().setItemStack(20, ItemStack.of(Material.STONE, 64));
+
+            // the client swapped its own two slots and told us about one of them
+            var wrote = new CreativeInventoryActionEvent(player, 3, ItemStack.of(Material.STONE, 64));
+            EventDispatcher.call(wrote);
+
+            assertFalse(wrote.isCancelled(), "the stone still lands in the held slot, as it did on the client");
+            assertEquals(Material.DIAMOND_SWORD, player.getInventory().getItemStack(20).material(),
+                    "and the sword went where the stone came from, instead of being destroyed");
+        } finally {
+            player.remove();
+        }
+    }
+
+    @Test
+    void aDragOntoAnOccupiedSlotIsNotAPick() {
+        Player player = builder("PickLegacyDrag", GameMode.CREATIVE, (byte) 3);
+        try {
+            player.getInventory().setItemStack(1, ItemStack.of(Material.STONE, 64));
+            player.getInventory().setItemStack(5, ItemStack.of(Material.DIAMOND_SWORD));
+
+            var wrote = new CreativeInventoryActionEvent(player, 5, ItemStack.of(Material.STONE, 64));
+            EventDispatcher.call(wrote);
+
+            assertFalse(wrote.isCancelled(), "a slot they are not holding, already occupied: their own arrangement");
+            assertEquals(3, player.getHeldSlot());
+        } finally {
+            player.remove();
+        }
+    }
+
+    @Test
     void aWriteWithNothingToSnapToStands() {
         Player player = builder("PickLegacyFresh", GameMode.CREATIVE, (byte) 3);
         try {

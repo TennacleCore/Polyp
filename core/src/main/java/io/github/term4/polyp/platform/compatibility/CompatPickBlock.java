@@ -14,6 +14,8 @@ import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Middle-click, which is the SERVER's to answer: the client only says which block it aimed at, and vanilla's
@@ -32,6 +34,9 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class CompatPickBlock {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(CompatPickBlock.class);
+    private static final boolean DEBUG = Boolean.getBoolean("polyp.debug.pick");
+
     private CompatPickBlock() {}
 
     public static void install(@NotNull Polyp polyp) {
@@ -40,24 +45,62 @@ public final class CompatPickBlock {
             Material material = blockItem(event.getBlock());
             if (material != null) pick(event.getPlayer(), ItemStack.of(material));
         });
-        // a 1.8 pick arrives as the creative write it already made: one block, into a hotbar slot. Not gated on
-        // the client's version - a modern pick never comes this way, and legacy detection lands after login
-        node.addListener(CreativeInventoryActionEvent.class, event -> {
-            Player player = event.getPlayer();
-            ItemStack wrote = event.getClickedItem();
-            int slot = event.getSlot();
-            if (slot < 0 || slot > 8 || wrote.amount() != 1 || wrote.material().block() == null) return;
-            PlayerInventory inventory = player.getInventory();
-            // by material, not by components: item identity is what survives the 1.8 round trip
-            if (inventory.getItemStack(slot).material() == wrote.material()) return; // it landed where it belongs
-            for (byte held = 0; held < 9; held++) {
-                if (inventory.getItemStack(held).material() != wrote.material()) continue;
-                event.setCancelled(true); // the library refreshes the slot the client wrote behind our back
-                player.setHeldItemSlot(held);
-                return;
-            }
-        });
+        // a 1.8 pick arrives as the creative write the client already made. Not gated on the client's version:
+        // a modern pick never comes this way, and legacy detection only lands after login
+        node.addListener(CreativeInventoryActionEvent.class, event -> legacyReport(event));
         polyp.install(node);
+    }
+
+    /**
+     * What the client did to itself, undone or completed. It writes into the slot it holds (or an empty one it
+     * moved to first), and when it found the block deeper in the inventory it ALSO moved the displaced stack
+     * there - a two-slot edit it only ever reports half of, which is how a held item goes missing.
+     */
+    private static void legacyReport(CreativeInventoryActionEvent event) {
+        Player player = event.getPlayer();
+        ItemStack wrote = event.getClickedItem();
+        int slot = event.getSlot();
+        PlayerInventory inventory = player.getInventory();
+        ItemStack displaced = slot >= 0 && slot < 9 ? inventory.getItemStack(slot) : ItemStack.AIR;
+        // a pick lands in the held slot, or in one that was empty; a drag onto an occupied slot is not ours
+        if (slot < 0 || slot > 8 || wrote.material().block() == null) return;
+        if (slot != player.getHeldSlot() && !displaced.isAir()) return;
+        if (displaced.material() == wrote.material()) return; // it landed where it belongs
+        // by material, not by components: item identity is what survives the 1.8 round trip
+        int hotbar = find(inventory, wrote.material(), 0, 9);
+        if (hotbar >= 0) {
+            event.setCancelled(true); // the library refreshes the slot the client wrote behind our back
+            player.setHeldItemSlot((byte) hotbar);
+            debug(player, "snap", slot, wrote, hotbar);
+            return;
+        }
+        int deeper = find(inventory, wrote.material(), 9, 36);
+        if (deeper >= 0) {
+            inventory.setItemStack(deeper, displaced); // the half the client did and never reported
+            debug(player, "swap", slot, wrote, deeper);
+            return;
+        }
+        debug(player, "wrote", slot, wrote, -1);
+    }
+
+    private static int find(PlayerInventory inventory, Material material, int from, int to) {
+        for (int slot = from; slot < to; slot++) {
+            if (inventory.getItemStack(slot).material() == material) return slot;
+        }
+        return -1;
+    }
+
+    /** {@code -Dpolyp.debug.pick=true}: one line per creative write we looked at, and what we made of it. */
+    private static void debug(Player player, String what, int slot, ItemStack wrote, int other) {
+        if (!DEBUG) return;
+        StringBuilder hotbar = new StringBuilder();
+        for (int i = 0; i < 9; i++) {
+            ItemStack held = player.getInventory().getItemStack(i);
+            hotbar.append(i).append('=').append(held.isAir() ? "-" : held.material().key().value())
+                    .append('x').append(held.amount()).append(' ');
+        }
+        LOGGER.info("pick {} slot={} held={} item={}x{} other={} | {}", what, slot, player.getHeldSlot(),
+                wrote.material().key().value(), wrote.amount(), other, hotbar.toString().trim());
     }
 
     // getCloneItemStack, as far as the block registry carries it - block entity data is not modelled here
