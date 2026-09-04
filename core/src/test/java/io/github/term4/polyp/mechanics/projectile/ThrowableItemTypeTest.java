@@ -76,18 +76,22 @@ class ThrowableItemTypeTest extends HeadlessServerTest {
         system.enable(Snowball.KEY);
         var handler = MinecraftServer.getGlobalEventHandler();
         handler.addChild(system.node());
+        var p = FakePlayer.connect(inst, new Pos(8.5, 65, 8.5), "RefusedThrower").player;
+        // only this thrower: a node on the global handler outlives nothing, but a blanket refusal would be
+        // every other test's launch too
         EventNode<Event> refuse = EventNode.all("test:refuse-launch");
-        refuse.addListener(ProjectileLaunchEvent.class, e -> e.setCancelled(true));
+        refuse.addListener(ProjectileLaunchEvent.class, e -> {
+            if (e.snapshot().shooter() == p) e.setCancelled(true);
+        });
         handler.addChild(refuse);
         try {
-            var p = FakePlayer.connect(inst, new Pos(8.5, 65, 8.5), "RefusedThrower").player;
             ItemStack snowballs = ItemStack.of(Material.SNOWBALL, 16);
             p.setItemInMainHand(snowballs);
             EventDispatcher.call(new PlayerUseItemEvent(p, PlayerHand.MAIN, snowballs, 0));
             assertEquals(16, p.getItemInMainHand().amount(), "the snowball stays in hand");
             assertFalse(cooldowns.isOnCooldown(p, Material.SNOWBALL), "and the cooldown is never armed");
-            p.remove();
         } finally {
+            p.remove();
             handler.removeChild(refuse);
             system.disable(Snowball.KEY);
             handler.removeChild(system.node());
