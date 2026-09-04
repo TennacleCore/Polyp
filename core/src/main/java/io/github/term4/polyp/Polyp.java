@@ -5,6 +5,7 @@ import io.github.term4.polyp.mechanics.attack.FakeHits;
 import io.github.term4.polyp.platform.SharedTeam;
 import io.github.term4.polyp.platform.compatibility.CompatAnimatium;
 import io.github.term4.polyp.platform.compatibility.CompatCreativeGuard;
+import io.github.term4.polyp.platform.compatibility.CompatPickBlock;
 import io.github.term4.polyp.platform.compatibility.CompatSwim;
 import io.github.term4.polyp.platform.compatibility.CompatMovement;
 import io.github.term4.polyp.platform.compatibility.CompatOffhand;
@@ -153,6 +154,8 @@ public final class Polyp {
             CompatPlacement.install(this);
             // strips attack_range off creative-echoed items, so the client-view stamp never becomes server state
             CompatCreativeGuard.install(this);
+            // 1.8 middle-click: a block already in the hotbar switches to it instead of overwriting the held slot
+            CompatPickBlock.install(this);
             // inert unless CompatConfig.suppressSwim
             CompatSwim.install(this);
         }
