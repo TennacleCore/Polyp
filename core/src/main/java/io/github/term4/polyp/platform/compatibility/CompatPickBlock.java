@@ -52,35 +52,33 @@ public final class CompatPickBlock {
     }
 
     /**
-     * What the client did to itself, undone or completed. It writes into the slot it holds (or an empty one it
-     * moved to first), and when it found the block deeper in the inventory it ALSO moved the displaced stack
-     * there - a two-slot edit it only ever reports half of, which is how a held item goes missing.
+     * What the client did to itself, undone. It writes into the slot it holds (or an empty one it moved to
+     * first) because it failed to recognise its own stack; when the same block IS in the hotbar by the server's
+     * reckoning, the write is refused and the selected slot moves there instead - which is all vanilla would
+     * have done.
+     *
+     * <p>Only ever a cancel and a slot change, never a write of our own. The client and the server disagree
+     * about this inventory the moment a pick misfires, and a correcting write lands on whichever slot the
+     * SERVER thinks is which, destroying whatever was there.
      */
     private static void legacyReport(CreativeInventoryActionEvent event) {
         Player player = event.getPlayer();
         ItemStack wrote = event.getClickedItem();
         int slot = event.getSlot();
+        // an emptied slot is the client tidying up after itself, and air matches every empty slot there is
+        if (slot < 0 || slot > 8 || wrote.isAir() || wrote.material().block() == null) return;
         PlayerInventory inventory = player.getInventory();
-        ItemStack displaced = slot >= 0 && slot < 9 ? inventory.getItemStack(slot) : ItemStack.AIR;
+        ItemStack displaced = inventory.getItemStack(slot);
         // a pick lands in the held slot, or in one that was empty; a drag onto an occupied slot is not ours
-        if (slot < 0 || slot > 8 || wrote.material().block() == null) return;
         if (slot != player.getHeldSlot() && !displaced.isAir()) return;
-        if (displaced.material() == wrote.material()) return; // it landed where it belongs
         // by material, not by components: item identity is what survives the 1.8 round trip
+        if (displaced.material() == wrote.material()) return; // it landed where it belongs
         int hotbar = find(inventory, wrote.material(), 0, 9);
-        if (hotbar >= 0) {
-            event.setCancelled(true); // the library refreshes the slot the client wrote behind our back
-            player.setHeldItemSlot((byte) hotbar);
-            debug(player, "snap", slot, wrote, hotbar);
-            return;
-        }
-        int deeper = find(inventory, wrote.material(), 9, 36);
-        if (deeper >= 0) {
-            inventory.setItemStack(deeper, displaced); // the half the client did and never reported
-            debug(player, "swap", slot, wrote, deeper);
-            return;
-        }
-        debug(player, "wrote", slot, wrote, -1);
+        debug(player, hotbar >= 0 ? "snap" : "wrote", slot, wrote, hotbar);
+        if (hotbar < 0) return; // nothing to snap to: the client's own write is what vanilla would do too
+        event.setCancelled(true);
+        player.setHeldItemSlot((byte) hotbar);
+        inventory.update(); // the client still believes it wrote a block; put it back in step
     }
 
     private static int find(PlayerInventory inventory, Material material, int from, int to) {

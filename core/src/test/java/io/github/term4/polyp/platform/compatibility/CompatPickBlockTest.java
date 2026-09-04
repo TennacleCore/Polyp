@@ -109,7 +109,26 @@ class CompatPickBlockTest extends HeadlessServerTest {
     }
 
     @Test
-    void aMatchDeeperInTheInventoryKeepsWhatTheHeldSlotHeld() {
+    void anEmptiedSlotIsNotAPickAndTouchesNothing() {
+        Player player = builder("PickLegacyClear", GameMode.CREATIVE, (byte) 1);
+        try {
+            player.getInventory().setItemStack(0, ItemStack.of(Material.STONE, 64));
+            player.getInventory().setItemStack(1, ItemStack.of(Material.RED_WOOL, 64));
+
+            // the client tidying up after a misfire: air matches every empty slot, so it must be ignored
+            var cleared = new CreativeInventoryActionEvent(player, 1, ItemStack.AIR);
+            EventDispatcher.call(cleared);
+
+            assertFalse(cleared.isCancelled());
+            assertEquals(1, player.getHeldSlot(), "no snap");
+            assertEquals(Material.STONE, player.getInventory().getItemStack(0).material(), "and nothing moved");
+        } finally {
+            player.remove();
+        }
+    }
+
+    @Test
+    void aMatchDeeperInTheInventoryIsLeftToTheClient() {
         Player player = builder("PickLegacyDeep", GameMode.CREATIVE, (byte) 3);
         try {
             for (byte slot = 0; slot < 9; slot++) {
@@ -118,13 +137,13 @@ class CompatPickBlockTest extends HeadlessServerTest {
             player.getInventory().setItemStack(3, ItemStack.of(Material.DIAMOND_SWORD));
             player.getInventory().setItemStack(20, ItemStack.of(Material.STONE, 64));
 
-            // the client swapped its own two slots and told us about one of them
             var wrote = new CreativeInventoryActionEvent(player, 3, ItemStack.of(Material.STONE, 64));
             EventDispatcher.call(wrote);
 
-            assertFalse(wrote.isCancelled(), "the stone still lands in the held slot, as it did on the client");
-            assertEquals(Material.DIAMOND_SWORD, player.getInventory().getItemStack(20).material(),
-                    "and the sword went where the stone came from, instead of being destroyed");
+            assertFalse(wrote.isCancelled(), "not in the hotbar: vanilla writes here too");
+            assertEquals(Material.STONE, player.getInventory().getItemStack(20).material(),
+                    "and we write nothing of our own - a correcting write lands on the wrong slot when the "
+                            + "two sides disagree");
         } finally {
             player.remove();
         }
