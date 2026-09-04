@@ -3,7 +3,6 @@ package io.github.term4.polyp.platform.compatibility;
 import net.minestom.server.entity.LivingEntity;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.tracking.ClientInfoTracker;
-import io.github.term4.polyp.tracking.ClientVersion;
 import io.github.term4.polyp.world.SpectatorCamera;
 import io.github.term4.polyp.world.WorldPolicy;
 import net.minestom.server.event.EventFilter;
@@ -65,12 +64,11 @@ public final class SpectatorMode {
         return mode == null ? null : Mode.valueOf(mode);
     }
 
-    /** An unknown protocol counts as modern. */
+    /** An unknown protocol reads as {@link ClientInfoTracker#protocolWhenUnknown} (modern by default). */
     public static boolean supports(@NotNull Player player, @NotNull Mode mode) {
         if (mode != Mode.TRUE) return true;
         ClientInfoTracker info = Polyp.getInstance().clientInfo();
-        int protocol = info == null ? ClientVersion.UNKNOWN_PROTOCOL : info.getProtocol(player);
-        return protocol == ClientVersion.UNKNOWN_PROTOCOL || protocol >= FIRST_SPECTATOR_PROTOCOL;
+        return info == null || info.protocolOrAssumed(player) >= FIRST_SPECTATOR_PROTOCOL;
     }
 
     /** {@code false} = the client can't wear {@code mode}; nothing changes. */
