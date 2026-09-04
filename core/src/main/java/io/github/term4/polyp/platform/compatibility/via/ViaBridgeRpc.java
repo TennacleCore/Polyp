@@ -1,4 +1,4 @@
-package io.github.term4.polyp.platform.compatibility;
+package io.github.term4.polyp.platform.compatibility.via;
 
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.tracking.ClientVersion;

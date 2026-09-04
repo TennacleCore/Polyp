@@ -1,4 +1,4 @@
-package io.github.term4.polyp.world;
+package io.github.term4.polyp.platform.player;
 
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.GameMode;

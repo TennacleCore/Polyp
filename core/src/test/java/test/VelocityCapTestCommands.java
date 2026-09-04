@@ -1,7 +1,7 @@
 package test;
 
-import io.github.term4.polyp.platform.compatibility.ViaBridgeException;
-import io.github.term4.polyp.platform.compatibility.ViaBridgeRpc;
+import io.github.term4.polyp.platform.compatibility.via.ViaBridgeException;
+import io.github.term4.polyp.platform.compatibility.via.ViaBridgeRpc;
 import io.github.term4.polyp.tracking.motion.LegacyVelocity;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Vec;

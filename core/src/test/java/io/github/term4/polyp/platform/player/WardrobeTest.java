@@ -1,5 +1,6 @@
-package io.github.term4.polyp.world;
+package io.github.term4.polyp.platform.player;
 
+import io.github.term4.polyp.platform.player.Wardrobe;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.coordinate.Pos;

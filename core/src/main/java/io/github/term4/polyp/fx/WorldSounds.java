@@ -1,8 +1,9 @@
-package io.github.term4.polyp.world;
+package io.github.term4.polyp.fx;
 
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import io.github.term4.polyp.Polyp;
+import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.fx.FxContext;
 import net.minestom.server.coordinate.Point;

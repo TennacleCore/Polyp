@@ -1,5 +1,6 @@
 package io.github.term4.polyp.platform.compatibility;
 
+import io.github.term4.polyp.platform.compatibility.via.ViaBridgeRpc;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.tracking.motion.LegacyVelocity;

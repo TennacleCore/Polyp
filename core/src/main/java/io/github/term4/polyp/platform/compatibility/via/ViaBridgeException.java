@@ -1,4 +1,4 @@
-package io.github.term4.polyp.platform.compatibility;
+package io.github.term4.polyp.platform.compatibility.via;
 
 public final class ViaBridgeException extends RuntimeException {
 
