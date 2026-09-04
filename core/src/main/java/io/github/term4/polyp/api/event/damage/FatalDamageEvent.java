@@ -30,4 +30,6 @@ public final class FatalDamageEvent extends CancellableMechanicsEvent<DamageSnap
     public @Nullable Entity source() { return finalSnap().source(); }
     /** The attacker's weapon, or {@code null}. */
     public @Nullable ItemStack item() { return finalSnap().item(); }
+    /** Type-specific payload from the producer (the projectile that hit, a fall distance), or {@code null}. */
+    public @Nullable Object detail() { return finalSnap().detail(); }
 }

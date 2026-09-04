@@ -115,7 +115,7 @@ public class ManagedProjectile extends ProjectileEntity {
         DamageType dt = ev.resolvedHit().damageType();
         if (dt != null && s.damage() != null) {
             result = s.damage().apply(DamageSnapshot.of(target, dt)
-                    .withSource(shooter).withPoint(getPosition()).withAmount((float) ev.damage()));
+                    .withSource(shooter).withPoint(getPosition()).withDetail(this).withAmount((float) ev.damage()));
         }
         if (result.landed() && ev.knockback() != null && s.knockback() != null) {
             s.knockback().apply(buildKnockback(target, ev.knockbackSource(), ev.knockback()));
