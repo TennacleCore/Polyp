@@ -63,6 +63,26 @@ class CompatPickBlockTest extends HeadlessServerTest {
     }
 
     @Test
+    void itHoldsWhicheverSlotTheClientWroteInto() {
+        Player builder = legacyBuilder("Picker18Spare", (byte) 0);
+        try {
+            builder.getInventory().setItemStack(0, ItemStack.of(Material.DIAMOND_SWORD));
+            builder.getInventory().setItemStack(4, ItemStack.of(Material.STONE, 64));
+
+            // vanilla writes into the first EMPTY hotbar slot, not the held one
+            assertFalse(write(builder, 1, ItemStack.of(Material.STONE)), "still refused");
+            assertEquals(4, builder.getHeldSlot());
+            assertTrue(builder.getInventory().getItemStack(1).isAir(), "the spare slot stays empty");
+
+            // and a write onto the slot that already holds it is left alone, so nothing ping-pongs
+            assertTrue(write(builder, 4, ItemStack.of(Material.STONE)), "a no-op write needs no help");
+            assertEquals(4, builder.getHeldSlot());
+        } finally {
+            builder.remove();
+        }
+    }
+
+    @Test
     void aModernClientAndAStackedDragAreLeftAlone() {
         Player modern = FakePlayer.connect(instance, new Pos(0.5, 65, 902.5), "PickerModern").player;
         modern.setGameMode(GameMode.CREATIVE);

@@ -20,8 +20,9 @@ import org.jetbrains.annotations.NotNull;
  * which a translated stack does not always match, so it takes the "not there" branch and overwrites whatever the
  * builder was holding. This runs the same rule again over the server's own materials and refuses that write.
  *
- * <p>Legacy viewers only, and only a single block landing in the held slot - the shape a pick has and a creative
- * drag rarely does.
+ * <p>Legacy viewers only, and only a single block landing in the hotbar - the shape a pick has and a creative
+ * drag rarely does. Which hotbar slot the client picked does not matter: vanilla writes into the first empty one
+ * and falls back to the held slot, so gating on the held slot alone missed every builder with a spare slot.
  */
 public final class CompatPickBlock {
 
@@ -33,11 +34,11 @@ public final class CompatPickBlock {
             Player player = e.getPlayer();
             if (player.getGameMode() != GameMode.CREATIVE || !polyp.clientInfo().isLegacy(player)) return;
             ItemStack picked = e.getClickedItem();
-            if (e.getSlot() != player.getHeldSlot() || picked.amount() != 1 || picked.material().block() == null) {
-                return;
-            }
+            int wrote = e.getSlot();
+            // the slot the client chose is its own business: the first empty hotbar slot, else whatever it held
+            if (wrote < 0 || wrote > 8 || picked.amount() != 1 || picked.material().block() == null) return;
             PlayerInventory inventory = player.getInventory();
-            if (inventory.getItemStack(e.getSlot()).material() == picked.material()) return;
+            if (inventory.getItemStack(wrote).material() == picked.material()) return; // already there: a no-op write
             for (byte slot = 0; slot < 9; slot++) {
                 if (inventory.getItemStack(slot).material() != picked.material()) continue;
                 e.setCancelled(true); // the cancel path refreshes the slot the client already overwrote
