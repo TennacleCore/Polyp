@@ -224,6 +224,11 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
     public final @Nullable FieldValue<ProjectileContext, Boolean> critParticles;
     /** Response for a hit the target rejects as invulnerable ({@link InvulnResponse}). 1.8 arrow = {@code invulnHit(DEFLECT, PASS_THROUGH)}; throwables {@code invulnHit(DESTROY)} (default). */
     public final @Nullable FieldValue<ProjectileContext, InvulnResponse> invulnHit;
+    /**
+     * Whether a rejected hit may visibly bounce off a PLAYER. A 1.8 shooter's client hides or bounces the arrow
+     * itself, so a server-side deflect desyncs it; unset leaves that to the shooter's client version.
+     */
+    public final @Nullable FieldValue<ProjectileContext, Boolean> bounceOffPlayers;
     /** How a {@link HitResponse#DEFLECT} transforms the velocity ({@link Deflect}). 1.8 = {@code deflect(-0.1)}, 26.1 = {@code deflect(-0.5, 0, -10, 10)}. Default {@code deflect(-0.1)}. */
     public final @Nullable FieldValue<ProjectileContext, Deflect> deflect;
     /** Pickup geometry (collectable projectiles only, e.g. arrows); default {@link PickupBox#VANILLA}. */
@@ -290,6 +295,7 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
         infinityPickup = b.infinityPickup;
         stuckDespawnTicks = b.stuckDespawnTicks;
         invulnHit = b.invulnHit;
+        bounceOffPlayers = b.bounceOffPlayers;
         deflect = b.deflect;
         pickupBox = b.pickupBox;
     }
