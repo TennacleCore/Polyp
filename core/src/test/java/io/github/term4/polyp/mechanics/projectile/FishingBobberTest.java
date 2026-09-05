@@ -39,6 +39,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -255,6 +256,31 @@ class FishingBobberTest extends HeadlessServerTest {
             shooter.remove();
             for (int y = 70; y <= 90; y++)
                 for (int x = 38; x <= 42; x++)
+                    instance.setBlock(x, y, 12, Block.AIR);
+        }
+    }
+
+    /**
+     * A throw at a wall a step away leaves the bobber falling a hand's width from the angler, and the tick the
+     * launch immunity lapses it would catch them. Captured on minemen, hypixel and scrims: the line never does.
+     */
+    @Test
+    void rodNeverHooksItsThrower() {
+        for (int y = 60; y <= 80; y++)
+            for (int x = 78; x <= 82; x++)
+                instance.setBlock(x, y, 12, Block.STONE);
+        LivingEntity shooter = angler(new Pos(80.5, 64, 10.9, 0.0f, 0.0f));
+        FishingBobberEntity bobber = (FishingBobberEntity) launch(Vanilla18.projectiles(), shooter);
+        try {
+            for (int tick = 1; tick <= 120 && !bobber.isRemoved(); tick++) {
+                bobber.tick(tick * 50L);
+                assertNotEquals(shooter, bobber.getHookedEntity(), "hooked its own thrower at tick " + tick);
+            }
+        } finally {
+            bobber.remove();
+            shooter.remove();
+            for (int y = 60; y <= 80; y++)
+                for (int x = 78; x <= 82; x++)
                     instance.setBlock(x, y, 12, Block.AIR);
         }
     }

@@ -103,6 +103,9 @@ public final class Projectiles {
                 .wireLockstep(true)
                 .hookedMetadata(false) // no hooked metadata in 1.8; modern viewers see the pin position, as through Via
                 .removeOnEntityHit(false).removeOnBlockHit(false)
+                // a wall throw lands the bobber a hand's width away and it hooks the angler the tick immunity lapses;
+                // captured on minemen, hypixel and scrims: the line never catches its own thrower
+                .selfHit(ProjectileTypeConfig.HitResponse.PASS_THROUGH)
                 .invulnHit(ProjectileTypeConfig.HitResponse.PASS_THROUGH)
                 .build();
     }

@@ -135,12 +135,14 @@ public class ManagedProjectile extends ProjectileEntity {
 
     private void bounce(ResolvedHit hit, @Nullable Entity hitEntity) {
         deflect(hit.deflect());
-        if (deflectTrailEnabled()) deflectVisible = true;
+        if (deflectTrailEnabled(hitEntity)) deflectVisible = true;
         behavior.onDeflect(this, hitEntity);
     }
 
-    /** The cosmetic {@code deflectParticles} crit trail, off by default. */
-    private boolean deflectTrailEnabled() {
+    /** The cosmetic {@code deflectParticles} crit trail, off by default. The glitch it covers is a 1.8 client hiding
+     *  an arrow off ANOTHER player; through the shooter's own body there is nothing to cover, only a false crit. */
+    private boolean deflectTrailEnabled(@Nullable Entity hitEntity) {
+        if (hitEntity != null && hitEntity == shooter) return false;
         Services s = services();
         if (s == null) return false;
         var fixes = s.fixes();
@@ -148,7 +150,7 @@ public class ManagedProjectile extends ProjectileEntity {
     }
 
     private void passThrough(@Nullable Entity hitEntity) {
-        if (deflectTrailEnabled()) deflectVisible = true;
+        if (deflectTrailEnabled(hitEntity)) deflectVisible = true;
         behavior.onDeflect(this, hitEntity);
     }
 

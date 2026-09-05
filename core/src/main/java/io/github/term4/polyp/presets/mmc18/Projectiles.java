@@ -206,7 +206,6 @@ public final class Projectiles {
                 .syncInterval(0).velocitySyncInterval(0)
                 .behavior(ctx -> new PseudoHook())
                 .hookHalt(true) // the glued flash needs the same-tick halt + pin on the silent wire
-                .selfHit(ProjectileTypeConfig.HitResponse.HIT) // MineMen: you CAN hook yourself (vanilla can't)
                 .knockback(Knockback.rod())
                 // SHOOTER-relative like vanilla (1.8 EntityLiving.damageEntity reads the indirect source = the angler)
                 .knockbackSource(ProjectileTypeConfig.KnockbackSource.SHOOTER)
