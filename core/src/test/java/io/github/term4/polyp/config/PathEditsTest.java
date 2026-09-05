@@ -331,4 +331,45 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
                 () -> PathEdits.apply(b, base, "explosion/damageModel", "curve(9)"))
                 .getMessage().contains("takes no arguments"));
     }
+
+    private static java.util.Map<String, PathEdits.Step> browse(MechanicsProfile profile, String path) {
+        java.util.Map<String, PathEdits.Step> byName = new java.util.LinkedHashMap<>();
+        for (PathEdits.Step step : PathEdits.browse(path, profile::get)) byName.put(step.name(), step);
+        return byName;
+    }
+
+    @Test
+    void browsingWalksTheTree() {
+        MechanicsProfile base = base();
+        assertTrue(browse(base, "").keySet().containsAll(java.util.List.of("attack", "projectiles", "velocity")));
+        assertTrue(browse(base, "").get("projectiles").more());
+
+        var member = browse(base, "projectiles");
+        assertTrue(member.get("minecraft:arrow").more(), "a configured entry is a way down");
+        assertNotNull(member.get("speed").value(), "the defaults entry answers the two-part form");
+        assertEquals("HitResponse (hit|pass_through|deflect|destroy)", member.get("selfHit").type());
+
+        var entry = browse(base, "projectiles/minecraft:arrow");
+        assertNotNull(entry.get("damage").value());
+        assertEquals(java.util.List.of("damage"), browse(base, "projectiles/minecraft:arrow/damage").keySet().stream().toList());
+    }
+
+    @Test
+    void browsingWithoutAProfile() {
+        var member = PathEdits.browse("projectiles", key -> null);
+        assertFalse(member.isEmpty());
+        assertTrue(member.stream().allMatch(step -> step.value() == null), "nothing to read a value off");
+        assertTrue(member.stream().noneMatch(PathEdits.Step::more), "and no entries to descend into");
+    }
+
+    @Test
+    void browseRefusesUnknownPaths() {
+        MechanicsProfile base = base();
+        assertTrue(assertThrows(IllegalArgumentException.class,
+                () -> PathEdits.browse("nosuchmember", base::get)).getMessage().contains("unknown member"));
+        assertTrue(assertThrows(IllegalArgumentException.class,
+                () -> PathEdits.browse("attack/noSuchKnob", base::get)).getMessage().contains("unknown knob"));
+        assertTrue(assertThrows(IllegalArgumentException.class,
+                () -> PathEdits.browse("projectiles/minecraft:arrow/damage/deeper", base::get)).getMessage().contains("below"));
+    }
 }

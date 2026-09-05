@@ -19,7 +19,10 @@ import net.minestom.server.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.TreeMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
@@ -53,7 +56,8 @@ public final class PathEdits {
     private record TypedFamily(Class<?> entryClass, KeyOf keyOf,
                                BiFunction<Object, Object, @Nullable Object> entry, WithEntry withEntry,
                                @Nullable Function<Object, @Nullable Object> defaults,
-                               @Nullable BiFunction<@Nullable Object, Object, Object> withDefaults) {}
+                               @Nullable BiFunction<@Nullable Object, Object, Object> withDefaults,
+                               Function<@Nullable Object, Collection<String>> keys) {}
 
     /** A member whose value has no knob table (fx, cooldowns, items): it owns the whole edit. */
     @FunctionalInterface
@@ -66,9 +70,9 @@ public final class PathEdits {
      * @param scalar      whether the one-part form {@code member = value} replaces the whole member (a behaviour or enum)
      */
     private record Member(ConfigKey<?> key, Class<?> configClass, @Nullable TypedFamily typed, @Nullable Editor editor,
-                          boolean scalar) {
-        Member(ConfigKey<?> key, Class<?> configClass) { this(key, configClass, null, null, false); }
-        Member(ConfigKey<?> key, Class<?> configClass, TypedFamily typed) { this(key, configClass, typed, null, false); }
+                          boolean scalar, @Nullable String form) {
+        Member(ConfigKey<?> key, Class<?> configClass) { this(key, configClass, null, null, false, null); }
+        Member(ConfigKey<?> key, Class<?> configClass, TypedFamily typed) { this(key, configClass, typed, null, false, null); }
     }
 
     private static final Map<String, Member> MEMBERS = new LinkedHashMap<>();
@@ -93,7 +97,8 @@ public final class PathEdits {
                 },
                 c -> ((ProjectileConfig) c).defaults(),
                 (container, e) -> (container != null ? ((ProjectileConfig) container).toBuilder() : ProjectileConfig.builder())
-                        .defaults((ProjectileTypeConfig) e).build())));
+                        .defaults((ProjectileTypeConfig) e).build(),
+                c -> c == null ? List.of() : keyNames(((ProjectileConfig) c).typeConfigs.keySet()))));
         MEMBERS.put("consumables", new Member(MechanicsKeys.CONSUMABLES, ConsumableConfig.class, new TypedFamily(
                 ConsumableTypeConfig.class, NAMESPACED,
                 (c, k) -> ((ConsumableConfig) c).typeConfig((Key) k),
@@ -101,7 +106,7 @@ public final class PathEdits {
                     ConsumableConfig sparse = ConsumableConfig.builder().typeConfigs((ConsumableTypeConfig) e).build();
                     return container == null ? sparse : sparse.fromBase((ConsumableConfig) container);
                 },
-                null, null)));
+                null, null, c -> c == null ? List.of() : keyNames(((ConsumableConfig) c).typeConfigs.keySet()))));
         MEMBERS.put("damage", new Member(MechanicsKeys.DAMAGE, DamageConfig.class, new TypedFamily(
                 DamageTypeConfig.class, NAMESPACED,
                 (c, k) -> ((DamageConfig) c).typeConfig((Key) k),
@@ -109,7 +114,7 @@ public final class PathEdits {
                     DamageConfig sparse = DamageConfig.builder().typeConfig((DamageTypeConfig) e).build();
                     return container == null ? sparse : sparse.fromBase((DamageConfig) container);
                 },
-                null, null)));
+                null, null, c -> c == null ? List.of() : keyNames(((DamageConfig) c).typeConfigs.keySet()))));
         MEMBERS.put("blocking", new Member(MechanicsKeys.BLOCKING, io.github.term4.polyp.mechanics.blocking.BlockingConfig.class, new TypedFamily(
                 io.github.term4.polyp.mechanics.blocking.BlockingTypeConfig.class, MATERIAL,
                 (c, k) -> ((io.github.term4.polyp.mechanics.blocking.BlockingConfig) c).typeConfig((Material) k),
@@ -121,7 +126,9 @@ public final class PathEdits {
                 (container, e) -> (container != null
                         ? ((io.github.term4.polyp.mechanics.blocking.BlockingConfig) container).toBuilder()
                         : io.github.term4.polyp.mechanics.blocking.BlockingConfig.builder())
-                        .defaults((io.github.term4.polyp.mechanics.blocking.BlockingTypeConfig) e).build())));
+                        .defaults((io.github.term4.polyp.mechanics.blocking.BlockingTypeConfig) e).build(),
+                c -> c == null ? List.of()
+                        : keyNames(((io.github.term4.polyp.mechanics.blocking.BlockingConfig) c).materials.keySet()))));
         // fixes/<toggle>/enabled and visuals/<fix>/<knob>: two path names over the one FIXES member
         MEMBERS.put("fixes", new Member(MechanicsKeys.FIXES, io.github.term4.polyp.platform.fixes.FixesConfig.class, new TypedFamily(
                 io.github.term4.polyp.platform.fixes.FixToggleConfig.class, NAME,
@@ -129,7 +136,7 @@ public final class PathEdits {
                 (container, k, e) -> io.github.term4.polyp.platform.fixes.FixesConfig.withToggle(
                         (io.github.term4.polyp.platform.fixes.FixesConfig) container, (String) k,
                         (io.github.term4.polyp.platform.fixes.FixToggleConfig) e),
-                null, null)));
+                null, null, c -> io.github.term4.polyp.platform.fixes.FixesConfig.TOGGLES)));
         MEMBERS.put("visuals", new Member(MechanicsKeys.FIXES, io.github.term4.polyp.platform.fixes.FixesConfig.class, new TypedFamily(
                 io.github.term4.polyp.platform.fixes.visuals.legacy_1_8.LegacyArrowVisibilityConfig.class, NAME,
                 (c, k) -> {
@@ -138,7 +145,7 @@ public final class PathEdits {
                 },
                 (container, k, e) -> io.github.term4.polyp.platform.fixes.FixesConfig.withVisual(
                         (io.github.term4.polyp.platform.fixes.FixesConfig) container, (String) k, e),
-                null, null)));
+                null, null, c -> io.github.term4.polyp.platform.fixes.visuals.VisualsConfig.VISUALS)));
 
         MEMBERS.put("attack", new Member(MechanicsKeys.ATTACK, io.github.term4.polyp.mechanics.attack.AttackConfig.class));
         MEMBERS.put("explosion", new Member(MechanicsKeys.EXPLOSION, io.github.term4.polyp.mechanics.explosion.ExplosionConfig.class));
@@ -160,7 +167,7 @@ public final class PathEdits {
             Key fxKey = parseKey(rest.get(0), path);
             FxHandler handler = FieldFns.parse(FxHandler.class, raw, path);
             return (container != null ? (FxRegistry) container : FxRegistry.empty()).register(fxKey, handler);
-        }, false));
+        }, false, "fx/<key>"));
         // cooldowns/<material> = ticks
         MEMBERS.put("cooldowns", new Member(MechanicsKeys.COOLDOWNS, io.github.term4.polyp.mechanics.cooldown.CooldownConfig.class, null,
                 (container, rest, raw, path, who) -> {
@@ -169,7 +176,7 @@ public final class PathEdits {
             var cfg = (io.github.term4.polyp.mechanics.cooldown.CooldownConfig) container;
             return (cfg != null ? cfg.toBuilder() : io.github.term4.polyp.mechanics.cooldown.CooldownConfig.builder())
                     .cooldown((Material) MATERIAL.apply(rest.get(0), path), integer(raw, path)).build();
-        }, false));
+        }, false, "cooldowns/<material>"));
         // tick-scaling/referenceTps, tick-scaling/clientTps, tick-scaling/<module key>
         MEMBERS.put("tick-scaling", new Member(MechanicsKeys.TICK_SCALING, io.github.term4.polyp.util.tick.TickScalingConfig.class, null,
                 (container, rest, raw, path, who) -> {
@@ -184,7 +191,7 @@ public final class PathEdits {
                 default -> b.referenceTps(parseKey(rest.get(0), path), tps);
             }
             return b.build();
-        }, false));
+        }, false, "tick-scaling/<referenceTps|clientTps|module key>"));
         // items/<material>/<stat> = value, both eras
         MEMBERS.put("items", new Member(MechanicsKeys.ITEMS, io.github.term4.polyp.item.ItemRegistry.class, null,
                 (container, rest, raw, path, who) -> {
@@ -200,9 +207,9 @@ public final class PathEdits {
             }
             return registry.register(io.github.term4.polyp.item.ItemDef.of(material)
                     .copying(registry.def(material)).both(stat, dbl(raw, path)).build());
-        }, false));
+        }, false, "items/<material>/<stat>"));
         // item-physics = legacy | modern
-        MEMBERS.put("item-physics", new Member(MechanicsKeys.ITEM_PHYSICS, io.github.term4.polyp.entity.DroppedItemEntity.Model.class, null, null, true));
+        MEMBERS.put("item-physics", new Member(MechanicsKeys.ITEM_PHYSICS, io.github.term4.polyp.entity.DroppedItemEntity.Model.class, null, null, true, null));
         // velocity = <rule>, or velocity/<knob> editing the simulated rule's config
         MEMBERS.put("velocity", new Member(MechanicsKeys.VELOCITY, io.github.term4.polyp.tracking.motion.VelocityRule.class, null,
                 (container, rest, raw, path, who) -> {
@@ -213,11 +220,136 @@ public final class PathEdits {
             return io.github.term4.polyp.tracking.motion.VelocityRule.simulated(
                     (io.github.term4.polyp.tracking.motion.VelocityConfig) editFlat(
                             io.github.term4.polyp.tracking.motion.VelocityConfig.class, cfg, rest.get(0), raw, path, who));
-        }, true));
+        }, true, "velocity/<knob>"));
     }
 
     /** The addressable member names (for errors and enumeration). */
     public static java.util.Set<String> members() { return MEMBERS.keySet(); }
+
+    /**
+     * One addressable step under a path.
+     *
+     * @param type  what a write there takes, {@code null} when the step is only a way down
+     * @param value what it holds now, {@code null} when unset or context-dependent
+     * @param more  whether anything is addressable below it
+     */
+    public record Step(String name, @Nullable String type, @Nullable Object value, boolean more) {}
+
+    /**
+     * The steps under {@code path}, one segment at a time - {@code ""} lists the members. {@code member} reads
+     * the config a value is shown from, usually a profile registry's resolve for the scope being browsed;
+     * everything still lists without one. Unaddressable paths throw the reason a write would.
+     */
+    public static List<Step> browse(String path, Function<ConfigKey<?>, @Nullable Object> member) {
+        if (path.isEmpty()) {
+            List<Step> out = new ArrayList<>();
+            new TreeMap<>(MEMBERS).forEach((name, m) -> {
+                boolean enumScalar = m.scalar() && m.configClass().isEnum();
+                out.add(new Step(name, m.scalar() ? typeName(m.configClass()) : null,
+                        enumScalar ? member.apply(m.key()) : null,
+                        m.editor() != null || m.typed() != null || hasKnobs(m.configClass())));
+            });
+            return out;
+        }
+        String[] parts = path.split("/");
+        Member m = MEMBERS.get(parts[0]);
+        if (m == null) {
+            throw new IllegalArgumentException("unknown member '" + parts[0] + "' in '" + path + "' (members: " + members() + ")");
+        }
+        Object base = member.apply(m.key());
+        TypedFamily family = m.typed();
+        if (parts.length == 1) {
+            if (m.editor() != null) return List.of(new Step(m.form(), null, null, false));
+            List<Step> out = new ArrayList<>(knobs(m.configClass(), base));
+            if (family == null) return out;
+            if (family.defaults() != null) { // the two-part form falls through to the family's defaults entry
+                for (Step step : knobs(family.entryClass(), base != null ? family.defaults().apply(base) : null)) {
+                    if (out.stream().noneMatch(had -> had.name().equals(step.name()))) out.add(step);
+                }
+            }
+            for (String key : family.keys().apply(base)) out.add(new Step(key, null, null, true));
+            return out;
+        }
+        if (parts.length == 2) {
+            Step onMember = knob(m.configClass(), base, parts[1]);
+            if (onMember != null) return List.of(onMember);
+            if (family == null) {
+                throw new IllegalArgumentException("unknown knob '" + parts[1] + "' on " + m.configClass().getSimpleName() + ": " + path);
+            }
+            if (family.defaults() != null) {
+                Step onDefaults = knob(family.entryClass(), base != null ? family.defaults().apply(base) : null, parts[1]);
+                if (onDefaults != null) return List.of(onDefaults);
+            }
+            return knobs(family.entryClass(), entry(family, base, parts[1], path));
+        }
+        if (parts.length == 3 && family != null) {
+            Step step = knob(family.entryClass(), entry(family, base, parts[1], path), parts[2]);
+            if (step != null) return List.of(step);
+            throw new IllegalArgumentException("unknown knob '" + parts[2] + "' on " + family.entryClass().getSimpleName() + ": " + path);
+        }
+        throw new IllegalArgumentException("nothing is addressable below " + path);
+    }
+
+    private static @Nullable Object entry(TypedFamily family, @Nullable Object base, String segment, String path) {
+        return base != null ? family.entry().apply(base, family.keyOf().apply(segment, path)) : null;
+    }
+
+    /** The knobs of {@code instance}'s own line - an entry's concrete class carries more than the family's. */
+    private static List<Step> knobs(Class<?> declared, @Nullable Object instance) {
+        Map<String, ConfigKnob> all = new TreeMap<>();
+        for (Class<?> c = instance != null ? instance.getClass() : declared; c != null && c != Object.class; c = c.getSuperclass()) {
+            Map<String, ConfigKnob> knobs = knobsOf(c);
+            if (knobs != null) knobs.forEach(all::putIfAbsent);
+        }
+        List<Step> out = new ArrayList<>();
+        for (ConfigKnob knob : all.values()) out.add(step(knob, instance));
+        return out;
+    }
+
+    private static @Nullable Step knob(Class<?> declared, @Nullable Object instance, String name) {
+        for (Class<?> c = instance != null ? instance.getClass() : declared; c != null && c != Object.class; c = c.getSuperclass()) {
+            Map<String, ConfigKnob> knobs = knobsOf(c);
+            ConfigKnob knob = knobs != null ? knobs.get(name) : null;
+            if (knob != null) return step(knob, instance);
+        }
+        return null;
+    }
+
+    private static Step step(ConfigKnob knob, @Nullable Object instance) {
+        Object held = null;
+        if (instance != null && readable(knob.valueType())) {
+            Object field = knob.get().apply(instance);
+            held = field instanceof FieldValue<?, ?> value ? value.constantOrNull() : field;
+        }
+        return new Step(knob.name(), knob.valueType() == null ? "code-only" : typeName(knob.valueType()), held, false);
+    }
+
+    /** A value worth printing back: a config object's {@code toString} is an address, and its type says more. */
+    private static boolean readable(@Nullable Class<?> type) {
+        return type != null && (type.isEnum() || type == Boolean.class || type == String.class
+                || Number.class.isAssignableFrom(type));
+    }
+
+    private static String typeName(Class<?> type) {
+        if (!type.isEnum()) return type.getSimpleName();
+        StringBuilder names = new StringBuilder(type.getSimpleName()).append(" (");
+        Object[] constants = type.getEnumConstants();
+        for (int i = 0; i < constants.length; i++) {
+            names.append(i == 0 ? "" : "|").append(((Enum<?>) constants[i]).name().toLowerCase(java.util.Locale.ROOT));
+        }
+        return names.append(')').toString();
+    }
+
+    private static boolean hasKnobs(Class<?> configClass) {
+        for (Class<?> c = configClass; c != null && c != Object.class; c = c.getSuperclass()) {
+            if (knobsOf(c) != null) return true;
+        }
+        return false;
+    }
+
+    private static Collection<String> keyNames(Collection<?> keys) {
+        return keys.stream().map(k -> k instanceof Material material ? material.key().asString() : String.valueOf(k)).sorted().toList();
+    }
 
     /**
      * Checks that {@code path = rawValue} would apply, without touching anything: same parse, same member
