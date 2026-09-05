@@ -85,6 +85,8 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
     public static final Key KEY = Key.key("polyp:damage");
 
     private static final Tag<TickState> INVUL_DAMAGE = Tag.Transient("polyp:invul-damage");
+    /** Set around a replacement hit's {@code damage()} call: the listener below strips the hurt animation and sound. */
+    private static final Tag<Boolean> REPLACEMENT = Tag.Transient("polyp:replacement-hit");
     /** Amount of the hit that opened the current invulnerability window (for overdamage replacement). */
     private static final Tag<Float> LAST_DAMAGE = Tag.Transient("polyp:last-damage");
     private static final Tag<DamageType> LAST_DAMAGE_TYPE = Tag.Transient("polyp:last-damage-type");
@@ -120,10 +122,17 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         // (EntityPlayerSP/LocalPlayer override playSound; a remote entity's playSound is a client no-op in both
         // eras). Minestom sends viewers AND self - re-emit to viewers only, or the victim doubles / attackers hear nothing
         this.node.addListener(EntityDamageEvent.class, e -> {
+            Entity victim = e.getEntity();
+            // vanilla's replacement hit moves the health and nothing else (attackEntityFrom's flag is false); the
+            // victim's own client still flashes on the drop, in both eras, off the health packet alone
+            if (Boolean.TRUE.equals(victim.getTag(REPLACEMENT))) {
+                e.setAnimation(false);
+                e.setSound(null);
+                return;
+            }
             SoundEvent sound = e.getSound();
             if (sound == null || !e.shouldAnimate()) return;
             e.setSound(null);
-            Entity victim = e.getEntity();
             Pos at = victim.getPosition();
             Sound.Source category = victim instanceof Player ? Sound.Source.PLAYER : Sound.Source.HOSTILE;
             victim.sendPacketToViewers(AdventurePacketConvertor.createSoundPacket(
@@ -420,7 +429,16 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         }
         Entity source = snap.source();
         Damage damage = new Damage(type.minecraftType(), source, source, snap.point(), amount);
-        living.damage(damage);
+        if (fresh) {
+            living.damage(damage);
+            return;
+        }
+        living.setTag(REPLACEMENT, true);
+        try {
+            living.damage(damage);
+        } finally {
+            living.removeTag(REPLACEMENT);
+        }
     }
 
     /** Mirrors Minestom's {@code damage()}: absorption hearts absorb first, then health. */

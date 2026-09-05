@@ -29,6 +29,10 @@ public final class DamageConfig extends Config<DamageContext, DamageConfig> {
     public final FieldValue<DamageContext, KeySet> enabledTypes;
     public final FieldValue<DamageContext, Boolean> enableOverdamage;
     public final FieldValue<DamageContext, Boolean> silent;
+    /**
+     * Unset: a replacement hit moves the health and nothing else, as vanilla - no animation, no sound, and the
+     * victim's own client flashes on the drop. True hides that flash too (the hypixel/minemen capture).
+     */
     public final FieldValue<DamageContext, Boolean> overdamageSilent;
     /** When true, fresh hits (except drowning) broadcast the victim's current velocity (vanilla {@code ac()}/{@code hurtMarked}). */
     public final FieldValue<DamageContext, Boolean> syncHurtVelocity;
