@@ -275,7 +275,7 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
             boolean replacementSilent = odSilent != null ? odSilent : generalSilent;
             living.setTag(LAST_DAMAGE, Math.max(event.stored(), amount));
             living.setTag(LAST_DAMAGE_TYPE, type);
-            applyDamage(living, type, finalSnap, applied, replacementSilent);
+            applyDamage(living, type, finalSnap, applied, replacementSilent, false);
             // vanilla runs the post-hit enchant effects on ANY landed hit - an overdamage refresh included
             // (EntityHuman.attack applies fire aspect whenever damageEntity returns true)
             dispatchWeaponOnHit(living, finalSnap);
@@ -289,7 +289,7 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         storeOpeningItem(living, finalSnap.item());
         living.setTag(LAST_DAMAGE, amount);
         living.setTag(LAST_DAMAGE_TYPE, type);
-        applyDamage(living, type, finalSnap, amount, generalSilent);
+        applyDamage(living, type, finalSnap, amount, generalSilent, true);
         Boolean ownsFlag = typeCfg.ownsVelocityBroadcast(typeCtx);
         boolean ownsVelocity = ownsFlag != null ? ownsFlag : knockbackOwnsVelocity(type);
         if (Boolean.TRUE.equals(resolved.syncHurtVelocity())
@@ -394,13 +394,15 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         return target.getTag(OPENING_ITEM);
     }
 
-    private void applyDamage(LivingEntity living, DamageType type, DamageSnapshot snap, float amount, boolean silent) {
+    private void applyDamage(LivingEntity living, DamageType type, DamageSnapshot snap, float amount, boolean silent,
+                             boolean fresh) {
         if (FATAL_DAMAGE.hasListener() && wouldKill(living, amount)) {
             FatalDamageEvent fatal = new FatalDamageEvent(snap, amount, services);
             FxContext at = FxContext.of(living); // a listener that respawns the victim moves them before the feedback
             EventDispatcher.call(fatal);
             if (fatal.isCancelled()) {
-                hurtEffectsOnly(living, type, snap, amount, at);
+                // vanilla's replacement hit carries no hurt feedback, killing or not (attackEntityFrom's flag is false)
+                if (fresh && !silent) hurtEffectsOnly(living, type, snap, amount, at);
                 return;
             }
         }
