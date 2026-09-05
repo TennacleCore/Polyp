@@ -1,5 +1,6 @@
 package io.github.term4.polyp.platform.fixes.client;
 
+import io.github.term4.polyp.platform.player.PlayerNames;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.MinecraftServer;
@@ -33,6 +34,9 @@ class LegacyTabCompleteTest extends HeadlessServerTest {
         var custom = ArgumentType.Word("custom");
         custom.setSuggestionCallback((sender, ctx, suggestion) -> suggestion.addEntry(new SuggestionEntry("handmade")));
         PROBE.addSyntax((s, c) -> {}, ArgumentType.Literal("cb"), custom);
+        var who = ArgumentType.Word("who");
+        who.setSuggestionCallback(PlayerNames.suggest());
+        PROBE.addSyntax((s, c) -> {}, ArgumentType.Literal("at"), who);
         Command child = new Command("child", "kid");
         child.addSyntax((s, c) -> {}, ArgumentType.Literal("deep"));
         PROBE.addSubcommand(child);
@@ -66,7 +70,7 @@ class LegacyTabCompleteTest extends HeadlessServerTest {
             assertEquals(1, root.getFirst().start());
             assertEquals(5, root.getFirst().length());
 
-            assertEquals(List.of("other", "sub"), names(ask(p, "/tabprobe ")).stream().filter(n -> !n.equals("cb") && !n.equals("child") && !n.equals("kid")).toList(),
+            assertEquals(List.of("other", "sub"), names(ask(p, "/tabprobe ")).stream().filter(n -> !n.equals("at") && !n.equals("cb") && !n.equals("child") && !n.equals("kid")).toList(),
                     "the literals a syntax starts with");
             assertTrue(names(ask(p, "/tabprobe ")).containsAll(List.of("cb", "child", "kid")), "and the subcommands, by every name");
 
@@ -93,6 +97,20 @@ class LegacyTabCompleteTest extends HeadlessServerTest {
             assertTrue(ask(p, "/tabhid").isEmpty(), "a condition the sender fails hides the name");
         } finally {
             p.player.remove();
+        }
+    }
+
+    @Test
+    void playersComplete() {
+        FakePlayer p = FakePlayer.connect(instance, new Pos(4.5, 65, 4.5), "TabSelf");
+        FakePlayer mate = FakePlayer.connect(instance, new Pos(6.5, 65, 6.5), "TabMate");
+        try {
+            assertEquals(List.of("TabMate"), names(ask(p, "/tabprobe at tabm")), "a name, from the viewer's side, case-blind");
+            assertTrue(names(ask(p, "/tabprobe at ")).containsAll(List.of("TabMate", "TabSelf")),
+                    "an empty word lists everyone visible, the viewer too");
+        } finally {
+            p.player.remove();
+            mate.player.remove();
         }
     }
 }
