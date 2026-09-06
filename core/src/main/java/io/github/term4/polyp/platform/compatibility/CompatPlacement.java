@@ -5,6 +5,7 @@ import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.util.BlockContact;
 import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.tracking.ClientInfoTracker;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
@@ -71,17 +72,14 @@ public final class CompatPlacement {
         polyp.install(node);
     }
 
-    /** 1.8 pairs by adjacency alone ({@code TileEntityChest.checkForAdjacentChests}) and draws the pair from one
-     *  half's facing: a neighbor along either chest's facing axis, a second neighbor, or a neighbor already paired
-     *  all draw a half where no block is. Trapped and plain never pair. */
-    static boolean legacyChestShape(MechanicsWorld world, Point at, Block placing, @Nullable Direction facing) {
+    /** 1.8 BlockChest.canPlaceBlockAt: beside two, or beside an already paired one, never lands - the client would
+     *  pair by adjacency and draw a half where no block is. Trapped and plain never pair. */
+    static boolean legacyChestShape(MechanicsWorld world, Point at, Block placing) {
         int beside = 0;
         for (Direction side : Direction.HORIZONTAL) {
             Point next = at.add(side.normalX(), 0, side.normalZ());
-            Block neighbor = world.getBlock(next);
-            if (!neighbor.compare(placing)) continue;
+            if (!world.getBlock(next).compare(placing)) continue;
             beside++;
-            if (along(side, facing) || along(side, facingOf(neighbor))) return false;
             for (Direction far : Direction.HORIZONTAL) {
                 Point partner = next.add(far.normalX(), 0, far.normalZ());
                 if (!partner.sameBlock(at) && world.getBlock(partner).compare(placing)) return false;
@@ -90,26 +88,56 @@ public final class CompatPlacement {
         return beside <= 1;
     }
 
-    private static boolean along(Direction side, @Nullable Direction facing) {
-        return facing != null && (side == facing || side == facing.opposite());
+    /**
+     * 1.8 BlockChest.checkForSurroundingChests: two singles side by side become one pair facing across the join,
+     * whichever way either was set - a chest lands in front of another there. The modern rule pairs only equal
+     * facings, so the halves it left single are turned and joined here.
+     */
+    static void pairLike18(MechanicsWorld world, Point at, Block placing) {
+        Block mine = world.getBlock(at);
+        if (!mine.compare(placing) || !"single".equals(mine.getProperty("type"))) return;
+        Direction join = null;
+        for (Direction side : Direction.HORIZONTAL) {
+            if (world.getBlock(at.add(side.normalX(), 0, side.normalZ())).compare(placing)) join = side;
+        }
+        if (join == null) return;
+        Point other = at.add(join.normalX(), 0, join.normalZ());
+        Block theirs = world.getBlock(other);
+        if (!"single".equals(theirs.getProperty("type"))) return;
+        Direction facing = across(world, at, other, join, facingOf(theirs));
+        String name = facing.name().toLowerCase(Locale.ROOT);
+        boolean otherOnMyLeft = join == clockwise(facing); // the left half's partner sits clockwise of the facing
+        world.setBlock(at, mine.withProperty("facing", name).withProperty("type", otherOnMyLeft ? "left" : "right"));
+        world.setBlock(other, theirs.withProperty("facing", name).withProperty("type", otherOnMyLeft ? "right" : "left"));
+    }
+
+    // the neighbor's facing when it already crosses the join, else south or east; then away from a solid block
+    // beside either half when the other side is open
+    private static Direction across(MechanicsWorld world, Point at, Point other, Direction join, @Nullable Direction theirs) {
+        Direction facing = join.normalX() != 0 ? Direction.SOUTH : Direction.EAST;
+        if (theirs != null && theirs.normalX() * join.normalX() + theirs.normalZ() * join.normalZ() == 0) facing = theirs;
+        Direction back = facing.opposite();
+        boolean frontBlocked = solid(world, at, facing) || solid(world, other, facing);
+        boolean backBlocked = solid(world, at, back) || solid(world, other, back);
+        return frontBlocked && !backBlocked ? back : facing;
+    }
+
+    private static boolean solid(MechanicsWorld world, Point from, Direction side) {
+        return world.getBlock(from.add(side.normalX(), 0, side.normalZ())).isSolid();
+    }
+
+    private static Direction clockwise(Direction facing) {
+        return switch (facing) {
+            case NORTH -> Direction.EAST;
+            case EAST -> Direction.SOUTH;
+            case SOUTH -> Direction.WEST;
+            default -> Direction.NORTH;
+        };
     }
 
     private static @Nullable Direction facingOf(Block chest) {
         String facing = chest.getProperty("facing");
         return facing == null ? null : Direction.valueOf(facing.toUpperCase(Locale.ROOT));
-    }
-
-    // the placement rule's facing: a clicked chest's own when one of its sides was clicked, else the look direction
-    private static @Nullable Direction placedFacing(Player player, PlayerBlockPlaceEvent event) {
-        Direction face = event.getBlockFace().toDirection();
-        Block clicked = MechanicsWorld.viewed(player).getBlock(event.getBlockPosition().relative(event.getBlockFace().getOppositeFace()));
-        if (face.normalY() == 0 && clicked.compare(event.getBlock())) {
-            Direction theirs = facingOf(clicked);
-            if (theirs != null && !along(face, theirs)) return theirs;
-        }
-        // vanilla EnumFacing.fromAngle: south, west, north, east by yaw quadrant - HORIZONTAL's own order
-        int quadrant = (int) Math.floor(player.getPosition().yaw() / 90.0 + 0.5) & 3;
-        return Direction.HORIZONTAL[quadrant];
     }
 
     private static boolean isChest(Block block) {
@@ -128,10 +156,18 @@ public final class CompatPlacement {
     private static void onPlace(PlayerBlockPlaceEvent event, ClientInfoTracker clientInfo) {
         Player player = event.getPlayer();
         if (!(player instanceof OptimizedPlayer op)) return;
-        if (op.compat().legacyChestShapes() && isChest(event.getBlock())
-                && !legacyChestShape(MechanicsWorld.viewed(op), event.getBlockPosition(), event.getBlock(), placedFacing(op, event))) {
-            event.setCancelled(true);
-            return;
+        if (op.compat().legacyChestShapes() && isChest(event.getBlock())) {
+            MechanicsWorld world = MechanicsWorld.viewed(op);
+            Point at = event.getBlockPosition();
+            Block placing = event.getBlock();
+            if (!legacyChestShape(world, at, placing)) {
+                event.setCancelled(true);
+                return;
+            }
+            // after the placement rule has had its say
+            MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
+                if (!event.isCancelled()) pairLike18(world, at, placing);
+            });
         }
         Double reach = op.compat().blockPlaceReach();
         if (reach == null) return;
