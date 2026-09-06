@@ -6,6 +6,7 @@ import io.github.term4.polyp.mechanics.projectile.ProjectileConfigResolver.Resol
 import io.github.term4.polyp.mechanics.projectile.ProjectileSnapshot;
 import io.github.term4.polyp.mechanics.projectile.entities.ProjectileEntity;
 import io.github.term4.polyp.mechanics.projectile.types.ProjectileTypeConfig.HitResponse;
+import io.github.term4.polyp.mechanics.projectile.types.ProjectileTypeConfig.InvulnResponse;
 import io.github.term4.polyp.mechanics.projectile.types.ProjectileTypeConfig.KnockbackSource;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Pos;
@@ -35,6 +36,7 @@ public class ProjectileHitEvent implements CancellableEvent {
     private @Nullable KnockbackSource knockbackSource;
     private @Nullable Boolean removeOnHit;
     private @Nullable HitResponse response;
+    private @Nullable InvulnResponse invulnHit;
 
     private boolean cancelled;
 
@@ -89,6 +91,10 @@ public class ProjectileHitEvent implements CancellableEvent {
     /** Forced outcome, or {@code null} to use the config's self-hit / invuln-hit logic. */
     public @Nullable HitResponse response() { return response; }
     public void response(@Nullable HitResponse response) { this.response = response; }
+
+    /** What the projectile does when the damage does not land: override else resolved. */
+    public @NotNull InvulnResponse invulnHit() { return invulnHit != null ? invulnHit : resolved.invulnHit(); }
+    public void invulnHit(@Nullable InvulnResponse response) { this.invulnHit = response; }
 
     public void cancel() { setCancelled(true); }
 

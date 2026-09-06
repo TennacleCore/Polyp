@@ -85,7 +85,7 @@ public class ManagedProjectile extends ProjectileEntity {
         DamageSystem.DamageOutcome result = applyDamageAndKnockback(target, ev);
         // didn't land: the InvulnResponse picks by why - IMMUNE (creative/spectator) vs BLOCKED (invul window)
         if (!result.landed()) {
-            ProjectileTypeConfig.InvulnResponse ir = hit.invulnHit();
+            ProjectileTypeConfig.InvulnResponse ir = ev.invulnHit();
             ProjectileTypeConfig.HitResponse blocked = result == DamageSystem.DamageOutcome.IMMUNE ? ir.immune() : ir.invulWindow();
             // an arrow that visibly bounces off a player desyncs a 1.8 shooter's client, which hides or bounces it
             // itself: passing through instead costs the bounce sound and the crit-trail marker off a teammate
@@ -96,7 +96,8 @@ public class ManagedProjectile extends ProjectileEntity {
             switch (blocked) {
                 case PASS_THROUGH -> { passThrough(target); return false; }
                 case DEFLECT -> { bounce(hit, target); return false; }
-                case HIT, DESTROY -> { /* fall through to onImpact + removeOnHit */ }
+                case DESTROY -> { fireImpact(target); return true; }
+                case HIT -> { /* fall through to onImpact + removeOnHit */ }
             }
         }
         fireImpact(target);
