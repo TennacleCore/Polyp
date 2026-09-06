@@ -300,7 +300,8 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
         assertEquals(40, scaling.referenceTps());
         assertEquals(20, scaling.clientTps(), "the other knob survives");
         var items = out.get(MechanicsKeys.ITEMS);
-        assertEquals(9.0, items.value(net.minestom.server.item.ItemStack.of(net.minestom.server.item.Material.IRON_SWORD), null,
+        // the path sets the item's modifier; a read adds a player's base
+        assertEquals(10.0, items.value(net.minestom.server.item.ItemStack.of(net.minestom.server.item.Material.IRON_SWORD), null,
                 io.github.term4.polyp.item.ItemStat.ATTACK_DAMAGE, -1));
         assertTrue(items.value(net.minestom.server.item.ItemStack.of(net.minestom.server.item.Material.DIAMOND_SWORD), null,
                 io.github.term4.polyp.item.ItemStat.ATTACK_DAMAGE, -1) > 0, "the rest of the registry survives");

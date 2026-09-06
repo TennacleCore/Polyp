@@ -36,15 +36,17 @@ public final class MeleeDamageConfig extends DamageTypeConfig {
 
     /**
      * Default melee {@code baseAmount}: the held item's {@code ATTACK_DAMAGE} from the holder's resolved
-     * {@link ItemRegistry} ({@code MechanicsProfile.items}, version per preset), falling back to {@link #FIST_DAMAGE}
-     * for fist/unlisted items or when no registry is set.
+     * {@link ItemRegistry} ({@code MechanicsProfile.items}, version per preset); a fist or an unlisted item lands the
+     * holder's attribute base, {@link #FIST_DAMAGE} without a holder or a registry.
      */
     static double weaponBaseAmount(DamageContext ctx) {
         ItemStack item = ctx.item();
         LivingEntity holder = ctx.snap().source() instanceof LivingEntity le ? le : null;
         if ((item == null || item.isAir()) && holder != null) item = holder.getItemInMainHand();
         ItemRegistry items = ctx.services() != null ? ctx.services().profiles().resolve(holder, MechanicsKeys.ITEMS) : null;
-        return items != null ? items.value(item, holder, ItemStat.ATTACK_DAMAGE, FIST_DAMAGE) : FIST_DAMAGE;
+        var base = holder != null ? holder.getAttribute(net.minestom.server.entity.attribute.Attribute.ATTACK_DAMAGE) : null;
+        double fist = base != null ? base.getBaseValue() : FIST_DAMAGE;
+        return items != null ? items.value(item, holder, ItemStat.ATTACK_DAMAGE, fist) : fist;
     }
 
     @Override

@@ -39,7 +39,7 @@ class ArmorReductionTest extends HeadlessServerTest {
 
     @Test
     void meleeHitIsReducedByArmor() {
-        LivingEntity attacker = zombie(new Pos(0, 64, 300));
+        LivingEntity attacker = wielder(new Pos(0, 64, 300));
         LivingEntity victim = zombie(new Pos(0, 64, 301));
         victim.getAttribute(Attribute.ARMOR).setBaseValue(20); // a fully-armored player
         victim.setHealth(20f);

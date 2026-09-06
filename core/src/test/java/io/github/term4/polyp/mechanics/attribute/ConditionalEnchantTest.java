@@ -40,6 +40,7 @@ class ConditionalEnchantTest extends HeadlessServerTest {
     @Test
     void smiteAddsVsUndeadOnly() {
         LivingEntity atk = spawn(EntityType.ZOMBIE, 80);
+        atk.getAttribute(net.minestom.server.entity.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(1.0); // a player's base, not the mob's
         Entity undead = spawn(EntityType.SKELETON, 81);
         Entity living = spawn(EntityType.PIG, 82);
         ItemStack sword = swordWith(Smite.KEY, 3);
@@ -50,6 +51,7 @@ class ConditionalEnchantTest extends HeadlessServerTest {
     @Test
     void baneAddsVsArthropodsOnly() {
         LivingEntity atk = spawn(EntityType.ZOMBIE, 83);
+        atk.getAttribute(net.minestom.server.entity.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(1.0); // a player's base, not the mob's
         Entity arthropod = spawn(EntityType.SPIDER, 84);
         Entity undead = spawn(EntityType.ZOMBIE, 85);
         ItemStack sword = swordWith(Bane.KEY, 3);

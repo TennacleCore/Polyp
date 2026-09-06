@@ -42,7 +42,7 @@ class EffectApplicationTest extends HeadlessServerTest {
 
     @Test
     void resistanceScalesIncomingDamage() {
-        LivingEntity attacker = zombie(new Pos(0, 64, 81));
+        LivingEntity attacker = wielder(new Pos(0, 64, 81));
         LivingEntity victim = zombie(new Pos(0, 64, 82)); // not a Player: no absorption buffer in the way
         victim.getAttribute(Attribute.ARMOR).setBaseValue(0); // isolate resistance from the armor stage
         PotionEffect resistance = PotionEffect.fromKey(RESISTANCE);
@@ -57,7 +57,7 @@ class EffectApplicationTest extends HeadlessServerTest {
 
     @Test
     void resistanceFiveIsImmune() {
-        LivingEntity attacker = zombie(new Pos(0, 64, 83));
+        LivingEntity attacker = wielder(new Pos(0, 64, 83));
         LivingEntity victim = zombie(new Pos(0, 64, 84));
         PotionEffect resistance = PotionEffect.fromKey(RESISTANCE);
         assertNotNull(resistance, "resistance effect");

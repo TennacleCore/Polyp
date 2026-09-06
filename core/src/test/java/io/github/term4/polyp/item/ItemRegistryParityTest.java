@@ -33,6 +33,13 @@ class ItemRegistryParityTest {
     }
 
     @Test
+    void theTableHoldsTheModifier() {
+        // ItemSword: 4 + material, iron 2 - what the attribute modifier carries; the player's base is added on read
+        assertEquals(6.0, LEGACY.def(Material.IRON_SWORD).stored(ItemDef.Version.LEGACY, ItemStat.ATTACK_DAMAGE).orElseThrow(), 1e-9);
+        assertEquals(7.0, LEGACY.value(ItemStack.of(Material.IRON_SWORD), null, ItemStat.ATTACK_DAMAGE, FIST), 1e-9);
+    }
+
+    @Test
     void unlistedAndAirFallBackToFist() {
         assertEquals(FIST, LEGACY.value(ItemStack.of(Material.STICK), null, ItemStat.ATTACK_DAMAGE, FIST), 1e-9);
         assertEquals(FIST, LEGACY.value(ItemStack.AIR, null, ItemStat.ATTACK_DAMAGE, FIST), 1e-9);

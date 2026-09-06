@@ -22,7 +22,7 @@ class MeleeDamageCharacterizationTest extends HeadlessServerTest {
     private static LivingEntity target;
 
     private static LivingEntity attacker() {
-        if (attacker == null) attacker = zombie(new Pos(0, 64, 20));
+        if (attacker == null) attacker = wielder(new Pos(0, 64, 20));
         return attacker;
     }
 

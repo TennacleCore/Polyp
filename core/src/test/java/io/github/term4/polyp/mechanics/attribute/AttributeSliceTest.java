@@ -49,14 +49,14 @@ class AttributeSliceTest extends HeadlessServerTest {
 
     @Test
     void sharpnessAddsAfterCrit() {
-        LivingEntity atk = zombie(new Pos(0, 64, 50));
+        LivingEntity atk = wielder(new Pos(0, 64, 50));
         assertEquals(14.25f, melee(atk, false, sword(5)), EPS); // 8 + 1.25×5
         assertEquals(18.25f, melee(atk, true, sword(5)), EPS);  // 8×1.5 + 6.25
     }
 
     @Test
     void weaknessSubtractsFromAttackDamage() {
-        LivingEntity atk = zombie(new Pos(0, 64, 53));
+        LivingEntity atk = wielder(new Pos(0, 64, 53));
         PotionEffect weakness = PotionEffect.fromKey(Weakness.KEY);
         assertNotNull(weakness, "weakness potion effect");
         atk.addEffect(new Potion(weakness, 0, 600)); // Weakness I
@@ -69,7 +69,7 @@ class AttributeSliceTest extends HeadlessServerTest {
 
     @Test
     void strengthMultipliesLegacyAttackDamage() {
-        LivingEntity atk = zombie(new Pos(0, 64, 52));
+        LivingEntity atk = wielder(new Pos(0, 64, 52));
         PotionEffect strength = PotionEffect.fromKey(Strength.KEY);
         assertNotNull(strength, "strength potion effect");
         atk.addEffect(new Potion(strength, 0, 600)); // amplifier 0 = Strength I

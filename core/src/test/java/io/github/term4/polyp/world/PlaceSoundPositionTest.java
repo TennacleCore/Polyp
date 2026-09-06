@@ -73,12 +73,40 @@ class PlaceSoundPositionTest extends HeadlessServerTest {
         FakePlayer placer = FakePlayer.connect(instance, new Pos(0.5, 41, 0.5), "Placer");
         try {
             EventDispatcher.call(new PlayerBlockPlaceEvent(placer.player, instance, Block.STONE,
-                    BlockFace.TOP, new Pos(-4, 40, 10).asBlockVec(), new Pos(0.5, 1, 0.5), PlayerHand.MAIN));
+                    BlockFace.TOP, new Pos(-4, 64, 10).asBlockVec(), new Pos(0.5, 1, 0.5), PlayerHand.MAIN));
+            instance.setBlock(-4, 64, 10, Block.STONE); // the listener sounds what landed, read at end of tick
+            MinecraftServer.getSchedulerManager().processTickEnd();
 
             assertNotNull(at.get(), "the place emitter ran");
             assertEquals(-3.5, at.get().x(), 1e-9);
-            assertEquals(40.5, at.get().y(), 1e-9);
+            assertEquals(64.5, at.get().y(), 1e-9);
             assertEquals(10.5, at.get().z(), 1e-9);
+        } finally {
+            instance.setBlock(-4, 64, 10, Block.AIR);
+            placer.player.remove();
+        }
+    }
+
+    /** A rule that refuses after the event (a bed with its head blocked lands as air) and a later guard both stay silent. */
+    @Test
+    void refusedPlacementsAreSilent() {
+        AtomicReference<Point> at = new AtomicReference<>();
+        Polyp.getInstance().profiles().setGlobal(MechanicsProfile.builder()
+                .set(MechanicsKeys.FX, FxRegistry.empty().register(Fx.BLOCK_PLACE, ctx -> at.set(ctx.position())))
+                .build());
+        FakePlayer placer = FakePlayer.connect(instance, new Pos(0.5, 41, 0.5), "Refused");
+        try {
+            EventDispatcher.call(new PlayerBlockPlaceEvent(placer.player, instance, Block.RED_BED,
+                    BlockFace.TOP, new Pos(-6, 64, 10).asBlockVec(), new Pos(0.5, 1, 0.5), PlayerHand.MAIN));
+            MinecraftServer.getSchedulerManager().processTickEnd();
+            assertNull(at.get(), "nothing landed, so nothing sounds");
+
+            var guarded = new PlayerBlockPlaceEvent(placer.player, instance, Block.STONE,
+                    BlockFace.TOP, new Pos(-6, 40, 10).asBlockVec(), new Pos(0.5, 1, 0.5), PlayerHand.MAIN);
+            EventDispatcher.call(guarded);
+            guarded.setCancelled(true); // a guard that runs after the emitter's node
+            MinecraftServer.getSchedulerManager().processTickEnd();
+            assertNull(at.get(), "a refused placement makes no sound");
         } finally {
             placer.player.remove();
         }

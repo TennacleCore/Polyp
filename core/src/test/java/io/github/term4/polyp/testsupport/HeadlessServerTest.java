@@ -81,6 +81,13 @@ public abstract class HeadlessServerTest {
         return e;
     }
 
+    /** A {@link #zombie} with a PLAYER's attack base (1.0, not the mob's 3.0): weapon numbers as a player lands them. */
+    protected static LivingEntity wielder(Pos pos) {
+        LivingEntity e = zombie(pos);
+        e.getAttribute(net.minestom.server.entity.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(1.0);
+        return e;
+    }
+
     /** {@code stack} with {@code enchant} at {@code level} added. */
     protected static ItemStack enchant(ItemStack stack, Key enchant, int level) {
         return stack.with(DataComponents.ENCHANTMENTS,

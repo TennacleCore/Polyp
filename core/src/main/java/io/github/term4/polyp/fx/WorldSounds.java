@@ -40,11 +40,19 @@ public final class WorldSounds {
     }
 
     private static void onPlace(Polyp polyp, PlayerBlockPlaceEvent e) {
-        if (e.isCancelled()) return; // a compat rule (reach / air) may cancel the placement
-        // block center like vanilla ItemBlock: client sound mods dedup the server copy by position
-        Fx.play(polyp.services(), Fx.BLOCK_PLACE,
-                FxContext.at(MechanicsWorld.of(e.getPlayer()), e.getBlockPosition().add(0.5, 0.5, 0.5), e.getPlayer())
-                        .withDetail(e.getBlock()));
+        MechanicsWorld world = MechanicsWorld.viewed(e.getPlayer());
+        Block before = world.getBlock(e.getBlockPosition());
+        // a guard on a later node still cancels, and a placement rule still refuses after the event (a bed with its
+        // head blocked lands as air): sound what the world holds at end of tick, not what the event proposed
+        MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
+            if (e.isCancelled()) return;
+            Block after = world.getBlock(e.getBlockPosition());
+            if (after.isAir() || after.stateId() == before.stateId()) return;
+            // block center like vanilla ItemBlock: client sound mods dedup the server copy by position
+            Fx.play(polyp.services(), Fx.BLOCK_PLACE,
+                    FxContext.at(MechanicsWorld.of(e.getPlayer()), e.getBlockPosition().add(0.5, 0.5, 0.5), e.getPlayer())
+                            .withDetail(after));
+        });
     }
 
     private static void onBreak(Polyp polyp, PlayerBlockBreakEvent e) {

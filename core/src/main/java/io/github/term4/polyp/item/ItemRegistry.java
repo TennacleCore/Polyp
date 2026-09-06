@@ -46,7 +46,7 @@ public final class ItemRegistry {
             ItemDef def = defs.get(item.material());
             if (def != null) {
                 OptionalDouble stored = def.stored(version, stat);
-                if (stored.isPresent()) return stored.getAsDouble();
+                if (stored.isPresent()) return stat.compose(stored.getAsDouble(), holder);
             }
             double derived = stat.minestomDefault(item, holder);
             if (!Double.isNaN(derived)) return derived;

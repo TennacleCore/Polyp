@@ -25,7 +25,7 @@ class AttributeTuningTest extends HeadlessServerTest {
 
     private float meleeWithStrength(AttributeConfig scoped) {
         polyp.profiles().setGlobal(MechanicsProfile.builder().set(MechanicsKeys.ATTRIBUTES, scoped).build());
-        LivingEntity atk = zombie(new Pos(0, 64, 90));
+        LivingEntity atk = wielder(new Pos(0, 64, 90));
         PotionEffect strength = PotionEffect.fromKey(Strength.KEY);
         assertNotNull(strength);
         atk.addEffect(new Potion(strength, 0, 600)); // Strength I (LEGACY ×(1+1.3))

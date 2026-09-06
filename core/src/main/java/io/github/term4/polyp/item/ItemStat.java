@@ -19,14 +19,19 @@ import java.util.function.BiFunction;
  */
 public final class ItemStat {
 
-    /**
-     * Held-weapon attack damage: attribute base + the item's own {@code ATTACK_DAMAGE} modifiers, <em>excluding</em> the
-     * holder's potion-effect modifiers - the melee calculator folds Strength/Weakness once through the attribute system,
-     * so including them here would double-count (unlike a fist, which uses the effect-free fallback).
-     */
     private static final Map<String, ItemStat> BY_ID = new java.util.concurrent.ConcurrentHashMap<>();
 
-    public static final ItemStat ATTACK_DAMAGE = new ItemStat("attack_damage", ItemStat::weaponAttackDamage);
+    /** A player's {@code ATTACK_DAMAGE} base in both eras ({@code EntityHuman.initAttributes}); what a fist lands. */
+    public static final double PLAYER_BASE = 1.0;
+
+    /**
+     * Held-weapon attack damage: the holder's attribute base plus the item's own {@code ATTACK_DAMAGE} modifiers,
+     * <em>excluding</em> the holder's potion-effect modifiers - the melee calculator folds Strength/Weakness once
+     * through the attribute system, so including them here would double-count. A stored value is the item's
+     * MODIFIER ({@code ItemSword}: 4 + material; {@code ItemTool}: 3, 2, 1 + material for axe, pickaxe, shovel), the
+     * way {@code ItemSword.i()} registers it on the attribute; the base is added on read, so an iron sword's 6 lands 7.
+     */
+    public static final ItemStat ATTACK_DAMAGE = new ItemStat("attack_damage", ItemStat::weaponAttackDamage, ItemStat::baseAnd);
 
     /** The stat named {@code id} ({@code items/<material>/<id>} paths), or {@code null}. */
     public static @Nullable ItemStat byId(String id) { return BY_ID.get(id); }
@@ -34,6 +39,12 @@ public final class ItemStat {
     public static java.util.Set<String> ids() { return java.util.Set.copyOf(BY_ID.keySet()); }
 
     public static java.util.Collection<ItemStat> all() { return java.util.List.copyOf(BY_ID.values()); }
+
+    /** The holder's attribute base ({@link #PLAYER_BASE} without one) plus a stored modifier. */
+    private static double baseAnd(double modifier, @Nullable LivingEntity holder) {
+        AttributeInstance inst = holder != null ? holder.getAttribute(Attribute.ATTACK_DAMAGE) : null;
+        return (inst != null ? inst.getBaseValue() : PLAYER_BASE) + modifier;
+    }
 
     private static double weaponAttackDamage(ItemStack item, @Nullable LivingEntity holder) {
         if (holder == null) return Double.NaN;
@@ -57,11 +68,19 @@ public final class ItemStat {
 
     private final String id;
     private final BiFunction<ItemStack, @Nullable LivingEntity, Double> minestomDefault;
+    private final BiFunction<Double, @Nullable LivingEntity, Double> compose;
 
-    private ItemStat(String id, BiFunction<ItemStack, @Nullable LivingEntity, Double> minestomDefault) {
+    private ItemStat(String id, BiFunction<ItemStack, @Nullable LivingEntity, Double> minestomDefault,
+                     BiFunction<Double, @Nullable LivingEntity, Double> compose) {
         this.id = id;
         this.minestomDefault = minestomDefault;
+        this.compose = compose;
         BY_ID.put(id, this);
+    }
+
+    /** What a stored value reads as for {@code holder}: the modifier composed with their base, for a weapon stat. */
+    double compose(double stored, @Nullable LivingEntity holder) {
+        return compose.apply(stored, holder);
     }
 
     public String id() { return id; }
