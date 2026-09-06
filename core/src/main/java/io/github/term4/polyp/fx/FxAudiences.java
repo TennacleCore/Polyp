@@ -17,7 +17,7 @@ public final class FxAudiences {
     /**
      * The source alone, and only when its client will NOT produce the effect itself: modern clients predict
      * their own world sounds locally, while 1.8's local sound sinks are stubs, so its doer hears nothing
-     * unless we echo it. The one set defined by client CAPABILITY rather than by scope.
+     * unless the server echoes it. The one set defined by client CAPABILITY rather than by scope.
      */
     private static final Recipients LEGACY_SOURCE = (world, at, source, to) -> {
         Polyp polyp = Polyp.getInstance();

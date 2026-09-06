@@ -61,7 +61,7 @@ class ArrowCritKnobsTest extends HeadlessServerTest {
     }
 
     @Test
-    void particlesCanBeSuppressedOnACriticalArrow() {
+    void particlesOffOnACrit() {
         assertFalse(flagOf(with(ProjectileTypeConfig.builder(Arrow.KEY).critParticles(false).build())));
     }
 
@@ -79,7 +79,7 @@ class ArrowCritKnobsTest extends HeadlessServerTest {
     }
 
     @Test
-    void critDamageIsATriStateSeparateFromTheFlag() {
+    void critDamageIsTriState() {
         assertNull(resolvedCritDamage(ProjectileTypeConfig.builder(Arrow.KEY).build()),
                 "unset follows the arrow's own crit, so vanilla still rolls");
         assertEquals(Boolean.FALSE, resolvedCritDamage(
@@ -88,7 +88,7 @@ class ArrowCritKnobsTest extends HeadlessServerTest {
     }
 
     @Test
-    void particlesCanBeForcedOnWithoutTheRoll() {
+    void particlesWithoutTheRoll() {
         ProjectileConfig cfg = with(ProjectileTypeConfig.builder(Arrow.KEY)
                 .critParticles(true).critDamage(false).build());
         assertTrue(flagOf(cfg), "the trail is cosmetic and independent of the bonus");

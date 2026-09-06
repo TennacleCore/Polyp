@@ -209,7 +209,8 @@ public final class PathEdits {
                     .copying(registry.def(material)).both(stat, dbl(raw, path)).build());
         }, false, "items/<material>/<stat>"));
         // item-physics = legacy | modern
-        MEMBERS.put("item-physics", new Member(MechanicsKeys.ITEM_PHYSICS, io.github.term4.polyp.entity.DroppedItemEntity.Model.class, null, null, true, null));
+        MEMBERS.put("item-physics", new Member(MechanicsKeys.ITEM_PHYSICS,
+                io.github.term4.polyp.entity.DroppedItemEntity.Model.class, null, null, true, null));
         // velocity = <rule>, or velocity/<knob> editing the simulated rule's config
         MEMBERS.put("velocity", new Member(MechanicsKeys.VELOCITY, io.github.term4.polyp.tracking.motion.VelocityRule.class, null,
                 (container, rest, raw, path, who) -> {

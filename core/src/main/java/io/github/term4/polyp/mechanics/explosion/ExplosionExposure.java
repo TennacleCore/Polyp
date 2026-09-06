@@ -42,7 +42,8 @@ public final class ExplosionExposure {
             io.github.term4.polyp.config.FieldFns.register(Rays.class, "none", "no occlusion", args -> NONE);
             io.github.term4.polyp.config.FieldFns.register(Rays.class, "modern", "the 1.9+ sightline sample", args -> MODERN);
             io.github.term4.polyp.config.FieldFns.register(Rays.class, "legacy-1.8", "1.8 rays against block shapes", args -> LEGACY_1_8);
-            io.github.term4.polyp.config.FieldFns.register(Rays.class, "legacy-1.8-full-cube", "1.8 rays against full cubes", args -> LEGACY_1_8_FULL_CUBE);
+            io.github.term4.polyp.config.FieldFns.register(Rays.class, "legacy-1.8-full-cube",
+                    "1.8 rays against full cubes", args -> LEGACY_1_8_FULL_CUBE);
         }
     }
 

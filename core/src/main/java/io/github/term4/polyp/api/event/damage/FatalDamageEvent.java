@@ -10,8 +10,8 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Fired when a hit's final applied amount would kill the target (absorption included), before it applies.
- * Cancelling drops the damage but keeps the hit's hurt flash and sound - the respawn seam for rulesets,
- * since {@code EntityDeathEvent} is not cancellable.
+ * Cancelling drops the damage; a fresh, non-silent blow keeps its hurt flash and sound, a replacement none -
+ * the respawn seam for rulesets, since {@code EntityDeathEvent} is not cancellable.
  */
 public final class FatalDamageEvent extends CancellableMechanicsEvent<DamageSnapshot> {
 

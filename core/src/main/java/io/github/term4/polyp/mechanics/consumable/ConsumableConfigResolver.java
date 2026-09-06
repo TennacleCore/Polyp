@@ -28,7 +28,8 @@ public final class ConsumableConfigResolver {
      * What the per-consumable {@code FieldValue}s resolve against, and what the {@link ConsumableBehavior} hooks
      * receive; {@link Services} lets a behavior reach hunger / attributes / etc.
      */
-    public record ConsumableContext(Player user, ItemStack item, PlayerHand hand, Consumable consumable, @Nullable Services services) implements SubjectContext {
+    public record ConsumableContext(Player user, ItemStack item, PlayerHand hand, Consumable consumable,
+                                    @Nullable Services services) implements SubjectContext {
         @Override public @Nullable Entity subject() { return user(); }
 
 

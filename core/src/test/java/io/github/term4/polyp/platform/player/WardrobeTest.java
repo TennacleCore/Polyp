@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class WardrobeTest extends HeadlessServerTest {
 
     @Test
-    void aKeptWorldReturnsTheBodyAndAnOutfittedWorldDressesArrivals() {
+    void keptReturnsOutfitDresses() {
         Wardrobe.install();
         InstanceContainer home = flatInstance(null);
         InstanceContainer lobby = flatInstance(null);

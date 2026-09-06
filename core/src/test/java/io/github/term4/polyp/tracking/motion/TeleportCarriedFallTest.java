@@ -78,7 +78,7 @@ class TeleportCarriedFallTest extends HeadlessServerTest {
     /** A pearl on mmc18: the teleport, then landing damage with {@code syncHurtVelocity} off. Nothing may touch the
      *  tracked motion - 1.8 keeps server mot through both, and only a broadcast re-anchors it. */
     @Test
-    void aLandingHurtWithoutABroadcastLeavesTheTrackedMotionAlone() {
+    void silentLandingKeepsMotion() {
         var inst = flatInstance(MechanicsProfile.builder()
                 .set(MechanicsKeys.VELOCITY, VelocityRule.simulated(
                         VelocityConfig.builder().motYOnMovePacket(true).build()))

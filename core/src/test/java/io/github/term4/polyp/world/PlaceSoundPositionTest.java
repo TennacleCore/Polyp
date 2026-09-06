@@ -40,7 +40,7 @@ class PlaceSoundPositionTest extends HeadlessServerTest {
 
     /** Vanilla's ItemBlock/BlockItem sounds the block CENTER; client-side-sound mods dedup against it. */
     @Test
-    void breakSoundsAtTheBlockCenterUnlessCancelled() {
+    void breakSoundsAtCenter() {
         AtomicReference<Point> at = new AtomicReference<>();
         Polyp.getInstance().profiles().setGlobal(MechanicsProfile.builder()
                 .set(MechanicsKeys.FX, FxRegistry.empty().register(Fx.BLOCK_BREAK, ctx -> at.set(ctx.position())))

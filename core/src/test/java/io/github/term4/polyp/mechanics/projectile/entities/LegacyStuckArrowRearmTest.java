@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class LegacyStuckArrowRearmTest extends HeadlessServerTest {
 
     @Test
-    void aStuckArrowKeptLongerThanTheClientCountsIsRespawnedForLegacyViewers() {
+    void longKeptArrowRespawns() {
         FakePlayer shooter = FakePlayer.connect(instance, new Pos(700.5, 66, 700.5, 0f, 90f), "StuckShooter"); // looking straight down
         FakePlayer legacy = FakePlayer.connect(instance, new Pos(702.5, 65, 700.5), "StuckLegacy");
         FakePlayer modern = FakePlayer.connect(instance, new Pos(698.5, 65, 700.5), "StuckModern");

@@ -49,7 +49,9 @@ public final class BlockBreakProgress {
     public static void install(EventNode<@NotNull Event> node, Vri vri) {
         var feature = new BlockBreakProgress();
         node.addListener(PlayerStartDiggingEvent.class, e -> {
-            if (VriConfig.on(vri.configFor(e.getPlayer()).blockBreakProgress, e.getPlayer())) feature.start(e.getPlayer(), e.getInstance(), e.getBlockPosition());
+            if (VriConfig.on(vri.configFor(e.getPlayer()).blockBreakProgress, e.getPlayer())) {
+                feature.start(e.getPlayer(), e.getInstance(), e.getBlockPosition());
+            }
         });
         node.addListener(PlayerCancelDiggingEvent.class, e -> feature.clear(e.getPlayer()));
         node.addListener(PlayerFinishDiggingEvent.class, e -> feature.clear(e.getPlayer()));

@@ -13,7 +13,7 @@ class FieldFnsTest {
     interface Probe { String name(); }
 
     @Test
-    void aDuplicateNameIsAnErrorNotAnOverwrite() {
+    void duplicateNameErrors() {
         FieldFns.register(Probe.class, "one", "first", args -> () -> "first");
         try {
             String reason = assertThrows(IllegalStateException.class,
@@ -27,7 +27,7 @@ class FieldFnsTest {
     }
 
     @Test
-    void theShippedVocabularyIsThereOnFirstTouch() {
+    void vocabularyOnFirstTouch() {
         // no PathEdits access first: the bootstrap seam, not class-load luck, fills the registry
         assertTrue(FieldFns.names(io.github.term4.polyp.mechanics.explosion.DamageModel.class).contains("curve"));
         assertTrue(FieldFns.supports(io.github.term4.polyp.fx.FxHandler.class));

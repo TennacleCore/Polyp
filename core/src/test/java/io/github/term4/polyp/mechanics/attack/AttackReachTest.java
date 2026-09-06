@@ -38,7 +38,7 @@ class AttackReachTest extends HeadlessServerTest {
     }
 
     @Test
-    void vanillaPaddingAdmitsThreeBlocksAndRefusesEight() {
+    void paddingAdmitsThreeNotEight() {
         assertEquals(1, swing(Vanilla18.attack(), 11.5, "Near"), "2.7 from the eye to the box: inside 3 + 3");
         assertEquals(0, swing(Vanilla18.attack(), 16.5, "Far"), "7.7 from the eye to the box: past 3 + 3");
     }

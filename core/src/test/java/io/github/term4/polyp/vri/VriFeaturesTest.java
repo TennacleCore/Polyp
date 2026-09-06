@@ -308,7 +308,7 @@ class VriFeaturesTest extends HeadlessServerTest {
     }
 
     @Test
-    void noTossScopeReclaimsTheCloseCursorIntoTheSlots() {
+    void noTossReclaimsCursor() {
         var noToss = flatInstance(MechanicsProfile.builder()
                 .set(MechanicsKeys.VRI, VriConfig.builder().blockDrops(BlockDrops.VANILLA)
                         .itemPickup(true).blockBreakProgress(true).build()) // itemDrop stays off

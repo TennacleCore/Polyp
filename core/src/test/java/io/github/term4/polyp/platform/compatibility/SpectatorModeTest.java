@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SpectatorModeTest extends HeadlessServerTest {
 
     @Test
-    void aLegacyClientWearsBothBodiesAndGetsItsOwnBack() {
+    void legacyWearsBothBodies() {
         FakePlayer w = FakePlayer.connect(instance, new Pos(0.5, 64, 0.5), "ModeWatcher");
         FakePlayer a = FakePlayer.connect(instance, new Pos(4.5, 64, 4.5), "ModeTarget");
         try {

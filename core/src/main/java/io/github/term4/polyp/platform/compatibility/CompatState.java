@@ -236,7 +236,8 @@ public final class CompatState {
         return switch (PacketShapes.unwrapStateless(packet)) {
             case SetSlotPacket p -> new SetSlotPacket(p.windowId(), p.stateId(), p.slot(), rewrite(p.itemStack(), r));
             case SetPlayerInventorySlotPacket p -> new SetPlayerInventorySlotPacket(p.slot(), rewrite(p.itemStack(), r));
-            case WindowItemsPacket p -> new WindowItemsPacket(p.windowId(), p.stateId(), p.items().stream().map(item -> rewrite(item, r)).toList(), rewrite(p.carriedItem(), r));
+            case WindowItemsPacket p -> new WindowItemsPacket(p.windowId(), p.stateId(),
+                    p.items().stream().map(item -> rewrite(item, r)).toList(), rewrite(p.carriedItem(), r));
             case SetCursorItemPacket p -> new SetCursorItemPacket(rewrite(p.itemStack(), r));
             // another player's held item: a modern client reads the block POSE off blocks_attacks, so without the stamp
             // it never renders anyone else blocking. The other rewrites are the viewer's own first-person concern.

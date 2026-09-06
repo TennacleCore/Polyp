@@ -126,7 +126,8 @@ public final class ProjectileConfigResolver {
                 FieldValue.resolve(tc.stuckInBody, ctx, Boolean.TRUE),
                 FieldValue.resolve(tc.critDamage, ctx),
                 FieldValue.resolve(tc.invulnHit, ctx, ProjectileTypeConfig.InvulnResponse.of(ProjectileTypeConfig.HitResponse.DESTROY)), // throwables break; arrow = invulnHit(DEFLECT, PASS_THROUGH)
-                FieldValue.resolve(tc.deflect, ctx, ProjectileTypeConfig.Deflect.of(-0.1)), // vanilla 1.8 motion *= -0.1; 26.1 = deflect(-0.5, 0, -10, 10)
+                // vanilla 1.8 motion *= -0.1; 26.1 = deflect(-0.5, 0, -10, 10)
+                FieldValue.resolve(tc.deflect, ctx, ProjectileTypeConfig.Deflect.of(-0.1)),
                 FieldValue.resolve(tc.bounceOffPlayers, ctx)); // nullable: unset leaves it to the shooter's client
     }
 

@@ -253,7 +253,9 @@ public final class ItemDamageSystem implements MechanicsModule {
             if (!hot[3]) {
                 int ticks = fireTicks(item);
                 if (ticks < 0) item.setTag(FIRE_TICKS, ticks + 1);
-                if (ticks + 1 == 0) ignite(item, TickScaler.duration(item, FieldValue.resolve(cfg.fireIgniteTicks, ctx(item), FIRE_IGNITE_TICKS), KEY));
+                if (ticks + 1 == 0) {
+                    ignite(item, TickScaler.duration(item, FieldValue.resolve(cfg.fireIgniteTicks, ctx(item), FIRE_IGNITE_TICKS), KEY));
+                }
             }
             if (hurt(item, FIRE, FIRE_TICK_DAMAGE)) return;
         }

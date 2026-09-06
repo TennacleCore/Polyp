@@ -178,8 +178,10 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
         s.append("package ").append(pkg).append(";\n\n")
          .append("import io.github.term4.polyp.config.FieldValue;\n\n")
          .append("import java.util.function.Function;\n\n")
-         .append("/** Generated from {@link ").append(cfg).append("}'s FieldValue fields (").append(GenerateBuilder.class.getSimpleName()).append(") - do not edit.")
-         .append(" A bare {@code null} or an int literal for a Double knob is ambiguous between the constant and function setters: write {@code (T) null} / {@code 2.0}. */\n")
+        .append("/** Generated from {@link ").append(cfg).append("}'s FieldValue fields (")
+        .append(GenerateBuilder.class.getSimpleName()).append(") - do not edit.")
+        .append(" A bare {@code null} or an int literal for a Double knob is ambiguous between the constant and")
+        .append(" function setters: write {@code (T) null} / {@code 2.0}. */\n")
          .append("@SuppressWarnings({\"unchecked\", \"rawtypes\"})\n")
          .append("public abstract class ").append(base).append("<B extends ").append(base).append("<B>> {\n\n");
         for (Knob k : knobs) {

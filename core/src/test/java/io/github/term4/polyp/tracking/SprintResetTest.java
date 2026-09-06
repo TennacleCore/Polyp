@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SprintResetTest extends HeadlessServerTest {
 
     @Test
-    void aProfileMayStillClearSprintOnEveryArrival() {
+    void profileClearsOnArrival() {
         var strict = MechanicsProfile.builder()
                 .set(MechanicsKeys.COMPAT, CompatConfig.builder().resetSprintOnSpawn(true).build())
                 .build();
@@ -31,7 +31,7 @@ class SprintResetTest extends HeadlessServerTest {
     }
 
     @Test
-    void sprintSurvivesASameDimensionMoveAndDiesWithTheClientEntity() {
+    void sprintFollowsTheClientEntity() {
         Player p = FakePlayer.connect(instance, new Pos(0.5, 65, 0.5), "Sprinter").player;
         try {
             p.setSprinting(true);

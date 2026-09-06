@@ -131,7 +131,16 @@ public final class FixesConfig {
         private @Nullable FixToggleConfig legacyInventorySlot;
 
         Builder() {}
-        Builder(FixesConfig c) { visuals = c.visuals; legacySelfPlacement = c.legacySelfPlacement; equipmentFix = c.equipmentFix; legacyTabCompleteFix = c.legacyTabCompleteFix; legacyConsume = c.legacyConsume; legacyFireDouse = c.legacyFireDouse; inventorySync = c.inventorySync; legacyInventorySlot = c.legacyInventorySlot; }
+        Builder(FixesConfig c) {
+            visuals = c.visuals;
+            legacySelfPlacement = c.legacySelfPlacement;
+            equipmentFix = c.equipmentFix;
+            legacyTabCompleteFix = c.legacyTabCompleteFix;
+            legacyConsume = c.legacyConsume;
+            legacyFireDouse = c.legacyFireDouse;
+            inventorySync = c.inventorySync;
+            legacyInventorySlot = c.legacyInventorySlot;
+        }
 
         public Builder visuals(@Nullable VisualsConfig v) { this.visuals = v; return this; }
         public Builder legacySelfPlacement(@Nullable FixToggleConfig v) { this.legacySelfPlacement = v; return this; }

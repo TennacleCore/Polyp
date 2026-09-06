@@ -46,7 +46,7 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
     }
 
     @Test
-    void typedEntryEditKeepsTheRestOfTheEntry() {
+    void typedEditKeepsTheRest() {
         MechanicsProfile.Builder b = MechanicsProfile.builder();
         PathEdits.apply(b, base(), "projectiles/minecraft:arrow/critDamage", "false");
         ProjectileTypeConfig arrow = b.build().get(MechanicsKeys.PROJECTILES).typeConfig(Arrow.KEY);
@@ -58,7 +58,7 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
     }
 
     @Test
-    void editsStackOnTheBuilderNotTheFallback() {
+    void editsStackOnTheBuilder() {
         MechanicsProfile.Builder b = MechanicsProfile.builder();
         PathEdits.apply(b, base(), "projectiles/minecraft:arrow/critDamage", "false");
         PathEdits.apply(b, base(), "projectiles/minecraft:arrow/critParticles", "true");
@@ -78,7 +78,7 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
     }
 
     @Test
-    void flatMemberEditWithNoBaseMakesASparseConfig() {
+    void flatEditWithoutBase() {
         MechanicsProfile.Builder b = MechanicsProfile.builder();
         PathEdits.apply(b, null, "explosion/damageModel", "scale(0.5, curve)");
         ExplosionConfig cfg = b.build().get(MechanicsKeys.EXPLOSION);
@@ -172,7 +172,7 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
     }
 
     @Test
-    void anUnknownFxFactoryListsWhatIsAvailable() {
+    void unknownFactoryLists() {
         MechanicsProfile.Builder b = MechanicsProfile.builder();
         String message = assertThrows(IllegalArgumentException.class,
                 () -> PathEdits.apply(b, null, "fx/polyp:pearl_teleport", "sideways")).getMessage();

@@ -33,7 +33,6 @@ public final class Hypixel {
     /** Hypixel's shared fx: the pearl landing is positional here, as it is in SkyWars and everywhere but BedWars. */
     public static FxRegistry fx() {
         return Fx.vanilla18()
-                // TODO: see if this ding belongs as a game rule in grotto rather than a first-class mechanics setting
                 .register(Fx.ARROW_HIT_PLAYER, Fx.arrowHitMarker())
                 .register(Fx.THROW_FIREBALL, FxHandler.NONE)
                 .register(Fx.PEARL_TELEPORT, Fx.pearlTeleport());

@@ -87,7 +87,7 @@ class CompatPickBlockTest extends HeadlessServerTest {
     }
 
     @Test
-    void aFullHotbarPushesTheDisplacedStackIntoTheInventory() {
+    void fullHotbarDisplaces() {
         Player player = builder("PickFull", GameMode.CREATIVE, (byte) 3);
         try {
             for (byte slot = 0; slot < 9; slot++) {

@@ -241,7 +241,8 @@ public final class InventorySync {
         }
     }
 
-    /** Shift-click: equip if armor, else merge/fill into the target section, matching Minestom's {@code PlayerInventory.shiftClick} + {@code TransactionType.ADD}. */
+    /** Shift-click: equip if armor, else merge/fill into the target section, matching Minestom's
+     *  {@code PlayerInventory.shiftClick} + {@code TransactionType.ADD}. */
     private void shiftMove(int slot) {
         final ItemStack clicked = believed[slot];
         if (clicked.isAir()) return;

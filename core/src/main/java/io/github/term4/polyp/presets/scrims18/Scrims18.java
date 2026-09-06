@@ -7,8 +7,7 @@ import io.github.term4.polyp.mechanics.projectile.ProjectileConfig;
 
 /**
  * <b>Scrims 1.8</b> preset - {@link Hypixel} with a 10-tick invul window and fully client-predicted
- * {@link Projectiles} (spawn + velocity, then never synchronizes). More scrims deltas land here as the preset is
- * fleshed out.
+ * {@link Projectiles} (spawn + velocity, then never synchronizes).
  */
 public final class Scrims18 {
 

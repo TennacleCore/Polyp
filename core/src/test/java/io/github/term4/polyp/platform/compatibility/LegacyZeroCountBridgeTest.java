@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class LegacyZeroCountBridgeTest extends HeadlessServerTest {
 
     @Test
-    void aZeroItemIsAStackOfOneCarryingTheBridgeKey() {
+    void zeroRidesAsOne() {
         ItemStack zero = LegacyZeroCountBridge.zero(ItemStack.of(Material.BREWING_STAND, 7));
         assertEquals(1, zero.amount(), "the modern wire cannot carry 0");
         assertTrue(LegacyZeroCountBridge.isZero(zero));

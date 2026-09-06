@@ -38,7 +38,7 @@ class LegacyUseOnBlockFixTest extends HeadlessServerTest {
     }
 
     @Test
-    void aClientThatSendsItsOwnUseItemGetsNoSecondOne() {
+    void ownUseItemNotDoubled() {
         Player p = FakePlayer.connect(instance, new Pos(8.5, 42, 8.5), "LegacyRod").player;
         polyp.clientInfo().setProxyDetails(p, "{\"version\": 47}");
         p.setItemInMainHand(ItemStack.of(Material.FISHING_ROD));

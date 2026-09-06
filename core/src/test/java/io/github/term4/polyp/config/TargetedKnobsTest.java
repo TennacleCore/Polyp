@@ -45,7 +45,7 @@ class TargetedKnobsTest extends HeadlessServerTest {
     }
 
     @Test
-    void aTeamScopedKnobVariesPerShooterInsideOneProfile() {
+    void teamKnobPerShooter() {
         FakePlayer red = FakePlayer.connect(instance, new Pos(0.5, 65, 0.5), "TgtRed");
         FakePlayer blue = FakePlayer.connect(instance, new Pos(1.5, 65, 0.5), "TgtBlue");
         try {
@@ -71,7 +71,7 @@ class TargetedKnobsTest extends HeadlessServerTest {
 
     /** Damage is ABOUT the victim, so a red-targeted damage knob applies when red is hit - not when red hits. */
     @Test
-    void theSubjectIsTheRoleThatSystemResolvesAgainst() {
+    void subjectIsTheRole() {
         FakePlayer red = FakePlayer.connect(instance, new Pos(2.5, 65, 0.5), "SubRed");
         FakePlayer blue = FakePlayer.connect(instance, new Pos(3.5, 65, 0.5), "SubBlue");
         try {
@@ -110,7 +110,7 @@ class TargetedKnobsTest extends HeadlessServerTest {
     }
 
     @Test
-    void orKeepsTheTargetingAndLayersTheFallback() {
+    void orLayersTheFallback() {
         FakePlayer red = FakePlayer.connect(instance, new Pos(0.5, 65, 0.5), "OrRed");
         FakePlayer blue = FakePlayer.connect(instance, new Pos(1.5, 65, 0.5), "OrBlue");
         try {
@@ -126,7 +126,7 @@ class TargetedKnobsTest extends HeadlessServerTest {
     }
 
     @Test
-    void velocityAndCompatVaryPerPlayerThroughTheSameProfile() {
+    void knobsVaryPerPlayer() {
         FakePlayer red = FakePlayer.connect(instance, new Pos(0.5, 65, 0.5), "VcRed");
         FakePlayer blue = FakePlayer.connect(instance, new Pos(1.5, 65, 0.5), "VcBlue");
         try {
