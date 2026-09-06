@@ -24,6 +24,7 @@ import io.github.term4.polyp.fx.WorldSounds;
 import io.github.term4.polyp.platform.player.CraftingGrid;
 import io.github.term4.polyp.util.tick.TickSystem;
 import io.github.term4.polyp.util.tick.TickScaler;
+import io.github.term4.polyp.mechanics.attribute.catalog.EffectParticles;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.Event;
@@ -165,6 +166,7 @@ public final class Polyp {
         // the one lib scoreboard team; features enroll, this cleans up on disconnect
         SharedTeam.install(this);
         SpectatorMode.install(this);
+        EffectParticles.install(this); // the swirl other players see: vanilla mirrors effects into the metadata
         // inert unless AttackConfig.fakeHits or CompatConfig.fistRayHits
         FakeHits.install(this);
         if (installWorldSounds) WorldSounds.install(this);
