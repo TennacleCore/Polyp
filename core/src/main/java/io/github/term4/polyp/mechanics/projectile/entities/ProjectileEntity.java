@@ -126,6 +126,10 @@ public abstract class ProjectileEntity extends MechanicsEntity {
     private long flightSyncCounter;
 
     private @Nullable PhysicsResult previousPhysicsResult;
+    // the cell the viewers' own copies are about to hit: they simulate the next step against the world as it was
+    // at this tick's end, and a block that goes before the server's step (a cage opening) leaves their copy stuck
+    // in it while the server's flies on
+    private @Nullable Point predictedContact;
     private float prevYaw, prevPitch;
     private boolean rotationInitialized;
     private float stuckYaw, stuckPitch;
@@ -438,6 +442,9 @@ public abstract class ProjectileEntity extends MechanicsEntity {
             pendingRemove = true;
             return;
         }
+        boolean phantom = predictedContact != null
+                && !world.getBlock(predictedContact, Block.Getter.Condition.TYPE).isSolid();
+        predictedContact = null;
 
         // water sensing runs BEFORE the motion step (both eras). The box is the VANILLA entity box - the physics
         // box is a point, which would invert the 1.8 Y-inset and never detect
@@ -570,6 +577,30 @@ public abstract class ProjectileEntity extends MechanicsEntity {
         // 1.8 tracker m=0 pass: one velocity after the first physics tick
         if (gravityTickCount == 1 && velocitySyncInterval > 0 && !isStuck()) {
             broadcastWireVelocity();
+        }
+        if (!isStuck() && !pendingRemove && !isRemoved()) predictedContact = nextContact(world, place, velocityBt);
+        if (phantom && !pendingRemove && !isRemoved()) respawnForViewers();
+    }
+
+    // the block cell the next step would strike, as a client stepping through the same world would find it
+    private @Nullable Point nextContact(MechanicsWorld world, Pos from, Vec step) {
+        if (step.isZero()) return null;
+        PhysicsResult next = legacyBlockRay
+                ? LegacyBlockRay.sweep(world, collisionBox(), from, step, null)
+                : world.sweepLoaded(collisionBox(), from, step, null, true);
+        if (!next.hasCollision() || next.collisionShapes() == null || next.collisionShapePositions() == null) return null;
+        for (int axis = 0; axis < 3; axis++) {
+            if (next.collisionShapes()[axis] instanceof ShapeImpl) return next.collisionShapePositions()[axis];
+        }
+        return null;
+    }
+
+    // a copy simulated into a block that is gone holds there (1.8 inGround, modern likewise), and a position sync
+    // moves a held copy without freeing it: a fresh spawn restarts it from the server's position and velocity
+    private void respawnForViewers() {
+        for (Player viewer : List.copyOf(getViewers())) {
+            updateOldViewer(viewer);
+            updateNewViewer(viewer);
         }
     }
 
