@@ -12,6 +12,7 @@ import io.github.term4.polyp.util.tick.TickContext;
 import io.github.term4.polyp.util.tick.TickPhase;
 import io.github.term4.polyp.util.tick.TickScaler;
 import io.github.term4.polyp.util.tick.TickSystem;
+import io.github.term4.polyp.platform.compatibility.SpectatorMode;
 import net.kyori.adventure.key.Key;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;
@@ -111,7 +112,7 @@ public final class HungerSystem extends ScopedSystem<HungerConfig> {
 
     private static void exhaust(Player player, HungerConfig cfg, Key source, float quantity) {
         // vanilla applyExhaustion / causeFoodExhaustion: invulnerable abilities (creative, spectator) never charge
-        if (player.getGameMode().invulnerable()) return;
+        if (player.getGameMode().invulnerable() || SpectatorMode.mode(player) != null) return; // a spectator body never hungers
         ExhaustionCost rule = cfg.exhaustionCost(source);
         float global = FieldValue.resolve(cfg.exhaustionScale, new HungerContext(player), 1f);
         float cost = (rule != null ? rule.cost(quantity) : quantity) * global;

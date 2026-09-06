@@ -4,7 +4,7 @@ import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.mechanics.projectile.entities.ProjectileEntity;
 import io.github.term4.polyp.mechanics.projectile.entities.arrow.StuckArrows;
 import io.github.term4.polyp.mechanics.projectile.types.Arrow;
-import io.github.term4.polyp.presets.Vanilla18;
+import io.github.term4.polyp.presets.vanilla18.Vanilla18;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.LivingEntity;
