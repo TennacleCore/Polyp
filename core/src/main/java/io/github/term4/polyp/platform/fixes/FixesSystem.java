@@ -77,6 +77,7 @@ public final class FixesSystem extends ScopedSystem<FixesConfig> {
         // its own as the delegate.
         if (enabled(cfg.legacySelfPlacement())) LegacySelfPlacementFix.install();
         if (enabled(cfg.equipmentFix())) EquipmentSlotsFix.install();
+        if (enabled(cfg.effectResync())) EffectResyncFix.install();
         if (enabled(cfg.legacyTabCompleteFix())) LegacyTabCompleteFix.install();
         if (enabled(cfg.inventorySync())) InventorySync.install(system.node);
         if (enabled(cfg.legacyInventorySlot())) LegacyInventorySlotFix.install();

@@ -9,13 +9,14 @@ public final class Fixes {
     private Fixes() {}
 
     /**
-     * Any-version QOL/parity set (no legacy-client dependency): the empty-slot equipment strip and the EXPERIMENTAL
-     * inventory sync. The self-meta echo fix is the {@code Polyp.metaFix} init option (it wraps the player provider),
-     * not a member here.
+     * Any-version QOL/parity set (no legacy-client dependency): the empty-slot equipment strip, the effects a new
+     * viewer is owed, and the EXPERIMENTAL inventory sync. The self-meta echo fix is the {@code Polyp.metaFix} init
+     * option (it wraps the player provider), not a member here.
      */
     public static FixesConfig qol() {
         return FixesConfig.builder()
                 .equipmentFix(FixToggleConfig.on())
+                .effectResync(FixToggleConfig.on())
                 .inventorySync(FixToggleConfig.on()) // EXPERIMENTAL
                 .build();
     }

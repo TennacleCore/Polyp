@@ -18,6 +18,7 @@ import io.github.term4.polyp.platform.fixes.client.SelfMetaFilter;
 import io.github.term4.polyp.util.tick.TickScaler;
 import io.github.term4.polyp.world.ExternallyTickable;
 import io.github.term4.polyp.world.MechanicsWorld;
+import io.github.term4.polyp.platform.fixes.EffectResyncFix;
 import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.EntityPose;
@@ -144,6 +145,7 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         }
         p = SpectatorHud.rewrite(this, p);
         super.sendPacket(p);
+        EffectResyncFix.afterSpawn(this, p); // a spawn owes this viewer the effects that entity already carries
         // a respawn or join carries the real game mode; the spoof follows it
         if ((p instanceof RespawnPacket || p instanceof JoinGamePacket) && SpectatorHud.hidden(this)) {
             super.sendPacket(SpectatorHud.spoof(this));
