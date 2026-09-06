@@ -62,9 +62,10 @@ public final class CompatConfig {
      *  {@code false} = the hypixel refusal: stairs into your own face bounce, passable blocks still land. */
     public final @Nullable FieldValue<CompatContext, Boolean> legacySelfPlace;
     /**
-     * A chest lands only in a shape a 1.8 client draws: beside at most one chest, never beside one already paired.
-     * 1.8 pairs chests by adjacency alone and draws a pair from one half, so a single beside a pair or three in a
-     * row leaves a chest that client never renders. Server-side, any placer; {@code null} = on.
+     * A chest lands only in a shape a 1.8 client draws: beside at most one chest, never beside one already paired,
+     * never along a chest's facing axis. 1.8 pairs chests by adjacency alone and draws the pair from one half's
+     * facing, so any of those leaves a half that client draws where no block is. Server-side, any placer;
+     * {@code null} = on.
      */
     public final @Nullable FieldValue<CompatContext, Boolean> legacyChestShapes;
     /** Remove the modern attack cooldown + crosshair indicator (huge {@code ATTACK_SPEED}). Server-side, any client. */

@@ -18,6 +18,8 @@ import net.minestom.server.event.player.PlayerBlockPlaceEvent;
 import net.minestom.server.event.trait.PlayerEvent;
 import net.minestom.server.utils.Direction;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import java.util.Locale;
 
 /**
  * Server-side 1.8 block-placement rules, each gated by its own {@code CompatConfig} knob.
@@ -69,20 +71,45 @@ public final class CompatPlacement {
         polyp.install(node);
     }
 
-    /** 1.8 pairs by adjacency alone ({@code TileEntityChest.checkForAdjacentChests}) and draws a pair from one half:
-     *  beside two, or beside an already paired one, never renders. Trapped and plain never pair. */
-    static boolean legacyChestShape(MechanicsWorld world, Point at, Block placing) {
+    /** 1.8 pairs by adjacency alone ({@code TileEntityChest.checkForAdjacentChests}) and draws the pair from one
+     *  half's facing: a neighbor along either chest's facing axis, a second neighbor, or a neighbor already paired
+     *  all draw a half where no block is. Trapped and plain never pair. */
+    static boolean legacyChestShape(MechanicsWorld world, Point at, Block placing, @Nullable Direction facing) {
         int beside = 0;
         for (Direction side : Direction.HORIZONTAL) {
             Point next = at.add(side.normalX(), 0, side.normalZ());
-            if (!world.getBlock(next).compare(placing)) continue;
+            Block neighbor = world.getBlock(next);
+            if (!neighbor.compare(placing)) continue;
             beside++;
+            if (along(side, facing) || along(side, facingOf(neighbor))) return false;
             for (Direction far : Direction.HORIZONTAL) {
                 Point partner = next.add(far.normalX(), 0, far.normalZ());
                 if (!partner.sameBlock(at) && world.getBlock(partner).compare(placing)) return false;
             }
         }
         return beside <= 1;
+    }
+
+    private static boolean along(Direction side, @Nullable Direction facing) {
+        return facing != null && (side == facing || side == facing.opposite());
+    }
+
+    private static @Nullable Direction facingOf(Block chest) {
+        String facing = chest.getProperty("facing");
+        return facing == null ? null : Direction.valueOf(facing.toUpperCase(Locale.ROOT));
+    }
+
+    // the placement rule's facing: a clicked chest's own when one of its sides was clicked, else the look direction
+    private static @Nullable Direction placedFacing(Player player, PlayerBlockPlaceEvent event) {
+        Direction face = event.getBlockFace().toDirection();
+        Block clicked = MechanicsWorld.viewed(player).getBlock(event.getBlockPosition().relative(event.getBlockFace().getOppositeFace()));
+        if (face.normalY() == 0 && clicked.compare(event.getBlock())) {
+            Direction theirs = facingOf(clicked);
+            if (theirs != null && !along(face, theirs)) return theirs;
+        }
+        // vanilla EnumFacing.fromAngle: south, west, north, east by yaw quadrant - HORIZONTAL's own order
+        int quadrant = (int) Math.floor(player.getPosition().yaw() / 90.0 + 0.5) & 3;
+        return Direction.HORIZONTAL[quadrant];
     }
 
     private static boolean isChest(Block block) {
@@ -102,7 +129,7 @@ public final class CompatPlacement {
         Player player = event.getPlayer();
         if (!(player instanceof OptimizedPlayer op)) return;
         if (op.compat().legacyChestShapes() && isChest(event.getBlock())
-                && !legacyChestShape(MechanicsWorld.viewed(op), event.getBlockPosition(), event.getBlock())) {
+                && !legacyChestShape(MechanicsWorld.viewed(op), event.getBlockPosition(), event.getBlock(), placedFacing(op, event))) {
             event.setCancelled(true);
             return;
         }
