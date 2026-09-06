@@ -47,7 +47,7 @@ public final class WorldSounds {
         MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
             if (e.isCancelled()) return;
             Block after = world.getBlock(e.getBlockPosition());
-            if (after.isAir() || after.stateId() == before.stateId()) return;
+            if (after.air() || after.stateId() == before.stateId()) return;
             // block center like vanilla ItemBlock: client sound mods dedup the server copy by position
             Fx.play(polyp.services(), Fx.BLOCK_PLACE,
                     FxContext.at(MechanicsWorld.of(e.getPlayer()), e.getBlockPosition().add(0.5, 0.5, 0.5), e.getPlayer())
