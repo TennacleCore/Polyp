@@ -89,6 +89,9 @@ public final class CompatState {
     /** A legacy placer's own body never blocks their placement (1.8); {@code false} = the hypixel refusal. */
     public boolean legacySelfPlace() { return !Boolean.FALSE.equals(policy.legacySelfPlace(ctx)); }
 
+    /** Chests land only in shapes a 1.8 client draws; {@code null} = on. */
+    public boolean legacyChestShapes() { return !Boolean.FALSE.equals(policy.legacyChestShapes(ctx)); }
+
     private static boolean on(@Nullable Boolean v) { return Boolean.TRUE.equals(v); }
     private static <T> T or(@Nullable T v, T d) { return v != null ? v : d; }
 

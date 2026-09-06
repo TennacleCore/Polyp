@@ -16,6 +16,7 @@ import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.PlayerBlockInteractEvent;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
 import net.minestom.server.event.trait.PlayerEvent;
+import net.minestom.server.utils.Direction;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -68,6 +69,26 @@ public final class CompatPlacement {
         polyp.install(node);
     }
 
+    /** 1.8 pairs by adjacency alone ({@code TileEntityChest.checkForAdjacentChests}) and draws a pair from one half:
+     *  beside two, or beside an already paired one, never renders. Trapped and plain never pair. */
+    static boolean legacyChestShape(MechanicsWorld world, Point at, Block placing) {
+        int beside = 0;
+        for (Direction side : Direction.HORIZONTAL) {
+            Point next = at.add(side.normalX(), 0, side.normalZ());
+            if (!world.getBlock(next).compare(placing)) continue;
+            beside++;
+            for (Direction far : Direction.HORIZONTAL) {
+                Point partner = next.add(far.normalX(), 0, far.normalZ());
+                if (!partner.sameBlock(at) && world.getBlock(partner).compare(placing)) return false;
+            }
+        }
+        return beside <= 1;
+    }
+
+    private static boolean isChest(Block block) {
+        return block.compare(Block.CHEST) || block.compare(Block.TRAPPED_CHEST);
+    }
+
     /** A live raycast never block-hits air, so an air clicked-block = the client aimed at a cell it just broke (creative quick-replace). */
     private static void onInteract(PlayerBlockInteractEvent event) {
         if (!(event.getPlayer() instanceof OptimizedPlayer op)) return;
@@ -80,6 +101,11 @@ public final class CompatPlacement {
     private static void onPlace(PlayerBlockPlaceEvent event, ClientInfoTracker clientInfo) {
         Player player = event.getPlayer();
         if (!(player instanceof OptimizedPlayer op)) return;
+        if (op.compat().legacyChestShapes() && isChest(event.getBlock())
+                && !legacyChestShape(MechanicsWorld.viewed(op), event.getBlockPosition(), event.getBlock())) {
+            event.setCancelled(true);
+            return;
+        }
         Double reach = op.compat().blockPlaceReach();
         if (reach == null) return;
         // only modern survival clients can sneak-bridge past 1.8 reach; legacy/creative/spectator already aim correctly
