@@ -14,25 +14,37 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** An effect with particles swirls in its color on the living metadata; a silent one and a removed one do not. */
+/** The swirl is one particle in the 1.8 blend of the showing effects; a silent one adds nothing, a removed one leaves. */
 class EffectParticlesTest extends HeadlessServerTest {
 
+    private static int swirlColor(LivingEntityMeta meta) {
+        assertEquals(1, meta.getEffectParticles().size(), "one swirl, whatever the effects");
+        return ((Particle.EntityEffect) meta.getEffectParticles().getFirst()).color().asARGB() & 0xFFFFFF;
+    }
+
     @Test
-    void effectsSwirlOnTheMetadata() {
+    void effectsSwirlInTheLegacyBlend() {
         LivingEntity z = zombie(new Pos(0, 64, 120));
         LivingEntityMeta meta = (LivingEntityMeta) z.getEntityMeta();
         z.addEffect(new Potion(PotionEffect.STRENGTH, 0, 200, Potion.PARTICLES_FLAG | Potion.ICON_FLAG));
         MinecraftServer.getSchedulerManager().processTick();
-        assertEquals(1, meta.getEffectParticles().size(), "one swirl for the one effect");
-        Particle.EntityEffect swirl = (Particle.EntityEffect) meta.getEffectParticles().getFirst();
-        assertEquals(PotionEffect.STRENGTH.color() & 0xFFFFFF, swirl.color().asARGB() & 0xFFFFFF, "in the effect's color");
+        assertEquals(9643043, swirlColor(meta), "1.8 strength, not the modern gold");
         assertFalse(meta.isPotionEffectAmbient());
 
-        z.addEffect(new Potion(PotionEffect.SPEED, 0, 200, 0)); // no particles asked for
+        z.addEffect(new Potion(PotionEffect.SPEED, 0, 200, Potion.PARTICLES_FLAG));
         MinecraftServer.getSchedulerManager().processTick();
-        assertEquals(1, meta.getEffectParticles().size(), "a silent effect adds no swirl");
+        assertEquals(8874356, swirlColor(meta), "strength and speed averaged per channel, as PotionBrewer.a does");
+
+        z.addEffect(new Potion(PotionEffect.HASTE, 0, 200, 0)); // no particles asked for
+        MinecraftServer.getSchedulerManager().processTick();
+        assertEquals(8874356, swirlColor(meta), "a silent effect adds nothing");
 
         z.removeEffect(PotionEffect.STRENGTH);
+        z.removeEffect(PotionEffect.HASTE);
+        MinecraftServer.getSchedulerManager().processTick();
+        assertEquals(8171462, swirlColor(meta), "1.8 speed alone");
+
+        z.removeEffect(PotionEffect.SPEED);
         MinecraftServer.getSchedulerManager().processTick();
         assertTrue(meta.getEffectParticles().isEmpty(), "removed, the swirl goes");
 

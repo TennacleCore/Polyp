@@ -1,12 +1,15 @@
 package io.github.term4.polyp.mechanics.attribute.catalog;
 
+import org.jetbrains.annotations.NotNull;
 import net.minestom.server.item.component.PotionContents;
 import net.minestom.server.potion.CustomPotionEffect;
 import net.minestom.server.potion.PotionEffect;
 import net.kyori.adventure.util.RGBLike;
+import net.minestom.server.potion.Potion;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Collection;
 
 /**
  * FxHandler-color table (vanilla 26 {@code MobEffects} registrations) + the potion color blend - Minestom's
@@ -72,9 +75,29 @@ public final class PotionColors {
         return color(contents, effects, false);
     }
 
-    /** {@link #color} with the 1.8 palette + unweighted blend ({@code PotionHelper}), for 1.8-parity particles on modern clients. */
+    /** {@link #color} with the 1.8 palette ({@code PotionHelper}), for 1.8-parity colors on modern clients. */
     public static int legacyColor(@org.jetbrains.annotations.Nullable PotionContents contents, List<CustomPotionEffect> effects) {
         return color(contents, effects, true);
+    }
+
+    /**
+     * The one color 1.8 puts on a living entity for its effects ({@code PotionBrewer.a}): every showing effect's
+     * liquid color, amplifier + 1 times over, averaged per channel; {@code 0} when nothing shows.
+     */
+    public static int legacyBlend(@NotNull Collection<Potion> effects) {
+        float r = 0, g = 0, b = 0, n = 0;
+        for (Potion potion : effects) {
+            if (!potion.hasParticles()) continue;
+            int color = colorOf(potion.effect(), true);
+            for (int k = 0; k <= potion.amplifier(); k++) {
+                r += (color >> 16 & 255) / 255f;
+                g += (color >> 8 & 255) / 255f;
+                b += (color & 255) / 255f;
+                n++;
+            }
+        }
+        if (n == 0) return 0;
+        return (int) (r / n * 255f) << 16 | (int) (g / n * 255f) << 8 | (int) (b / n * 255f);
     }
 
     private static int color(@org.jetbrains.annotations.Nullable PotionContents contents, List<CustomPotionEffect> effects, boolean legacy) {
@@ -88,7 +111,7 @@ public final class PotionColors {
         for (CustomPotionEffect e : effects) {
             if (!e.showParticles()) continue;
             int color = colorOf(e.id(), legacy);
-            int amp = legacy ? 1 : e.amplifier() + 1; // 1.8 averages unweighted
+            int amp = e.amplifier() + 1; // 1.8 weights by amplifier too (PotionBrewer.a)
             r += amp * ((color >> 16) & 0xFF);
             g += amp * ((color >> 8) & 0xFF);
             b += amp * (color & 0xFF);
