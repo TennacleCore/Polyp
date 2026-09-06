@@ -92,6 +92,9 @@ public final class CompatState {
     /** Chests land only in shapes a 1.8 client draws; {@code null} = on. */
     public boolean legacyChestShapes() { return !Boolean.FALSE.equals(policy.legacyChestShapes(ctx)); }
 
+    /** Whether this subject's modern attack cooldown (and its crosshair indicator) is off. */
+    public boolean removeAttackCooldown() { return on(policy.removeAttackCooldown(ctx)); }
+
     private static boolean on(@Nullable Boolean v) { return Boolean.TRUE.equals(v); }
     private static <T> T or(@Nullable T v, T d) { return v != null ? v : d; }
 

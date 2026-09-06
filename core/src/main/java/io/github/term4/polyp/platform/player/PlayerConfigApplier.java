@@ -70,7 +70,7 @@ public final class PlayerConfigApplier {
             resendViewedEquipment(op);
         }
         // touched only on a real change, so a non-compat server's attack speed is never clobbered
-        boolean nowCooldownRemoved = compat != null && Boolean.TRUE.equals(compat.removeAttackCooldown);
+        boolean nowCooldownRemoved = state.removeAttackCooldown(); // the resolved knob, not the field's holder
         if (nowCooldownRemoved != prevCooldownRemoved) {
             var attackSpeed = op.getAttribute(Attribute.ATTACK_SPEED);
             if (attackSpeed != null) {
