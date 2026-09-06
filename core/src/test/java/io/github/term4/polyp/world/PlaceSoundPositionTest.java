@@ -87,26 +87,37 @@ class PlaceSoundPositionTest extends HeadlessServerTest {
         }
     }
 
-    /** A rule that refuses after the event (a bed with its head blocked lands as air) and a later guard both stay silent. */
+    /** A rule that refuses after the event (a bed with its head blocked lands as air) and a later guard both sound
+     *  the refusal - the block the client proposed, at the block center - never the placement. */
     @Test
-    void refusedPlacementsAreSilent() {
-        AtomicReference<Point> at = new AtomicReference<>();
+    void refusedPlacementsSoundTheirOwnKey() {
+        AtomicReference<Point> placed = new AtomicReference<>();
+        java.util.List<Block> refused = new java.util.ArrayList<>();
+        AtomicReference<Point> refusedAt = new AtomicReference<>();
         Polyp.getInstance().profiles().setGlobal(MechanicsProfile.builder()
-                .set(MechanicsKeys.FX, FxRegistry.empty().register(Fx.BLOCK_PLACE, ctx -> at.set(ctx.position())))
+                .set(MechanicsKeys.FX, FxRegistry.empty()
+                        .register(Fx.BLOCK_PLACE, ctx -> placed.set(ctx.position()))
+                        .register(Fx.BLOCK_PLACE_REFUSED, ctx -> {
+                            refused.add(ctx.detail(Block.class));
+                            refusedAt.set(ctx.position());
+                        }))
                 .build());
         FakePlayer placer = FakePlayer.connect(instance, new Pos(0.5, 41, 0.5), "Refused");
         try {
             EventDispatcher.call(new PlayerBlockPlaceEvent(placer.player, instance, Block.RED_BED,
                     BlockFace.TOP, new Pos(-6, 64, 10).asBlockVec(), new Pos(0.5, 1, 0.5), PlayerHand.MAIN));
             MinecraftServer.getSchedulerManager().processTickEnd();
-            assertNull(at.get(), "nothing landed, so nothing sounds");
+            assertNull(placed.get(), "nothing landed, so no placement");
+            assertEquals(java.util.List.of(Block.RED_BED), refused, "the refusal names what was proposed");
+            assertEquals(-5.5, refusedAt.get().x(), 1e-9);
 
             var guarded = new PlayerBlockPlaceEvent(placer.player, instance, Block.STONE,
                     BlockFace.TOP, new Pos(-6, 40, 10).asBlockVec(), new Pos(0.5, 1, 0.5), PlayerHand.MAIN);
             EventDispatcher.call(guarded);
             guarded.setCancelled(true); // a guard that runs after the emitter's node
             MinecraftServer.getSchedulerManager().processTickEnd();
-            assertNull(at.get(), "a refused placement makes no sound");
+            assertNull(placed.get(), "a refused placement is no placement");
+            assertEquals(java.util.List.of(Block.RED_BED, Block.STONE), refused);
         } finally {
             placer.player.remove();
         }

@@ -78,6 +78,9 @@ public final class Fx {
     public static final Key BLOCK_PLACE = Key.key("polyp:block_place");
     /** A block break; the context detail is the broken {@code Block}. */
     public static final Key BLOCK_BREAK = Key.key("polyp:block_break");
+    /** A placement the server refused; the context detail is the {@code Block} the client proposed. The 1.8 client
+     *  plays nothing itself, so by default this reaches the placement's own audience; a game's data path narrows it. */
+    public static final Key BLOCK_PLACE_REFUSED = Key.key("polyp:block_place_refused");
     /** The big explosion flash; played for power &gt;= 2 (the 1.8 client's hugeexplosion-vs-explode gate). */
     public static final Key EXPLOSION_EMITTER = Key.key("polyp:explosion_emitter");
 
@@ -145,15 +148,8 @@ public final class Fx {
                     if (st == null || st.stepSound() == null) return;
                     ctx.predictedSound(st.stepSound(), Sound.Source.PLAYER, st.volume() * 0.15f, st.pitch());
                 })
-                // vanilla BlockItem.place: volume (v+1)/2, pitch p*0.8, BLOCKS category
-                .register(BLOCK_PLACE, ctx -> {
-                    Block block = ctx.detail(Block.class);
-                    BlockSoundType st = block != null ? block.blockSoundType() : null;
-                    if (st == null || st.placeSound() == null) return;
-                    // block view, not the placer's entity viewers: whoever sees the block appear hears it
-                    ctx.emit(FxAudiences.predictedFor(Recipients.BLOCK_VIEWERS),
-                            FxEffect.sound(st.placeSound(), Sound.Source.BLOCK, (st.volume() + 1.0f) / 2.0f, st.pitch() * 0.8f));
-                })
+                .register(BLOCK_PLACE, placeSound())
+                .register(BLOCK_PLACE_REFUSED, placeSound())
                 // world event 2001: the client derives sound + particles from the block id
                 .register(BLOCK_BREAK, ctx -> {
                     Block block = ctx.detail(Block.class);
@@ -172,6 +168,18 @@ public final class Fx {
                         .and(FxHandler.sound(SoundEvent.ENTITY_PLAYER_ATTACK_CRIT, Sound.Source.PLAYER, 1.0f, 1.0f)))
                 // ThrownEnderpearl.playSound: positional at the destination, PLAYERS category
                 .register(PEARL_TELEPORT, pearlTeleport());
+    }
+
+    // vanilla BlockItem.place: volume (v+1)/2, pitch p*0.8, BLOCKS category; block view, not the placer's entity
+    // viewers: whoever sees the block appear hears it
+    private static @NotNull FxHandler placeSound() {
+        return ctx -> {
+            Block block = ctx.detail(Block.class);
+            BlockSoundType st = block != null ? block.blockSoundType() : null;
+            if (st == null || st.placeSound() == null) return;
+            ctx.emit(FxAudiences.predictedFor(Recipients.BLOCK_VIEWERS),
+                    FxEffect.sound(st.placeSound(), Sound.Source.BLOCK, (st.volume() + 1.0f) / 2.0f, st.pitch() * 0.8f));
+        };
     }
 
     /** The vanilla pearl landing: positional at the destination, so it fades with distance. */

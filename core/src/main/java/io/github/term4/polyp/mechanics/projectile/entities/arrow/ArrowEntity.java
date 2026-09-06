@@ -142,6 +142,10 @@ public class ArrowEntity extends ManagedProjectile {
         applyOnHitEffects(le);
     }
 
+    // vanilla bounces here: no bowhit, no ding, nothing stuck, no effects
+    @Override
+    protected void onRefusedImpact(@Nullable Entity hitEntity) {}
+
     public void setOnHitEffects(List<CustomPotionEffect> effects, float durationScale) {
         this.onHitEffects = effects;
         this.potionDurationScale = durationScale;

@@ -96,7 +96,7 @@ public class ManagedProjectile extends ProjectileEntity {
             switch (blocked) {
                 case PASS_THROUGH -> { passThrough(target); return false; }
                 case DEFLECT -> { bounce(hit, target); return false; }
-                case DESTROY -> { fireImpact(target); return true; }
+                case DESTROY -> { onRefusedImpact(target); behavior.onImpact(this, target); return true; }
                 case HIT -> { /* fall through to onImpact + removeOnHit */ }
             }
         }
@@ -180,6 +180,12 @@ public class ManagedProjectile extends ProjectileEntity {
 
 
     protected void onImpact(@Nullable Entity hitEntity) {}
+
+    /** {@link #onImpact} for a hit whose damage did not land and whose response is DESTROY: a throwable runs its
+     *  impact whatever the target said (1.8 EntityThrowable.onImpact); an arrow overrides to die with nothing. */
+    protected void onRefusedImpact(@Nullable Entity hitEntity) {
+        onImpact(hitEntity);
+    }
 
     private void fireImpact(@Nullable Entity hit) {
         onImpact(hit);

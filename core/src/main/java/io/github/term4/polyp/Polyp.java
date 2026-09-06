@@ -21,6 +21,7 @@ import io.github.term4.polyp.tracking.motion.MotionTracker;
 import io.github.term4.polyp.tracking.SprintTracker;
 import io.github.term4.polyp.tracking.Tracker;
 import io.github.term4.polyp.fx.WorldSounds;
+import io.github.term4.polyp.platform.player.CraftingGrid;
 import io.github.term4.polyp.util.tick.TickSystem;
 import io.github.term4.polyp.util.tick.TickScaler;
 import net.minestom.server.MinecraftServer;
@@ -57,6 +58,8 @@ public final class Polyp {
     /** Block-place + footstep sounds Minestom doesn't emit, played through the fx registry
      *  ({@code Fx.STEP}/{@code Fx.BLOCK_PLACE}); false skips the emitter entirely. */
     public boolean installWorldSounds = true;
+    /** Refuse the player inventory's 2x2 grid; off for a server that crafts. */
+    public boolean guardCraftingGrid = true;
     /** Removes the pose-change stutter (sneak/sprint/...) 1.9+ clients show under high ping. Requires {@link #installPlayerProvider}. */
     public boolean metaFix = true;
     /**
@@ -165,6 +168,7 @@ public final class Polyp {
         // inert unless AttackConfig.fakeHits or CompatConfig.fistRayHits
         FakeHits.install(this);
         if (installWorldSounds) WorldSounds.install(this);
+        if (guardCraftingGrid) CraftingGrid.install(this);
         profiles.onChange(changed -> {
             if (changed != null) {
                 if (installPlayerProvider) PlayerConfigApplier.apply(this, changed);

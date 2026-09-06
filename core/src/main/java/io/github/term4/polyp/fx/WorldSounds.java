@@ -43,15 +43,14 @@ public final class WorldSounds {
         MechanicsWorld world = MechanicsWorld.viewed(e.getPlayer());
         Block before = world.getBlock(e.getBlockPosition());
         // a guard on a later node still cancels, and a placement rule still refuses after the event (a bed with its
-        // head blocked lands as air): sound what the world holds at end of tick, not what the event proposed
+        // head blocked lands as air): read the world at end of tick; a refusal sounds under its own key
         MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
-            if (e.isCancelled()) return;
             Block after = world.getBlock(e.getBlockPosition());
-            if (after.air() || after.stateId() == before.stateId()) return;
+            boolean refused = e.isCancelled() || after.air() || after.stateId() == before.stateId();
             // block center like vanilla ItemBlock: client sound mods dedup the server copy by position
-            Fx.play(polyp.services(), Fx.BLOCK_PLACE,
+            Fx.play(polyp.services(), refused ? Fx.BLOCK_PLACE_REFUSED : Fx.BLOCK_PLACE,
                     FxContext.at(MechanicsWorld.of(e.getPlayer()), e.getBlockPosition().add(0.5, 0.5, 0.5), e.getPlayer())
-                            .withDetail(after));
+                            .withDetail(refused ? e.getBlock() : after));
         });
     }
 
