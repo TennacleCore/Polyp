@@ -156,16 +156,29 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
             if (deathFlag(death != null ? death.hideCorpse(ctx) : null) && dead instanceof Player p) {
                 Integer knob = death != null ? death.deathAnimationTicks(ctx) : null;
                 int ticks = knob != null ? knob : DEATH_ANIMATION_TICKS;
-                p.scheduler().buildTask(() -> { if (p.isDead()) p.setAutoViewable(false); })
-                        .delay(TaskSchedule.tick(TickScaler.duration(p, ticks, KEY))).schedule();
+                p.scheduler().buildTask(() -> {
+                    if (!p.isDead()) return;
+                    p.setTag(CORPSE_HIDDEN, true);
+                    p.setAutoViewable(false);
+                }).delay(TaskSchedule.tick(TickScaler.duration(p, ticks, KEY))).schedule();
             }
         });
-        // re-show the respawned player NEXT tick (after the respawn teleport, else viewers re-see them at the death spot)
+        // re-show the respawned player NEXT tick (after the respawn teleport, else viewers re-see them at the death
+        // spot); keyed on the hide itself, never on the scope the respawn lands under
         this.node.addListener(PlayerRespawnEvent.class, e -> {
-            DeathContext ctx = new DeathContext(e.getPlayer());
-            DeathConfig death = effectiveDeath(polyp.profiles().resolve(e.getPlayer(), MechanicsKeys.DEATH), ctx);
-            if (deathFlag(death != null ? death.hideCorpse(ctx) : null)) e.getPlayer().scheduleNextTick(p -> p.setAutoViewable(true));
+            if (e.getPlayer().hasTag(CORPSE_HIDDEN)) e.getPlayer().scheduleNextTick(DamageSystem::reshow);
         });
+        this.node.addListener(PlayerSpawnEvent.class, e -> { // alive and still tagged: a respawn this node never saw
+            if (!e.getPlayer().isDead() && e.getPlayer().hasTag(CORPSE_HIDDEN)) reshow(e.getPlayer());
+        });
+    }
+
+    /** On while the corpse is hidden: what the restore keys on. */
+    private static final Tag<Boolean> CORPSE_HIDDEN = Tag.Transient("polyp:corpse-hidden");
+
+    private static void reshow(Entity body) {
+        body.removeTag(CORPSE_HIDDEN);
+        body.setAutoViewable(true);
     }
 
     /**
