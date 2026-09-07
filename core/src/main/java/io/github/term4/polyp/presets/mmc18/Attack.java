@@ -32,6 +32,7 @@ public final class Attack {
     public static AttackConfig config() {
         return AttackConfig.builder(Vanilla18.attack())
                 .ruleset(ruleset())
+                .reachPadding(AttackConfig.LENIENT_REACH_PADDING) // the same wide gate hypixel keeps
                 .fullHitScale(1.0) // a landed hit does NOT slow the attacker's tracked velocity
                 .fakeHits(FakeHitConfig.ofReach(SWING_REACH))
                 .build();
