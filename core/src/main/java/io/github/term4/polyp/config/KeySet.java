@@ -13,7 +13,8 @@ import java.util.Set;
  * melee and arrows hurt here" is choosing from the damage catalog, not authoring damage.
  *
  * <p>Registered for data paths, so a ruleset writes {@code damage/enabledTypes = only(minecraft:player_attack,
- * minecraft:thrown)} instead of restating one {@code enabled=false} per type.
+ * minecraft:thrown)} instead of restating one {@code enabled=false} per type; {@code without(minecraft:fall)} and
+ * {@code with(...)} edit what the base admits instead of replacing it.
  */
 @FunctionalInterface
 public interface KeySet {
@@ -43,10 +44,20 @@ public interface KeySet {
         return key -> admits(key) && other.admits(key);
     }
 
+    /** Admitted by either. */
+    default @NotNull KeySet or(@NotNull KeySet other) {
+        return key -> admits(key) || other.admits(key);
+    }
+
     static void registerFactories() {
         // no "all"/"none": they are except() and only() with nothing listed, and naming them would be naming cases
         FieldFns.register(KeySet.class, "only(key...)", "only the listed types; only() is nothing", args -> only(keys(args)));
         FieldFns.register(KeySet.class, "except(key...)", "every type but the listed; except() is everything", args -> except(keys(args)));
+        // over what the base admits (everything, when it says nothing): a mode narrows or widens without restating
+        FieldFns.registerMutation(KeySet.class, "without(key...)", "the inherited types minus the listed",
+                (base, args) -> (base != null ? base : ALL).and(except(keys(args))));
+        FieldFns.registerMutation(KeySet.class, "with(key...)", "the inherited types plus the listed",
+                (base, args) -> (base != null ? base : ALL).or(only(keys(args))));
     }
 
     private static Key[] keys(FieldFns.Args args) {

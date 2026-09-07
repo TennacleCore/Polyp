@@ -103,25 +103,26 @@ public final class MechanicsProfiles {
         MechanicsProfile player = subject instanceof Player p ? p.getTag(PROFILE) : null;
         Instance in = subject != null ? subject.getInstance() : null;
         return walk(player, in != null ? MechanicsWorld.of(subject).getTag(PROFILE) : null,
-                in != null ? in.getTag(PROFILE) : null, global, key);
+                in != null ? in.getTag(PROFILE) : null, global, key, subject);
     }
 
     /** The effective value of {@code key} for a WORLD with no entity in hand - a sourceless explosion, a
      *  block-driven effect. Walks the same chain minus the player: world -&gt; instance -&gt; global. */
     public <C> @Nullable C resolveWorld(@Nullable MechanicsWorld world, ConfigKey<C> key) {
         Instance in = world != null ? world.instance() : null;
-        return walk(null, world != null ? world.getTag(PROFILE) : null, in != null ? in.getTag(PROFILE) : null, global, key);
+        return walk(null, world != null ? world.getTag(PROFILE) : null, in != null ? in.getTag(PROFILE) : null, global, key, null);
     }
 
-    /** THE scope chain, player -> world -> instance -> global; every resolver above and {@link Resolved} walk this one. */
+    /** THE scope chain, player -> world -> instance -> global, each scope answering for {@code subject} first
+     *  ({@link MechanicsProfile#get(ConfigKey, Entity)}); every resolver above and {@link Resolved} walk this one. */
     private static <C> @Nullable C walk(@Nullable MechanicsProfile player, @Nullable MechanicsProfile world,
                                         @Nullable MechanicsProfile instance, @Nullable MechanicsProfile global,
-                                        ConfigKey<C> key) {
+                                        ConfigKey<C> key, @Nullable Entity subject) {
         C v;
-        if (player != null && (v = player.get(key)) != null) return v;
-        if (world != null && (v = world.get(key)) != null) return v;
-        if (instance != null && (v = instance.get(key)) != null) return v;
-        return global != null ? global.get(key) : null;
+        if (player != null && (v = player.get(key, subject)) != null) return v;
+        if (world != null && (v = world.get(key, subject)) != null) return v;
+        if (instance != null && (v = instance.get(key, subject)) != null) return v;
+        return global != null ? global.get(key, subject) : null;
     }
 
     /** {@link #resolve} with a fallback: the effective value of {@code key} for {@code subject}, else {@code fallback}. */
@@ -143,7 +144,7 @@ public final class MechanicsProfiles {
                 instance = in.getTag(PROFILE);
             }
         }
-        return new Resolved(player, world, instance, global);
+        return new Resolved(player, world, instance, global, subject);
     }
 
     /** A one-shot resolution view over fixed player / world / instance / global scopes. */
@@ -152,17 +153,19 @@ public final class MechanicsProfiles {
         private final @Nullable MechanicsProfile world;
         private final @Nullable MechanicsProfile instance;
         private final @Nullable MechanicsProfile global;
+        private final @Nullable Entity subject;
 
         private Resolved(@Nullable MechanicsProfile player, @Nullable MechanicsProfile world,
-                         @Nullable MechanicsProfile instance, @Nullable MechanicsProfile global) {
+                         @Nullable MechanicsProfile instance, @Nullable MechanicsProfile global, @Nullable Entity subject) {
             this.player = player;
             this.world = world;
             this.instance = instance;
             this.global = global;
+            this.subject = subject;
         }
 
         public <C> @Nullable C get(ConfigKey<C> key) {
-            return walk(player, world, instance, global, key);
+            return walk(player, world, instance, global, key, subject);
         }
     }
 }

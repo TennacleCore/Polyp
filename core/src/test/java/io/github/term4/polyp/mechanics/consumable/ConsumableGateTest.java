@@ -117,7 +117,7 @@ class ConsumableGateTest extends HeadlessServerTest {
     @Test
     void reuseGateRefusesAReUseOnlyForLegacyWhenEnabled() {
         player.player.setGameMode(GameMode.SURVIVAL);
-        polyp.clientInfo().setProxyDetails(player.player, "{\"version\": 47}"); // 1.8
+        polyp.clientInfo().setConnectionDetails(player.player, "{\"version\": 47}"); // 1.8
 
         // Fix OFF (default): a re-use while mid-use still starts - the raw behavior
         polyp.profiles().setGlobal(MechanicsProfile.builder().build());
@@ -142,7 +142,7 @@ class ConsumableGateTest extends HeadlessServerTest {
         assertTrue(fresh.getItemUseTime() > 0, "a fresh consume still works");
 
         // Fix ON but a MODERN client: never gated - it gates its own consumption
-        polyp.clientInfo().setProxyDetails(player.player, "{\"version\": 774}"); // modern
+        polyp.clientInfo().setConnectionDetails(player.player, "{\"version\": 774}"); // modern
         player.player.refreshItemUse(PlayerHand.MAIN, 32);
         var modern = new PlayerUseItemEvent(player.player, PlayerHand.MAIN, ItemStack.of(Material.GOLDEN_APPLE), 32);
         EventDispatcher.call(modern);
@@ -164,14 +164,14 @@ class ConsumableGateTest extends HeadlessServerTest {
                 .build());
         int slot = player.player.getHeldSlot();
 
-        polyp.clientInfo().setProxyDetails(player.player, "{\"version\": 47}"); // 1.8
+        polyp.clientInfo().setConnectionDetails(player.player, "{\"version\": 47}"); // 1.8
         player.player.getInventory().setItemStack(slot, ItemStack.of(Material.GOLDEN_APPLE, 5));
         player.sent.clear();
         EventDispatcher.call(new PlayerFinishItemUseEvent(player.player, PlayerHand.MAIN, ItemStack.of(Material.GOLDEN_APPLE, 5), 32));
         assertFalse(player.sent(EntityStatusPacket.class).isEmpty(), "legacy finish sends entity_status 9");
         assertFalse(player.sent(WindowItemsPacket.class).isEmpty(), "legacy finish sends a window_items count confirm");
 
-        polyp.clientInfo().setProxyDetails(player.player, "{\"version\": 774}"); // modern
+        polyp.clientInfo().setConnectionDetails(player.player, "{\"version\": 774}"); // modern
         player.player.getInventory().setItemStack(slot, ItemStack.of(Material.GOLDEN_APPLE, 5));
         player.sent.clear();
         EventDispatcher.call(new PlayerFinishItemUseEvent(player.player, PlayerHand.MAIN, ItemStack.of(Material.GOLDEN_APPLE, 5), 32));

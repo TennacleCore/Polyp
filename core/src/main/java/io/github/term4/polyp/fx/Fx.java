@@ -78,6 +78,10 @@ public final class Fx {
     public static final Key BLOCK_PLACE = Key.key("polyp:block_place");
     /** A block break; the context detail is the broken {@code Block}. */
     public static final Key BLOCK_BREAK = Key.key("polyp:block_break");
+    /** A dig the server refused; the context detail is the {@code Block} the client dug. Both eras play their own
+     *  break locally, so by default this reaches the rest of the block's viewers, as the break itself would; a
+     *  game's data path narrows it. */
+    public static final Key BLOCK_BREAK_REFUSED = Key.key("polyp:block_break_refused");
     /** A placement the server refused; the context detail is the {@code Block} the client proposed. The 1.8 client
      *  plays nothing itself, so by default this reaches the placement's own audience; a game's data path narrows it. */
     public static final Key BLOCK_PLACE_REFUSED = Key.key("polyp:block_place_refused");
@@ -150,15 +154,20 @@ public final class Fx {
                 })
                 .register(BLOCK_PLACE, placeSound())
                 .register(BLOCK_PLACE_REFUSED, placeSound())
-                // world event 2001: the client derives sound + particles from the block id
-                .register(BLOCK_BREAK, ctx -> {
-                    Block block = ctx.detail(Block.class);
-                    if (block == null || ctx.source() == null) return;
-                    // block view minus the breaker: both eras predict their own break, and an observer watching
-                    // only the players must not see a block they cannot see shatter
-                    ctx.emit(Recipients.except(Recipients.BLOCK_VIEWERS, Recipients.SOURCE),
-                            FxEffect.worldEvent(WorldEvent.PARTICLES_DESTROY_BLOCK.id(), block.stateId()));
-                });
+                .register(BLOCK_BREAK, breakEffect())
+                .register(BLOCK_BREAK_REFUSED, breakEffect());
+    }
+
+    // world event 2001: the client derives sound + particles from the block id. Block view minus the breaker: both
+    // eras predict their own break, and an observer watching only the players must not see a block they cannot
+    // see shatter
+    private static @NotNull FxHandler breakEffect() {
+        return ctx -> {
+            Block block = ctx.detail(Block.class);
+            if (block == null || ctx.source() == null) return;
+            ctx.emit(Recipients.except(Recipients.BLOCK_VIEWERS, Recipients.SOURCE),
+                    FxEffect.worldEvent(WorldEvent.PARTICLES_DESTROY_BLOCK.id(), block.stateId()));
+        };
     }
 
     /** The modern (26.1) fx - the {@code Vanilla} preset sets this. {@link #vanilla18()} plus the 1.9+ melee attack sound. */

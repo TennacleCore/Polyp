@@ -74,7 +74,7 @@ public class ExampleServer {
         MinecraftServer server = MinecraftServer.init(new Auth.Bungee()); // bungee auth allows 1.7 clients to join (velocity works for all later versions, and a proxy is not required)
 
         Polyp polyp = Polyp.getInstance();
-        polyp.viaProxyDetails = true;
+        polyp.viaConnectionDetails = true;
         polyp.init();
 
         // Everything the server runs lives on one profile: the mmc18 mechanics, the general 1.8 compat layer, and the
@@ -94,7 +94,7 @@ public class ExampleServer {
         BlockingSystem.install(polyp);
         HungerSystem.install(polyp);
         FixesSystem.install(polyp);
-        Vri.install(polyp, VriConfig.all());
+        Vri.install(polyp); // the preset's VriConfig, through the profile
         ExplosionSystem explosions = ExplosionSystem.install(polyp); // explosion config comes from the profile (EXPLOSION key)
 
         InstanceManager instanceManager = MinecraftServer.getInstanceManager();
@@ -144,7 +144,7 @@ public class ExampleServer {
             player.setRespawnPoint(new Pos(0, 42, 0));
 
             // Example of how to get a players protocol on login (with multiple attempts, stops once protocol is known)
-            if (polyp.viaProxyDetails) {
+            if (polyp.viaConnectionDetails) {
                 var scheduler = MinecraftServer.getSchedulerManager();
                 final int maxRuns = 3;
                 final int[] runs = {0};

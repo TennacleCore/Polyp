@@ -21,7 +21,7 @@ class LegacyTeleportTest extends HeadlessServerTest {
     private static Vec teleportFrom(String name, boolean legacy, double x) {
         var fake = FakePlayer.connect(instance, new Pos(x, 66, 0.5), name);
         try {
-            if (legacy) Polyp.getInstance().clientInfo().setProxyDetails(fake.player, "{\"version\":47}");
+            if (legacy) Polyp.getInstance().clientInfo().setConnectionDetails(fake.player, "{\"version\":47}");
             fake.player.setVelocity(new Vec(4, 0, 0));
             Teleports.place(fake.player, new Pos(x, 68, 0.5), RelativeFlags.VIEW);
             return fake.player.getVelocity();

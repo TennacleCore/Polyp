@@ -40,7 +40,7 @@ class LegacyUseOnBlockFixTest extends HeadlessServerTest {
     @Test
     void ownUseItemNotDoubled() {
         Player p = FakePlayer.connect(instance, new Pos(8.5, 42, 8.5), "LegacyRod").player;
-        polyp.clientInfo().setProxyDetails(p, "{\"version\": 47}");
+        polyp.clientInfo().setConnectionDetails(p, "{\"version\": 47}");
         p.setItemInMainHand(ItemStack.of(Material.FISHING_ROD));
         int[] uses = {0};
         var node = net.minestom.server.event.EventNode.all("count-uses");
@@ -66,7 +66,7 @@ class LegacyUseOnBlockFixTest extends HeadlessServerTest {
     @Test
     void aLegacyBlockAimedDrawStartsTheUse() {
         Player p = FakePlayer.connect(instance, new Pos(8.5, 42, 8.5), "LegacyDraw").player;
-        polyp.clientInfo().setProxyDetails(p, "{\"version\": 47}");
+        polyp.clientInfo().setConnectionDetails(p, "{\"version\": 47}");
         p.setItemInMainHand(ItemStack.of(Material.BOW));
         try {
             useOnBlock(p);
@@ -86,7 +86,7 @@ class LegacyUseOnBlockFixTest extends HeadlessServerTest {
     @Test
     void aModernClientIsUntouched() {
         Player p = FakePlayer.connect(instance, new Pos(8.5, 42, 8.5), "ModernDraw").player;
-        polyp.clientInfo().setProxyDetails(p, "{\"version\": 774}");
+        polyp.clientInfo().setConnectionDetails(p, "{\"version\": 774}");
         p.setItemInMainHand(ItemStack.of(Material.BOW));
         try {
             useOnBlock(p);

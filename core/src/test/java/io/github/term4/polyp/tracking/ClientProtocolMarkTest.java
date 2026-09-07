@@ -20,7 +20,7 @@ class ClientProtocolMarkTest extends HeadlessServerTest {
         var info = polyp.clientInfo();
         try {
             // ViaProxy-style lie: the wire says 1.8 while the real client is modern
-            info.setProxyDetails(fp.player, "{\"version\": 47}");
+            info.setConnectionDetails(fp.player, "{\"version\": 47}");
             assertTrue(info.isLegacy(fp.player), "via details resolve legacy");
             assertTrue(((OptimizedPlayer) fp.player).compat().legacyClient());
 

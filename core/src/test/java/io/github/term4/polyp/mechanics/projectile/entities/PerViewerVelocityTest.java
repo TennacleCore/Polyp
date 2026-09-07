@@ -30,7 +30,7 @@ class PerViewerVelocityTest extends HeadlessServerTest {
         try {
             FakePlayer legacy = FakePlayer.connect(instance, new Pos(8, 65, 8), "LegacyProjViewer");
             FakePlayer modern = FakePlayer.connect(instance, new Pos(8, 65, 8), "ModernProjViewer");
-            polyp.clientInfo().setProxyDetails(legacy.player, "{\"version\":47}"); // 1.8 protocol
+            polyp.clientInfo().setConnectionDetails(legacy.player, "{\"version\":47}"); // 1.8 protocol
 
             ProjectileEntity ball = launch(Vanilla18.projectiles(), new Pos(8, 90, 8, -90, 0)); // throws +x, airborne
 
@@ -57,7 +57,7 @@ class PerViewerVelocityTest extends HeadlessServerTest {
         try {
             FakePlayer legacy = FakePlayer.connect(instance, new Pos(8, 90, 8), "LegacyPinViewer");
             FakePlayer modern = FakePlayer.connect(instance, new Pos(8, 90, 8), "ModernPinViewer");
-            polyp.clientInfo().setProxyDetails(legacy.player, "{\"version\":47}");
+            polyp.clientInfo().setConnectionDetails(legacy.player, "{\"version\":47}");
 
             ProjectileEntity ball = launch(Vanilla18.projectiles(), new Pos(8, 92, 8, -90, 0)); // near the viewers, airborne
             assertTrue(ball.getViewers().contains(legacy.player) && ball.getViewers().contains(modern.player), "both view the ball");

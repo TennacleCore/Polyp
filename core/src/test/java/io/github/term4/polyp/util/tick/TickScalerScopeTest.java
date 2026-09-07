@@ -13,6 +13,8 @@ import net.minestom.server.instance.InstanceContainer;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -224,5 +226,53 @@ class TickScalerScopeTest extends HeadlessServerTest {
         Vec serverBt = new Vec(0.4, 0.1, 0);
         assertEquals(0.8, TickScaler.wireVelocity(slow, serverBt).x(), 1.0e-12);
         assertEquals(0.4, TickScaler.fromClientVelocity(slow, TickScaler.wireVelocity(slow, serverBt)).x(), 1.0e-12);
+    }
+
+    /** A seat's tick scaling is a targeted MEMBER of the world profile: that player runs dilated, the world stays native. */
+    @Test
+    void aTargetedSeatRunsDilatedAlone() {
+        io.github.term4.polyp.testsupport.FakePlayer slow = io.github.term4.polyp.testsupport.FakePlayer.connect(instance, new Pos(0.5, 65, 0.5), "TickSlow");
+        io.github.term4.polyp.testsupport.FakePlayer plain = io.github.term4.polyp.testsupport.FakePlayer.connect(instance, new Pos(2.5, 65, 0.5), "TickPlain");
+        try {
+            MechanicsProfile.Builder b = MechanicsProfile.builder();
+            io.github.term4.polyp.config.PathEdits.apply(b, null, "tick-scaling/clientTps", String.valueOf(SERVER_TPS / 2),
+                    p -> p == slow.player);
+            InstanceContainer world = flatInstance(b.build());
+            slow.player.setInstance(world, new Pos(0.5, 65, 0.5)).join();
+            plain.player.setInstance(world, new Pos(2.5, 65, 0.5)).join();
+
+            assertEquals(0.5, TickScaler.stepsPerTick(slow.player), 1.0e-12, "the targeted seat");
+            assertEquals(1.0, TickScaler.stepsPerTick(plain.player), 1.0e-12, "the rest of the world");
+            assertNull(polyp.profiles().instance(world).get(MechanicsKeys.TICK_SCALING), "nothing untargeted was written");
+            assertEquals(SERVER_TPS / 2, polyp.profiles().resolve(slow.player, MechanicsKeys.TICK_SCALING).clientTps());
+            assertNull(polyp.profiles().resolve(plain.player, MechanicsKeys.TICK_SCALING));
+            // the client of the dilated seat is told its rate; a native one hears nothing
+            assertFalse(slow.sent(net.minestom.server.network.packet.server.play.SetTickStatePacket.class).isEmpty(),
+                    "the targeted client's own sim follows");
+            assertTrue(plain.sent(net.minestom.server.network.packet.server.play.SetTickStatePacket.class).isEmpty());
+        } finally {
+            slow.player.remove();
+            plain.player.remove();
+        }
+    }
+
+    /** The later target wins, so a seat's entry filed after its team's is the one its player reads. */
+    @Test
+    void theLaterTargetWins() {
+        io.github.term4.polyp.testsupport.FakePlayer seat = io.github.term4.polyp.testsupport.FakePlayer.connect(instance, new Pos(0.5, 65, 0.5), "TickSeat");
+        try {
+            MechanicsProfile profile = MechanicsProfile.builder()
+                    .target(MechanicsKeys.TICK_SCALING, p -> true, TickScalingConfig.simulated(10))
+                    .target(MechanicsKeys.TICK_SCALING, p -> p == seat.player, TickScalingConfig.simulated(5))
+                    .build();
+            assertEquals(5, profile.get(MechanicsKeys.TICK_SCALING, seat.player).clientTps());
+            assertNull(profile.get(MechanicsKeys.TICK_SCALING), "the untargeted read stays empty");
+            assertNull(profile.get(MechanicsKeys.TICK_SCALING, spawned(instance)), "an entity is nobody's seat");
+            assertEquals(2, profile.toBuilder().build().targeted(MechanicsKeys.TICK_SCALING).size(), "a rebuild keeps them");
+            assertTrue(profile.toBuilder().set(MechanicsKeys.TICK_SCALING, null).build().targeted(MechanicsKeys.TICK_SCALING).isEmpty(),
+                    "clearing the member clears its targets");
+        } finally {
+            seat.player.remove();
+        }
     }
 }

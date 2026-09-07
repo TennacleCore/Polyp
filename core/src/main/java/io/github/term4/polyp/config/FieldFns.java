@@ -36,6 +36,19 @@ public final class FieldFns {
 
     private static final Map<Class<?>, Map<String, Entry<?>>> BY_TYPE = new ConcurrentHashMap<>();
 
+    /** Builds a value FROM the inherited one - the edit form, where a {@link Factory} replaces it whole. */
+    @FunctionalInterface
+    public interface Mutation<T> {
+        /** {@code inherited} is {@code null} when no base sets the knob; the mutation decides what that means. */
+        @NotNull T apply(@Nullable T inherited, @NotNull Args args);
+    }
+
+    /** One registered mutation: its name, call shape, one line of doc, and the edit. */
+    public record MutationEntry<T>(@NotNull String name, @NotNull String signature, @NotNull String doc,
+                                   @NotNull Mutation<T> mutation) {}
+
+    private static final Map<Class<?>, Map<String, MutationEntry<?>>> MUTATIONS = new ConcurrentHashMap<>();
+
     /**
      * Registers {@code signature} as a way to build a {@code type}. The signature is the call shape a user
      * types ({@code within(blocks, audience)}); {@code doc} is one line explaining it. Both surface in errors
@@ -44,8 +57,11 @@ public final class FieldFns {
     public static <T> void register(@NotNull Class<T> type, @NotNull String signature, @NotNull String doc,
                                     @NotNull Factory<T> factory) {
         Vocabulary.ensure(); // a mode's name must meet the shipped ones NOW, not at somebody's first parse
-        int paren = signature.indexOf('(');
-        String name = (paren < 0 ? signature : signature.substring(0, paren)).trim();
+        String name = head(signature);
+        Map<String, MutationEntry<?>> mutations = MUTATIONS.get(type);
+        if (mutations != null && mutations.containsKey(name)) {
+            throw new IllegalStateException(type.getSimpleName() + " already edits with '" + name + "'; a factory cannot share the name");
+        }
         Entry<?> clash = BY_TYPE.computeIfAbsent(type, t -> new ConcurrentHashMap<>())
                 .putIfAbsent(name, new Entry<>(name, signature.trim(), doc, factory));
         // last-write-wins would let a mode silently replace a shipped factory (or its own, re-installed)
@@ -75,6 +91,71 @@ public final class FieldFns {
         Vocabulary.ensure();
         Map<String, Entry<?>> named = BY_TYPE.get(type);
         return named != null && named.remove(name) != null;
+    }
+
+    /**
+     * Registers {@code signature} as a way to EDIT a {@code type} the base already holds, where a factory replaces
+     * it: {@code damage/enabledTypes = without(minecraft:fall)} hands the mutation the inherited constant. The
+     * worked example is {@link KeySet}'s {@code with}/{@code without}; any list-shaped knob follows the same shape.
+     */
+    public static <T> void registerMutation(@NotNull Class<T> type, @NotNull String signature, @NotNull String doc,
+                                            @NotNull Mutation<T> mutation) {
+        Vocabulary.ensure();
+        String name = head(signature);
+        Map<String, Entry<?>> factories = BY_TYPE.get(type);
+        if (factories != null && factories.containsKey(name)) {
+            throw new IllegalStateException(type.getSimpleName() + " already builds with '" + name + "'; a mutation cannot share the name");
+        }
+        MutationEntry<?> clash = MUTATIONS.computeIfAbsent(type, t -> new ConcurrentHashMap<>())
+                .putIfAbsent(name, new MutationEntry<>(name, signature.trim(), doc, mutation));
+        if (clash != null) {
+            throw new IllegalStateException(type.getSimpleName() + " already has the mutation '" + name + "' ("
+                    + clash.signature() + "); unregister it first if the replacement is deliberate");
+        }
+    }
+
+    public static boolean unregisterMutation(@NotNull Class<?> type, @NotNull String name) {
+        Vocabulary.ensure();
+        Map<String, MutationEntry<?>> named = MUTATIONS.get(type);
+        return named != null && named.remove(name) != null;
+    }
+
+    /** Whether {@code spec} names a mutation of {@code type} - an edit of the inherited value, not a fresh one. */
+    public static boolean mutates(@NotNull Class<?> type, @NotNull String spec) {
+        Vocabulary.ensure();
+        Map<String, MutationEntry<?>> named = MUTATIONS.get(type);
+        return named != null && named.containsKey(head(spec));
+    }
+
+    /** Applies the mutation {@code spec} names to {@code inherited}; {@link #mutates} says whether it names one. */
+    @SuppressWarnings("unchecked")
+    public static <T> @NotNull T mutate(@NotNull Class<T> type, @NotNull String spec, @Nullable T inherited,
+                                        @NotNull String where) {
+        Vocabulary.ensure();
+        Map<String, MutationEntry<?>> named = MUTATIONS.getOrDefault(type, Map.of());
+        Call call = call(spec, where);
+        MutationEntry<T> entry = (MutationEntry<T>) named.get(call.name());
+        if (entry == null) {
+            throw new IllegalArgumentException("no " + type.getSimpleName() + " mutation named '" + call.name()
+                    + "' (known: " + new java.util.TreeSet<>(named.keySet()) + "): " + where);
+        }
+        return entry.mutation().apply(inherited, new Args(entry.signature(), call.args(), where));
+    }
+
+    private static String head(String spec) {
+        int paren = spec.indexOf('(');
+        return (paren < 0 ? spec : spec.substring(0, paren)).trim();
+    }
+
+    private record Call(String name, List<String> args) {}
+
+    private static Call call(String spec, String where) {
+        String trimmed = spec.trim();
+        int open = trimmed.indexOf('(');
+        if (open >= 0 && !trimmed.endsWith(")")) {
+            throw new IllegalArgumentException("unbalanced '(' in '" + spec + "': " + where);
+        }
+        return new Call(head(trimmed), open < 0 ? List.of() : split(trimmed.substring(open + 1, trimmed.length() - 1)));
     }
 
     /** Builds a value for a name no registered factory matches, or returns {@code null} to decline. */
@@ -121,6 +202,11 @@ public final class FieldFns {
             named.values().stream().sorted(java.util.Comparator.comparing(Entry::name))
                     .map(e -> e.signature() + " - " + e.doc()).forEach(out::add);
         }
+        Map<String, MutationEntry<?>> mutations = MUTATIONS.get(type);
+        if (mutations != null) {
+            mutations.values().stream().sorted(java.util.Comparator.comparing(MutationEntry::name))
+                    .map(e -> e.signature() + " - " + e.doc() + " (edits the inherited value)").forEach(out::add);
+        }
         FallbackEntry<?> fallback = FALLBACKS.get(type);
         if (fallback != null) out.add(fallback.doc());
         return List.copyOf(out);
@@ -146,15 +232,15 @@ public final class FieldFns {
         Vocabulary.ensure();
         // an empty vocabulary reports like an unknown name: one message shape, and it lists what exists (nothing)
         Map<String, Entry<?>> named = BY_TYPE.getOrDefault(type, Map.of());
-        String trimmed = spec.trim();
-        int open = trimmed.indexOf('(');
-        String name = (open < 0 ? trimmed : trimmed.substring(0, open)).trim();
-        if (open >= 0 && !trimmed.endsWith(")")) {
-            throw new IllegalArgumentException("unbalanced '(' in '" + spec + "': " + where);
-        }
-        List<String> raw = open < 0 ? List.of() : split(trimmed.substring(open + 1, trimmed.length() - 1));
+        Call call = call(spec, where);
+        String name = call.name();
+        List<String> raw = call.args();
         Entry<?> entry = named.get(name);
         if (entry == null) {
+            if (mutates(type, name)) {
+                throw new IllegalArgumentException("'" + name + "' edits an inherited " + type.getSimpleName()
+                        + " - it needs a base to edit, and only a path write over one has it: " + where);
+            }
             FallbackEntry<?> fallback = FALLBACKS.get(type);
             Object built = fallback != null ? fallback.fallback().create(name, new Args(name + "(...)", raw, where)) : null;
             if (built != null) return (T) built;

@@ -4,6 +4,7 @@ import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.entity.DroppedItemEntity;
+import io.github.term4.polyp.vri.VriConfig;
 
 /**
  * Modern (26.1+) preset - the composed, pure-mechanics {@link MechanicsProfile} built from the config classes in this
@@ -27,6 +28,7 @@ public final class Vanilla {
                 .set(MechanicsKeys.EXPLOSION, Explosion.config())
                 .set(MechanicsKeys.HUNGER, Hunger.config())
                 .set(MechanicsKeys.ITEMS, Items.registry())
+                .set(MechanicsKeys.VRI, VriConfig.all())
                 .set(MechanicsKeys.FX, Fx.modern())
                 .build();
     }

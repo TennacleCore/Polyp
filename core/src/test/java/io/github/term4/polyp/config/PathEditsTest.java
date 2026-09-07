@@ -226,6 +226,40 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
         assertTrue(kept.admits(io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage.KEY));
     }
 
+    /** A mutation edits what the base admits instead of restating it - the shape every list-like knob can take. */
+    @Test
+    void mutationsEditTheInheritedSet() {
+        MechanicsProfile.Builder b = MechanicsProfile.builder();
+        PathEdits.apply(b, base(), "damage/enabledTypes", "only(minecraft:player_attack, minecraft:fall)");
+        PathEdits.apply(b, base(), "damage/enabledTypes", "without(minecraft:fall)");
+        var narrowed = b.build().get(MechanicsKeys.DAMAGE).enabledTypes.constantOrNull();
+        assertNotNull(narrowed);
+        assertTrue(narrowed.admits(io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage.KEY), "the rest of the selection stands");
+        assertFalse(narrowed.admits(net.kyori.adventure.key.Key.key("minecraft:fall")));
+        assertFalse(narrowed.admits(io.github.term4.polyp.mechanics.damage.types.projectile.ProjectileDamage.KEY), "never selected, still not");
+
+        PathEdits.apply(b, base(), "damage/enabledTypes", "with(minecraft:thrown)");
+        var widened = b.build().get(MechanicsKeys.DAMAGE).enabledTypes.constantOrNull();
+        assertTrue(widened.admits(io.github.term4.polyp.mechanics.damage.types.projectile.ProjectileDamage.KEY));
+        assertTrue(widened.admits(io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage.KEY));
+        assertFalse(widened.admits(net.kyori.adventure.key.Key.key("minecraft:fall")), "the earlier edit holds");
+    }
+
+    /** Over a base that says nothing the inherited set is everything, so a mutation reads like except()/only(). */
+    @Test
+    void aMutationOverNothingEditsEverything() {
+        MechanicsProfile.Builder b = MechanicsProfile.builder();
+        PathEdits.apply(b, MechanicsProfile.builder().build(), "damage/enabledTypes", "without(minecraft:fall)");
+        var types = b.build().get(MechanicsKeys.DAMAGE).enabledTypes.constantOrNull();
+        assertNotNull(types);
+        assertTrue(types.admits(io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage.KEY));
+        assertFalse(types.admits(net.kyori.adventure.key.Key.key("minecraft:fall")));
+        // the vocabulary names the edit forms beside the factories, marked as edits
+        assertTrue(FieldFns.vocabulary(KeySet.class).stream().anyMatch(line -> line.startsWith("without(key...)") && line.contains("inherited")));
+        // a mutation is not a value on its own
+        assertThrows(IllegalArgumentException.class, () -> FieldFns.parse(KeySet.class, "without(minecraft:fall)", "test"));
+    }
+
     /**
      * Data SELECTS a code-defined behaviour by name - it never authors one. The item, its eat time and its
      * edibility gate all stay; only what it dishes out is swapped.

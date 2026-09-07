@@ -122,4 +122,33 @@ class PlaceSoundPositionTest extends HeadlessServerTest {
             placer.player.remove();
         }
     }
+
+    /** A refused dig sounds the block the client dug under its own key, so the rest of the block's viewers hear it. */
+    @Test
+    void refusedDigsSoundTheirOwnKey() {
+        AtomicReference<Point> broken = new AtomicReference<>();
+        java.util.List<Block> refused = new java.util.ArrayList<>();
+        AtomicReference<Point> refusedAt = new AtomicReference<>();
+        Polyp.getInstance().profiles().setGlobal(MechanicsProfile.builder()
+                .set(MechanicsKeys.FX, FxRegistry.empty()
+                        .register(Fx.BLOCK_BREAK, ctx -> broken.set(ctx.position()))
+                        .register(Fx.BLOCK_BREAK_REFUSED, ctx -> {
+                            refused.add(ctx.detail(Block.class));
+                            refusedAt.set(ctx.position());
+                        }))
+                .build());
+        FakePlayer digger = FakePlayer.connect(instance, new Pos(0.5, 41, 0.5), "RefusedDig");
+        try {
+            var guarded = new PlayerBlockBreakEvent(digger.player, instance, Block.STONE, Block.AIR, new BlockVec(-4, 40, 10), BlockFace.TOP);
+            EventDispatcher.call(guarded);
+            guarded.setCancelled(true); // a guard that runs after the emitter's node
+            MinecraftServer.getSchedulerManager().processTickEnd();
+            assertNull(broken.get(), "a refused dig is no break");
+            assertEquals(java.util.List.of(Block.STONE), refused, "the refusal names what was dug");
+            assertEquals(-3.5, refusedAt.get().x(), 1e-9);
+            assertEquals(40.5, refusedAt.get().y(), 1e-9);
+        } finally {
+            digger.player.remove();
+        }
+    }
 }

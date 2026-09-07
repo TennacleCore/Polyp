@@ -572,7 +572,7 @@ class FishingBobberTest extends HeadlessServerTest {
     void mmc18SilentWireIsFullyClientPredicted() {
         var viewer = FakePlayer.connect(instance, new Pos(120.5, 150, 8.5), "SilentWire");
         // the silent contract is the 1.8 viewer's; modern viewers ride hookModernSync
-        Polyp.getInstance().clientInfo().setProxyDetails(viewer.player, "{\"version\":47}");
+        Polyp.getInstance().clientInfo().setConnectionDetails(viewer.player, "{\"version\":47}");
         LivingEntity shooter = angler(new Pos(120.5, 150, 10.5, 37.0f, 12.5f));
         viewer.sent.clear();
         ProjectileEntity bobber = launch(Projectiles.config(), shooter);
@@ -739,7 +739,7 @@ class FishingBobberTest extends HeadlessServerTest {
                     instance.setBlock(x, y, z, Block.WATER);
         var modern = FakePlayer.connect(instance, new Pos(905.5, 70, 143.5), "ModernRodViewer");
         var legacy = FakePlayer.connect(instance, new Pos(905.5, 70, 141.5), "LegacyRodViewer");
-        Polyp.getInstance().clientInfo().setProxyDetails(legacy.player, "{\"version\":47}");
+        Polyp.getInstance().clientInfo().setConnectionDetails(legacy.player, "{\"version\":47}");
 
         // cast DOWN into the hook-water pool (y 58..64): air first, water contact within a few ticks
         LivingEntity shooter = angler(new Pos(905.5, 70, 145.5, 0, 35));

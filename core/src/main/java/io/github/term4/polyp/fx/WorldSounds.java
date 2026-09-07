@@ -20,8 +20,9 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * Place, break and footstep sounds Minestom doesn't emit, played through the {@link Fx} registry
- * ({@link Fx#STEP} / {@link Fx#BLOCK_PLACE} / {@link Fx#BLOCK_BREAK}, the block as the context detail). Owns only
- * the cadence and block resolution; look and audience live in the registered handlers.
+ * ({@link Fx#STEP} / {@link Fx#BLOCK_PLACE} / {@link Fx#BLOCK_BREAK}, the block as the context detail; a refusal
+ * under {@link Fx#BLOCK_PLACE_REFUSED} / {@link Fx#BLOCK_BREAK_REFUSED}). Owns only the cadence and block
+ * resolution; look and audience live in the registered handlers.
  */
 public final class WorldSounds {
 
@@ -55,10 +56,10 @@ public final class WorldSounds {
     }
 
     private static void onBreak(Polyp polyp, PlayerBlockBreakEvent e) {
-        // a guard on a node registered after this one (a spectator, a dead seat) still cancels: read the verdict at end of tick
+        // a guard on a node registered after this one (a spectator, a dead seat) still cancels: read the verdict at
+        // end of tick; a refusal sounds under its own key
         MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
-            if (e.isCancelled()) return;
-            Fx.play(polyp.services(), Fx.BLOCK_BREAK,
+            Fx.play(polyp.services(), e.isCancelled() ? Fx.BLOCK_BREAK_REFUSED : Fx.BLOCK_BREAK,
                     FxContext.at(MechanicsWorld.of(e.getPlayer()), e.getBlockPosition().add(0.5, 0.5, 0.5), e.getPlayer())
                             .withDetail(e.getBlock()));
         });

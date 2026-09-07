@@ -34,8 +34,10 @@ import java.util.function.BiFunction;
  * The knob half is the generated {@code <Config>BuilderBase.KNOBS} table, so every constant-valued
  * {@code FieldValue} knob is addressable without declaration; the member half is the small registry below.
  * Writes go through {@link MechanicsProfile.Builder#mutate} + {@code fromBase}, so an edit layers over the
- * inherited config - it cannot wipe base tuning. Everything invalid throws {@link IllegalArgumentException}
- * with the reason; nothing is a silent no-op.
+ * inherited config - it cannot wipe base tuning. A value naming a registered mutation
+ * ({@code damage/enabledTypes = without(minecraft:fall)}) edits the inherited constant instead of replacing it
+ * ({@link FieldFns#registerMutation}). Everything invalid throws {@link IllegalArgumentException} with the reason;
+ * nothing is a silent no-op.
  */
 public final class PathEdits {
 
@@ -68,11 +70,17 @@ public final class PathEdits {
     /**
      * @param configClass the class knobs are looked up on for {@code member/knob}, or decoded from for a scalar
      * @param scalar      whether the one-part form {@code member = value} replaces the whole member (a behaviour or enum)
+     * @param targetable  whether a per-player write stores the edited member for those players
+     *                    ({@link MechanicsProfile.Builder#target}) - for a member with no knob table to target inside
      */
     private record Member(ConfigKey<?> key, Class<?> configClass, @Nullable TypedFamily typed, @Nullable Editor editor,
-                          boolean scalar, @Nullable String form) {
-        Member(ConfigKey<?> key, Class<?> configClass) { this(key, configClass, null, null, false, null); }
-        Member(ConfigKey<?> key, Class<?> configClass, TypedFamily typed) { this(key, configClass, typed, null, false, null); }
+                          boolean scalar, @Nullable String form, boolean targetable) {
+        Member(ConfigKey<?> key, Class<?> configClass) { this(key, configClass, null, null, false, null, false); }
+        Member(ConfigKey<?> key, Class<?> configClass, TypedFamily typed) { this(key, configClass, typed, null, false, null, false); }
+        Member(ConfigKey<?> key, Class<?> configClass, @Nullable TypedFamily typed, @Nullable Editor editor,
+               boolean scalar, @Nullable String form) {
+            this(key, configClass, typed, editor, scalar, form, false);
+        }
     }
 
     private static final Map<String, Member> MEMBERS = new LinkedHashMap<>();
@@ -177,11 +185,11 @@ public final class PathEdits {
             return (cfg != null ? cfg.toBuilder() : io.github.term4.polyp.mechanics.cooldown.CooldownConfig.builder())
                     .cooldown((Material) MATERIAL.apply(rest.get(0), path), integer(raw, path)).build();
         }, false, "cooldowns/<material>"));
-        // tick-scaling/referenceTps, tick-scaling/clientTps, tick-scaling/<module key>
+        // tick-scaling/referenceTps, tick-scaling/clientTps, tick-scaling/<module key>; per player it stores the
+        // edited config for those players whole, so one seat can run dilated where the world stays native
         MEMBERS.put("tick-scaling", new Member(MechanicsKeys.TICK_SCALING, io.github.term4.polyp.util.tick.TickScalingConfig.class, null,
                 (container, rest, raw, path, who) -> {
             one(rest, "tick-scaling/<referenceTps|clientTps|module key>", path);
-            noTargeting(who, path);
             var cfg = (io.github.term4.polyp.util.tick.TickScalingConfig) container;
             var b = cfg != null ? cfg.toBuilder() : io.github.term4.polyp.util.tick.TickScalingConfig.builder();
             int tps = integer(raw, path);
@@ -191,7 +199,7 @@ public final class PathEdits {
                 default -> b.referenceTps(parseKey(rest.get(0), path), tps);
             }
             return b.build();
-        }, false, "tick-scaling/<referenceTps|clientTps|module key>"));
+        }, false, "tick-scaling/<referenceTps|clientTps|module key>", true));
         // items/<material>/<stat> = value, both eras
         MEMBERS.put("items", new Member(MechanicsKeys.ITEMS, io.github.term4.polyp.item.ItemRegistry.class, null,
                 (container, rest, raw, path, who) -> {
@@ -400,6 +408,13 @@ public final class PathEdits {
             return;
         }
         List<String> rest = List.of(parts).subList(1, parts.length);
+        if (who != null && member.editor() != null && member.targetable()) {
+            // the whole member, edited off what everyone else reads, filed for these players only
+            Object cur = b.get(key);
+            Object base = cur != null ? cur : (fallback != null ? fallback.get(key) : null);
+            b.target(key, who, member.editor().edit(base, rest, rawValue, path, null));
+            return;
+        }
         b.mutate(key, cur -> {
             Object base = cur != null ? cur : (fallback != null ? fallback.get(key) : null);
             if (member.editor() != null) return member.editor().edit(base, rest, rawValue, path, who);
@@ -495,7 +510,7 @@ public final class PathEdits {
      */
     private static Object value(ConfigKnob knob, @Nullable Object base, String raw, String path,
                                 @Nullable Predicate<Player> who) {
-        Object decoded = decode(knob, raw, path);
+        Object decoded = decode(knob, base, raw, path);
         if (who == null) return FieldValue.constant(decoded);
         if (!SubjectContext.class.isAssignableFrom(knob.contextType())) {
             throw new IllegalArgumentException("'" + knob.name() + "' resolves against " + knob.contextType().getSimpleName()
@@ -598,8 +613,9 @@ public final class PathEdits {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object decode(ConfigKnob knob, String raw, String path) {
+    private static Object decode(ConfigKnob knob, @Nullable Object base, String raw, String path) {
         Class<?> t = knob.valueType();
+        if (FieldFns.mutates(t, raw)) return FieldFns.mutate((Class) t, raw, inheritedConstant(knob, base, path), path);
         try {
             if (t == Boolean.class) {
                 if (raw.equalsIgnoreCase("true")) return Boolean.TRUE;
@@ -617,5 +633,18 @@ public final class PathEdits {
         }
         if (FieldFns.supports(t)) return FieldFns.parse(t, raw, path);
         throw new IllegalArgumentException(knob.name() + " takes a " + t.getSimpleName() + " - not path-settable yet: " + path);
+    }
+
+    // what a mutation edits: the base's constant for the knob; a value that varies by subject has no one constant
+    private static @Nullable Object inheritedConstant(ConfigKnob knob, @Nullable Object base, String path) {
+        if (base == null) return null;
+        Object held = knob.get().apply(base);
+        if (held == null) return null;
+        Object constant = ((FieldValue<?, ?>) held).constantOrNull();
+        if (constant == null) {
+            throw new IllegalArgumentException("'" + knob.name() + "' inherits a value that varies by subject - a mutation"
+                    + " needs one constant to edit; set it whole instead: " + path);
+        }
+        return constant;
     }
 }

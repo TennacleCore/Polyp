@@ -120,8 +120,8 @@ class SplashPotionTest extends HeadlessServerTest {
         var polyp = Polyp.getInstance();
         var legacyViewer = FakePlayer.connect(instance, at.add(3, 0, 0), "LegacyView");
         var modernViewer = FakePlayer.connect(instance, at.add(-3, 0, 0), "ModernView");
-        polyp.clientInfo().setProxyDetails(legacyViewer.player, "{\"version\": 47}");   // 1.8
-        polyp.clientInfo().setProxyDetails(modernViewer.player, "{\"version\": 774}");  // modern
+        polyp.clientInfo().setConnectionDetails(legacyViewer.player, "{\"version\": 47}");   // 1.8
+        polyp.clientInfo().setConnectionDetails(modernViewer.player, "{\"version\": 774}");  // modern
 
         var potion = potionAt(at, PotionType.SWIFTNESS,
                 ProjectileTypeConfig.builder().legacyPotionColors(true).build());
@@ -178,7 +178,7 @@ class SplashPotionTest extends HeadlessServerTest {
         Pos at = BASE.add(96, 0, 0);
         var polyp = Polyp.getInstance();
         var modernViewer = FakePlayer.connect(instance, at.add(-3, 0, 0), "ModernV2007");
-        polyp.clientInfo().setProxyDetails(modernViewer.player, "{\"version\": 774}");
+        polyp.clientInfo().setConnectionDetails(modernViewer.player, "{\"version\": 774}");
 
         var potion = potionAt(at, PotionType.HARMING, ProjectileTypeConfig.builder().modernSplash(true).build());
         potion.addViewer(modernViewer.player);

@@ -50,8 +50,9 @@ public final class Polyp {
     private static final Logger LOG = LoggerFactory.getLogger(Polyp.class);
     private static final Polyp INSTANCE = new Polyp();
 
-    /** Listens for player details sent via the ViaVersion proxy message. */
-    public boolean viaProxyDetails = true;
+    /** Reads ViaVersion's connection-details plugin message ({@code vv:proxy_details}): the Via on a Velocity
+     *  proxy telling the backend each player's real protocol. ViaProxy, a proxy in its own right, sends none. */
+    public boolean viaConnectionDetails = true;
 
     public boolean installSprintTracker = true;
     /** Tracks per-entity air-time, launch state, and position-delta motion (drives knockback velocity). */
@@ -189,11 +190,11 @@ public final class Polyp {
         trackersNode = EventNode.all("polyp:trackers");
         root.addChild(trackersNode);
 
-        clientInfo = new ClientInfoTracker(viaProxyDetails);
+        clientInfo = new ClientInfoTracker(viaConnectionDetails);
         if (installSprintTracker) mountTracker(sprintTracker = new SprintTracker());
         if (installMotionTracker) mountTracker(motionTracker = new MotionTracker(profiles));
         // the client-info hub also routes Animatium handshakes
-        if (viaProxyDetails || installPlayerProvider) mountTracker(clientInfo);
+        if (viaConnectionDetails || installPlayerProvider) mountTracker(clientInfo);
         if (installPlayerProvider) {
             CompatAnimatium.install(this);
             if (installViaBridge) ViaBridgeRpc.install(this);
