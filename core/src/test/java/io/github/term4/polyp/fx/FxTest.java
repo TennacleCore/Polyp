@@ -7,6 +7,8 @@ import io.github.term4.polyp.api.event.fx.FxEvent;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.instance.block.Block;
+import io.github.term4.polyp.world.MechanicsWorld;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.event.EventListener;
@@ -259,6 +261,31 @@ class FxTest extends HeadlessServerTest {
         } finally {
             shooter.player.remove();
             bystander.player.remove();
+        }
+    }
+
+    /** 1.8 placed beds through ItemBed, never ItemBlock: nothing sounds, landed or refused; the modern BlockItem does. */
+    @Test
+    void aBedPlacesSilentlyIn18() {
+        FakePlayer placer = FakePlayer.connect(instance, new Pos(7.5, 65, 7.5), "BedPlacer");
+        FakePlayer viewer = FakePlayer.connect(instance, new Pos(9.5, 65, 7.5), "BedViewer");
+        SoundEvent bed = Block.RED_BED.blockSoundType().placeSound();
+        SoundEvent stone = Block.STONE.blockSoundType().placeSound();
+        try {
+            useRegistry(Fx.vanilla18());
+            FxContext at = FxContext.at(MechanicsWorld.of(placer.player), new Pos(7.5, 65.5, 9.5), placer.player);
+            Fx.play(services, Fx.BLOCK_PLACE, at.withDetail(Block.RED_BED));
+            Fx.play(services, Fx.BLOCK_PLACE_REFUSED, at.withDetail(Block.RED_BED));
+            assertEquals(0, sounds(viewer, bed) + sounds(placer, bed), "1.8 ItemBed never sounds");
+            Fx.play(services, Fx.BLOCK_PLACE, at.withDetail(Block.STONE));
+            assertEquals(1, sounds(viewer, stone), "an ItemBlock still does");
+
+            useRegistry(Fx.modern());
+            Fx.play(services, Fx.BLOCK_PLACE, at.withDetail(Block.RED_BED));
+            assertEquals(1, sounds(viewer, bed), "the modern BlockItem sounds a bed");
+        } finally {
+            viewer.player.remove();
+            placer.player.remove();
         }
     }
 }

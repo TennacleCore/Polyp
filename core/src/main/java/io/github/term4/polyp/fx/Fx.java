@@ -10,6 +10,7 @@ import net.kyori.adventure.sound.Sound;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.ListenerHandle;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.registry.RegistryTag;
 import net.minestom.server.instance.block.BlockSoundType;
 import net.minestom.server.worldevent.WorldEvent;
 import net.minestom.server.network.packet.server.play.EntityAnimationPacket;
@@ -18,6 +19,7 @@ import net.minestom.server.sound.SoundEvent;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Predicate;
 
 /**
  * The fx layer's entry points: the built-in {@link Key keys}, the vanilla {@link FxRegistry} factories a
@@ -152,8 +154,8 @@ public final class Fx {
                     if (st == null || st.stepSound() == null) return;
                     ctx.predictedSound(st.stepSound(), Sound.Source.PLAYER, st.volume() * 0.15f, st.pitch());
                 })
-                .register(BLOCK_PLACE, placeSound())
-                .register(BLOCK_PLACE_REFUSED, placeSound())
+                .register(BLOCK_PLACE, placeSound(ITEM_BLOCK_18))
+                .register(BLOCK_PLACE_REFUSED, placeSound(ITEM_BLOCK_18))
                 .register(BLOCK_BREAK, breakEffect())
                 .register(BLOCK_BREAK_REFUSED, breakEffect());
     }
@@ -175,16 +177,25 @@ public final class Fx {
         return vanilla18()
                 .register(CRIT, FxHandler.hitAnimation(EntityAnimationPacket.Animation.CRITICAL_EFFECT)
                         .and(FxHandler.sound(SoundEvent.ENTITY_PLAYER_ATTACK_CRIT, Sound.Source.PLAYER, 1.0f, 1.0f)))
+                // every block is a BlockItem here, beds included
+                .register(BLOCK_PLACE, placeSound(block -> true))
+                .register(BLOCK_PLACE_REFUSED, placeSound(block -> true))
                 // ThrownEnderpearl.playSound: positional at the destination, PLAYERS category
                 .register(PEARL_TELEPORT, pearlTeleport());
     }
 
+    /** 1.8 placed a bed through ItemBed, never ItemBlock: no place sound, landed or refused. */
+    private static final Predicate<Block> ITEM_BLOCK_18 = block -> {
+        RegistryTag<Block> beds = Block.staticRegistry().getTag(Key.key("minecraft:beds"));
+        return beds == null || !beds.contains(block);
+    };
+
     // vanilla BlockItem.place: volume (v+1)/2, pitch p*0.8, BLOCKS category; block view, not the placer's entity
     // viewers: whoever sees the block appear hears it
-    private static @NotNull FxHandler placeSound() {
+    private static @NotNull FxHandler placeSound(Predicate<Block> sounds) {
         return ctx -> {
             Block block = ctx.detail(Block.class);
-            BlockSoundType st = block != null ? block.blockSoundType() : null;
+            BlockSoundType st = block != null && sounds.test(block) ? block.blockSoundType() : null;
             if (st == null || st.placeSound() == null) return;
             ctx.emit(FxAudiences.predictedFor(Recipients.BLOCK_VIEWERS),
                     FxEffect.sound(st.placeSound(), Sound.Source.BLOCK, (st.volume() + 1.0f) / 2.0f, st.pitch() * 0.8f));
