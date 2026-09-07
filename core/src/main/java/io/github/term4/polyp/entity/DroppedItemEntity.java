@@ -301,16 +301,19 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
         return resolved != null ? resolved : Model.LEGACY;
     }
 
-    /** Vanilla {@code Entity.pushOutOfBlocks}: inside a solid block, shove {@code 0.1..0.3} toward the nearest free face (up wins ties). */
+    /** Vanilla {@code Entity.pushOutOfBlocks}: inside a solid block, shove {@code 0.1..0.3} out through the
+     *  nearest free face - down included, or a buried item rides the up default and never falls. */
     private Vec pushOutOfBlocks(MechanicsWorld world, Pos pos, Vec v) {
         double cy = centerY(pos);
         int bx = (int) Math.floor(pos.x()), by = (int) Math.floor(cy), bz = (int) Math.floor(pos.z());
 
         double dx = pos.x() - bx, dy = cy - by, dz = pos.z() - bz;
         double best = 9999.0;
-        int dir = 3; // up default, like vanilla
+        int dir = 3; // up when nothing is free, like vanilla
+        // vanilla's own order: a tie goes to the face it tested first, and down is tested before up
         if (free(world, bx - 1, by, bz) && dx < best) { best = dx; dir = 0; }
         if (free(world, bx + 1, by, bz) && 1.0 - dx < best) { best = 1.0 - dx; dir = 1; }
+        if (free(world, bx, by - 1, bz) && dy < best) { best = dy; dir = 2; }
         if (free(world, bx, by + 1, bz) && 1.0 - dy < best) { best = 1.0 - dy; dir = 3; }
         if (free(world, bx, by, bz - 1) && dz < best) { best = dz; dir = 4; }
         if (free(world, bx, by, bz + 1) && 1.0 - dz < best) { dir = 5; }
@@ -318,6 +321,7 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
         return switch (dir) {
             case 0 -> v.withX(-f);
             case 1 -> v.withX(f);
+            case 2 -> v.withY(-f);
             case 4 -> v.withZ(-f);
             case 5 -> v.withZ(f);
             default -> v.withY(f);
