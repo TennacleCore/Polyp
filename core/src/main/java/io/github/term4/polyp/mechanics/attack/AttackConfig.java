@@ -21,9 +21,9 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
     public static final double VANILLA_FULL_HIT_SCALE = 0.6;
     public static final double VANILLA_REACH_PADDING = 3.0;
     /** What a network that would rather accept a laggy hit than eat it allows over {@link #VANILLA_REACH_PADDING}. */
-    public static final double LENIENT_REACH_PADDING = VANILLA_REACH_PADDING + 2.5;
+    public static final double LENIENT_REACH_PADDING = VANILLA_REACH_PADDING + 1.0;
     /** Scrims goes further still: a practice server refusing a hit is worse than one landing late. */
-    public static final double SCRIMS_REACH_PADDING = LENIENT_REACH_PADDING + 6.0;
+    public static final double SCRIMS_REACH_PADDING = VANILLA_REACH_PADDING + 4.0;
 
     public final FieldValue<AttackContext, Boolean> enabled;
     public final FieldValue<AttackContext, AttackEvent.AttackRule.Ruleset> ruleset;
