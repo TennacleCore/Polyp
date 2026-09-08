@@ -20,8 +20,8 @@ public enum Preset {
     HYPIXEL(Hypixel::profile, Compat::config),
     /** {@link #HYPIXEL} with the BedWars-only quirks (the game-wide pearl landing). */
     HYPIXEL_BEDWARS(Hypixel::bedwars, Compat::config),
-    MMC18(Mmc18::profile, io.github.term4.polyp.presets.mmc18.Compat::config),
-    SCRIMS18(Scrims18::profile, io.github.term4.polyp.presets.scrims18.Compat::config);
+    MMC18(Mmc18::profile, Compat18::config),
+    SCRIMS18(Scrims18::profile, Compat18::config);
 
     private final Supplier<MechanicsProfile> profile;
     private final Supplier<CompatConfig> compat;

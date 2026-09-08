@@ -10,14 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 /** Each preset carries the cross-version layer of the network it recreates, not just its mechanics. */
 class PresetCompatTest extends HeadlessServerTest { // profile() boots Fx, which needs the server
 
-    /** Only VANILLA18 still lands a block in the placer's own body; every network preset refuses it. */
     @Test
-    void onlyVanilla18KeepsSelfOverlappingPlacement() {
-        for (Preset network : new Preset[]{Preset.HYPIXEL, Preset.HYPIXEL_BEDWARS, Preset.MMC18, Preset.SCRIMS18}) {
-            assertEquals(Boolean.FALSE, network.compat().legacySelfPlace.constantOrNull(),
-                    network + " refuses a self-overlapping placement");
+    void hypixelRefusesSelfOverlappingPlacementWhereThe18PresetsAllowIt() {
+        assertEquals(Boolean.FALSE, Preset.HYPIXEL.compat().legacySelfPlace.constantOrNull());
+        assertEquals(Boolean.FALSE, Preset.HYPIXEL_BEDWARS.compat().legacySelfPlace.constantOrNull());
+        for (Preset legacy : new Preset[]{Preset.VANILLA18, Preset.MMC18, Preset.SCRIMS18}) {
+            assertNull(legacy.compat().legacySelfPlace, legacy + " keeps the 1.8 mechanic");
         }
-        assertNull(Preset.VANILLA18.compat().legacySelfPlace, "VANILLA18 keeps the 1.8 mechanic");
     }
 
     /** Everything else the 1.8 layer sets still rides along - hypixel is a delta, not a replacement. */
