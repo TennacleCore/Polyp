@@ -154,9 +154,8 @@ public final class Fx {
                     if (st == null || st.stepSound() == null) return;
                     ctx.predictedSound(st.stepSound(), Sound.Source.PLAYER, st.volume() * 0.15f, st.pitch());
                 })
-                // a refusal is silent: vanilla sounds the placement from the server, after it lands, and a 1.8
-                // client's own sound sinks are stubs - an echo of one that never landed is the server's invention
                 .register(BLOCK_PLACE, placeSound(ITEM_BLOCK_18))
+                .register(BLOCK_PLACE_REFUSED, placeSound(ITEM_BLOCK_18))
                 .register(BLOCK_BREAK, breakEffect())
                 .register(BLOCK_BREAK_REFUSED, breakEffect());
     }
@@ -180,6 +179,7 @@ public final class Fx {
                         .and(FxHandler.sound(SoundEvent.ENTITY_PLAYER_ATTACK_CRIT, Sound.Source.PLAYER, 1.0f, 1.0f)))
                 // every block is a BlockItem here, beds included
                 .register(BLOCK_PLACE, placeSound(block -> true))
+                .register(BLOCK_PLACE_REFUSED, placeSound(block -> true))
                 // ThrownEnderpearl.playSound: positional at the destination, PLAYERS category
                 .register(PEARL_TELEPORT, pearlTeleport());
     }

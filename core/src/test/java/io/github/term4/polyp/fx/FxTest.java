@@ -264,26 +264,6 @@ class FxTest extends HeadlessServerTest {
         }
     }
 
-    /** A refusal is the server's silence: vanilla sounds a placement once it lands, and a 1.8 client, whose own
-     *  sound sinks are stubs, would hear the echo as a block that was never there. */
-    @Test
-    void aRefusedPlacementIsSilent() {
-        FakePlayer placer = FakePlayer.connect(instance, new Pos(11.5, 65, 7.5), "RefusedPlacer");
-        FakePlayer viewer = FakePlayer.connect(instance, new Pos(13.5, 65, 7.5), "RefusedViewer");
-        SoundEvent stone = Block.STONE.blockSoundType().placeSound();
-        try {
-            FxContext at = FxContext.at(MechanicsWorld.of(placer.player), new Pos(11.5, 65.5, 9.5), placer.player);
-            for (FxRegistry era : java.util.List.of(Fx.vanilla18(), Fx.modern())) {
-                useRegistry(era);
-                Fx.play(services, Fx.BLOCK_PLACE_REFUSED, at.withDetail(Block.STONE));
-                assertEquals(0, sounds(viewer, stone) + sounds(placer, stone), "nothing landed, so nothing sounds");
-            }
-        } finally {
-            viewer.player.remove();
-            placer.player.remove();
-        }
-    }
-
     /** 1.8 placed beds through ItemBed, never ItemBlock: nothing sounds, landed or refused; the modern BlockItem does. */
     @Test
     void aBedPlacesSilentlyIn18() {
