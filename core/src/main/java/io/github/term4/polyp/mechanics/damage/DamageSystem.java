@@ -164,12 +164,12 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
             }
         });
         // re-show the respawned player NEXT tick (after the respawn teleport, else viewers re-see them at the death
-        // spot); keyed on the hide itself, never on the scope the respawn lands under
-        this.node.addListener(PlayerRespawnEvent.class, e -> {
-            if (e.getPlayer().hasTag(CORPSE_HIDDEN)) e.getPlayer().scheduleNextTick(DamageSystem::reshow);
-        });
+        // spot); keyed on the hide itself, never on the scope the respawn lands under. The tag is read on that
+        // tick, not here: this event fires while isDead still stands, so the hide above can land between the two
+        // - and a respawn inside one instance raises no spawn event to catch what is left over
+        this.node.addListener(PlayerRespawnEvent.class, e -> e.getPlayer().scheduleNextTick(DamageSystem::reshow));
         this.node.addListener(PlayerSpawnEvent.class, e -> { // alive and still tagged: a respawn this node never saw
-            if (!e.getPlayer().isDead() && e.getPlayer().hasTag(CORPSE_HIDDEN)) reshow(e.getPlayer());
+            if (!e.getPlayer().isDead()) reshow(e.getPlayer());
         });
     }
 
@@ -177,6 +177,7 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
     private static final Tag<Boolean> CORPSE_HIDDEN = Tag.Transient("polyp:corpse-hidden");
 
     private static void reshow(Entity body) {
+        if (!body.hasTag(CORPSE_HIDDEN)) return; // whoever else hid them owns their own restore
         body.removeTag(CORPSE_HIDDEN);
         body.setAutoViewable(true);
     }
