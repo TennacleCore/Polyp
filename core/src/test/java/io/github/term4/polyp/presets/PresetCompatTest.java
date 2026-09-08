@@ -51,6 +51,24 @@ class PresetCompatTest extends HeadlessServerTest { // profile() boots Fx, which
         return config.motYOnMovePacket == null ? Boolean.FALSE : config.motYOnMovePacket.constantOrNull(); // unset = the default
     }
 
+    /** The reach gate is the server's own, not a player's: each network sets how far past vanilla it accepts. */
+    @Test
+    void eachPresetKeepsItsOwnReachGate() {
+        assertEquals(io.github.term4.polyp.mechanics.attack.AttackConfig.VANILLA_REACH_PADDING, padding(Preset.VANILLA18));
+        assertEquals(io.github.term4.polyp.mechanics.attack.AttackConfig.VANILLA_REACH_PADDING, padding(Preset.HYPIXEL),
+                "hypixel refuses what 1.8 refuses");
+        assertEquals(io.github.term4.polyp.mechanics.attack.AttackConfig.MINEMEN_REACH_PADDING, padding(Preset.MMC18));
+        assertEquals(io.github.term4.polyp.mechanics.attack.AttackConfig.SCRIMS_REACH_PADDING, padding(Preset.SCRIMS18));
+    }
+
+    private static double padding(Preset preset) {
+        var attack = preset.profile().get(io.github.term4.polyp.MechanicsKeys.ATTACK);
+        assertNotNull(attack, preset + " sets an attack config");
+        Double value = attack.reachPadding.constantOrNull();
+        assertNotNull(value, preset + " pins its padding");
+        return value;
+    }
+
     /** Every preset hands back a complete layer - callers set it, they never assemble one. */
     @Test
     void everyPresetCarriesAWholeLayer() {

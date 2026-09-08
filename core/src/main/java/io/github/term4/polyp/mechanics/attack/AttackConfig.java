@@ -20,8 +20,8 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
     /** Vanilla 1.8 attacker self-slowdown on a landed sprint/enchant hit ({@code motX/motZ *= 0.6}). */
     public static final double VANILLA_FULL_HIT_SCALE = 0.6;
     public static final double VANILLA_REACH_PADDING = 3.0;
-    /** What a network that would rather accept a laggy hit than eat it allows over {@link #VANILLA_REACH_PADDING}. */
-    public static final double LENIENT_REACH_PADDING = VANILLA_REACH_PADDING + 1.0;
+    /** MineMen's half block over {@link #VANILLA_REACH_PADDING}: they would rather take a laggy hit than eat one. */
+    public static final double MINEMEN_REACH_PADDING = VANILLA_REACH_PADDING + 0.5;
     /** Scrims goes further still: a practice server refusing a hit is worse than one landing late. */
     public static final double SCRIMS_REACH_PADDING = VANILLA_REACH_PADDING + 4.0;
 

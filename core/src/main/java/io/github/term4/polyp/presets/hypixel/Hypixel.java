@@ -1,6 +1,5 @@
 package io.github.term4.polyp.presets.hypixel;
 
-import io.github.term4.polyp.mechanics.attack.AttackConfig;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.fx.FxRegistry;
 import io.github.term4.polyp.MechanicsProfile;
@@ -20,10 +19,6 @@ public final class Hypixel {
 
     public static MechanicsProfile profile() {
         return Vanilla18.profile().toBuilder()
-                // the server's own gate, not a player's reach: a hit past it is refused, so a network that
-                // would rather accept a laggy hit than eat one sets it wide
-                .mutate(MechanicsKeys.ATTACK, attack -> AttackConfig.builder(attack)
-                        .reachPadding(AttackConfig.LENIENT_REACH_PADDING).build())
                 .set(MechanicsKeys.DAMAGE, Damage.config())
                 .set(MechanicsKeys.KNOCKBACK, Knockback.melee())
                 .set(MechanicsKeys.VELOCITY, Movement.velocity())
