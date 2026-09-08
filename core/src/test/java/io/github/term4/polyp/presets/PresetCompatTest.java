@@ -33,6 +33,24 @@ class PresetCompatTest extends HeadlessServerTest { // profile() boots Fx, which
         assertEquals(Boolean.FALSE, Preset.VANILLA.compat().legacyHitbox.constantOrNull(), "nothing to reconcile on 26.1");
     }
 
+    /** motY's gravity accrues on the player's own movement everywhere but Hypixel, which steps on the server tick. */
+    @Test
+    void onlyHypixelStepsMotYOnTheServerTick() {
+        assertEquals(Boolean.FALSE, motYPerPacket(Preset.HYPIXEL));
+        assertEquals(Boolean.FALSE, motYPerPacket(Preset.HYPIXEL_BEDWARS));
+        for (Preset legacy : new Preset[]{Preset.VANILLA18, Preset.MMC18, Preset.SCRIMS18}) {
+            assertEquals(Boolean.TRUE, motYPerPacket(legacy), legacy + " runs 1.8's per-packet living update");
+        }
+    }
+
+    private static Boolean motYPerPacket(Preset preset) {
+        var rule = preset.profile().get(io.github.term4.polyp.MechanicsKeys.VELOCITY);
+        assertNotNull(rule, preset + " sets a velocity rule");
+        var config = rule.reconstructionConfig();
+        assertNotNull(config, preset + " reconstructs velocity");
+        return config.motYOnMovePacket == null ? Boolean.FALSE : config.motYOnMovePacket.constantOrNull(); // unset = the default
+    }
+
     /** Every preset hands back a complete layer - callers set it, they never assemble one. */
     @Test
     void everyPresetCarriesAWholeLayer() {

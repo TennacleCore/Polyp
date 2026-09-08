@@ -7,8 +7,9 @@ import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.mechanics.projectile.ProjectileConfig;
 
 /**
- * <b>Scrims 1.8</b> preset - {@link Hypixel} with a 10-tick invul window, a reach gate wider still, and fully
- * client-predicted {@link Projectiles} (spawn + velocity, then never synchronizes).
+ * <b>Scrims 1.8</b> preset - {@link Hypixel} with a 10-tick invul window, a reach gate wider still, motY on
+ * 1.8's per-packet clock ({@link Movement}), and fully client-predicted {@link Projectiles} (spawn + velocity,
+ * then never synchronizes).
  */
 public final class Scrims18 {
 
@@ -19,6 +20,7 @@ public final class Scrims18 {
                 .mutate(MechanicsKeys.ATTACK, attack -> AttackConfig.builder(attack)
                         .reachPadding(AttackConfig.SCRIMS_REACH_PADDING).build())
                 .mutate(MechanicsKeys.DAMAGE, Damage::config)
+                .set(MechanicsKeys.VELOCITY, Movement.velocity())
                 .set(MechanicsKeys.PROJECTILES, Projectiles.config())
                 .build();
     }
