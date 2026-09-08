@@ -20,8 +20,15 @@ public final class DamageAppliedEvent implements Event {
     private final Services services;
     private final float dealt;
     private final DamageOutcome outcome;
+    private final boolean blocked;
 
     public DamageAppliedEvent(DamageSnapshot snapshot, float dealt, DamageOutcome outcome, Services services) {
+        this(snapshot, dealt, outcome, false, services);
+    }
+
+    public DamageAppliedEvent(DamageSnapshot snapshot, float dealt, DamageOutcome outcome, boolean blocked,
+                              Services services) {
+        this.blocked = blocked;
         this.snapshot = snapshot;
         this.services = services;
         this.dealt = dealt;
@@ -36,6 +43,13 @@ public final class DamageAppliedEvent implements Event {
     public float dealt() { return dealt; }
 
     public DamageOutcome outcome() { return outcome; }
+
+    /**
+     * Whether a block took something off the damage this hit landed. A hit the i-frame window swallows fires no
+     * applied event at all, so a block that changed nothing never reads true here - unlike
+     * {@code BlockingDamageEvent}, which is the veto seam and fires on the decision.
+     */
+    public boolean blocked() { return blocked; }
 
     public DamageType type() { return snapshot.type(); }
     public Entity target() { return snapshot.target(); }

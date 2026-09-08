@@ -286,7 +286,9 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         // Blocking (sword/shield): vanilla reduces a blocked hit BEFORE armor (1.8 EntityHuman.damageEntity). The
         // BlockingSystem owns the decision entirely (is the player blocking, the behavior, what's blockable).
         BlockingSystem blocking = services.blocking();
+        float unblocked = amount;
         if (blocking != null) amount = blocking.reduce(living, typeCtx, amount);
+        boolean blocked = amount < unblocked;
         amount = applyMitigation(living, type, typeCfg, typeCtx, amount);
         boolean triggersInvul = typeCfg.triggersInvul(typeCtx);
 
@@ -302,7 +304,7 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
             // vanilla runs the post-hit enchant effects on ANY landed hit - an overdamage refresh included
             // (EntityHuman.attack applies fire aspect whenever damageEntity returns true)
             dispatchWeaponOnHit(living, finalSnap);
-            fireDamageApplied(finalSnap, applied, DamageOutcome.OVERDAMAGE);
+            fireDamageApplied(finalSnap, applied, DamageOutcome.OVERDAMAGE, blocked);
             return DamageOutcome.OVERDAMAGE;
         }
 
@@ -326,12 +328,14 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
             setDamageInvulnerable(living, TickScaler.duration(invulTicks, polyp.profiles().resolve(living, MechanicsKeys.TICK_SCALING), KEY));
         }
         dispatchWeaponOnHit(living, finalSnap);
-        fireDamageApplied(finalSnap, amount, DamageOutcome.FRESH_DAMAGE);
+        fireDamageApplied(finalSnap, amount, DamageOutcome.FRESH_DAMAGE, blocked);
         return DamageOutcome.FRESH_DAMAGE;
     }
 
-    private void fireDamageApplied(DamageSnapshot snap, float dealt, DamageOutcome outcome) {
-        if (DAMAGE_APPLIED.hasListener()) EventDispatcher.call(new DamageAppliedEvent(snap, dealt, outcome, services));
+    private void fireDamageApplied(DamageSnapshot snap, float dealt, DamageOutcome outcome, boolean blocked) {
+        if (DAMAGE_APPLIED.hasListener()) {
+            EventDispatcher.call(new DamageAppliedEvent(snap, dealt, outcome, blocked, services));
+        }
     }
 
     /** Weapon on-hit enchant side effects (Fire Aspect, ...): defined in the attribute catalog, triggered here. */

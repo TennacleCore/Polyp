@@ -32,6 +32,46 @@ class BlockingSystemTest extends HeadlessServerTest {
         player = FakePlayer.connect(instance, new Pos(70.5, 64, 70.5), "Blocker");
     }
 
+    /**
+     * The block a landed hit carries. A second swing inside the i-frame window is reduced all the same, but only
+     * its excess over the stored high-water lands - and a hit that lands nothing fires no applied event, so
+     * nothing downstream can mistake it for a block that mattered.
+     */
+    @Test
+    void aBlockIsCarriedByTheHitItLands() {
+        FakePlayer victim = FakePlayer.connect(instance, new Pos(74.5, 64, 74.5), "BlockCue");
+        net.minestom.server.entity.LivingEntity attacker = zombie(new Pos(75.5, 64, 74.5));
+        java.util.List<io.github.term4.polyp.api.event.damage.DamageAppliedEvent> landed = new java.util.ArrayList<>();
+        var node = net.minestom.server.event.EventNode.all("test:block-cue");
+        node.addListener(io.github.term4.polyp.api.event.damage.DamageAppliedEvent.class, e -> {
+            if (e.target() == victim.player) landed.add(e);
+        });
+        net.minestom.server.MinecraftServer.getGlobalEventHandler().addChild(node);
+        try {
+            ItemStack sword = ItemStack.of(Material.DIAMOND_SWORD);
+            victim.player.setItemInHand(PlayerHand.MAIN, sword);
+            victim.player.refreshItemUse(PlayerHand.MAIN, 72000); // sword up, the 1.8 way
+            victim.player.setHealth(20f);
+            assertTrue(blocking.isBlocking(victim.player), "blocking before the first swing");
+
+            services.damage().apply(io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage.INSTANCE
+                    .snapshot(attacker, victim.player, false, sword, services));
+            assertEquals(1, landed.size(), "the first swing landed");
+            assertTrue(landed.getFirst().blocked(), "and the block took something off it");
+
+            // the same swing again, inside the window: reduced to the same figure, so nothing is left to land
+            landed.clear();
+            services.damage().apply(io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage.INSTANCE
+                    .snapshot(attacker, victim.player, false, sword, services));
+            assertEquals(java.util.List.of(), landed, "no damage dealt, so nothing was halved");
+        } finally {
+            net.minestom.server.MinecraftServer.getGlobalEventHandler().removeChild(node);
+            victim.player.clearItemUse();
+            victim.player.remove();
+            attacker.remove();
+        }
+    }
+
     /** A raise starts from the config alone: Minestom grants a use time only to a component item, so we grant it. */
     @Test
     void plainSwordBlocksWhenTheProfileMarksItBlockable() {
