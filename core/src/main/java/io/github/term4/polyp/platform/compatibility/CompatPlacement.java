@@ -45,9 +45,11 @@ public final class CompatPlacement {
      * client: the placer's own body NEVER blocks their placement (Paper passes the placer into
      * {@code checkNoEntityCollision}, which excludes it - and the 1.8 client sends every attempt before its own
      * prediction runs, so the server's accept is what the player sees; stairs into your own face land), and
-     * no-collision-box blocks check nobody (1.8's null-AABB skip - the ladder clutch). Other bodies stay on the
-     * precise check; everyone else (Animatium included, for now) is precise throughout, matching their own
-     * client's prediction.
+     * no-collision-box blocks check nobody (1.8's null-AABB skip - the ladder clutch). A slab doubling in its
+     * own cell is 1.8's one exception: {@code ItemSlab} checks the merged cube through the excludes-nobody
+     * {@code checkNoEntityCollision}, so the placer standing on the half they click is what refuses it. Other
+     * bodies stay on the precise check; everyone else (Animatium included, for now) is precise throughout,
+     * matching their own client's prediction.
      *
      * <p>{@link CompatConfig#legacySelfPlace} scopes the self-exemption through the profile: a Hypixel-style
      * world turns it off and a 1.8 client stops landing stairs in its own face, while the passable skip keeps
@@ -58,10 +60,15 @@ public final class CompatPlacement {
     public static boolean placementBodyCheck(@NotNull Player placer, @NotNull Entity body, @NotNull Block placing,
                                              @NotNull Point cellRelativeBody, @NotNull BoundingBox bodyBox) {
         if (placer instanceof OptimizedPlayer op && op.compat().legacyClient()) {
-            if (body == placer && op.compat().legacySelfPlace()) return false;
+            if (body == placer && op.compat().legacySelfPlace() && !doubling(placing)) return false;
             if (BlockContact.isPassable(placing)) return false;
         }
         return placing.collisionShape().intersectBox(cellRelativeBody, bodyBox);
+    }
+
+    // the shaped result of a slab merge: no slab item places one otherwise
+    private static boolean doubling(Block placing) {
+        return "double".equals(placing.getProperty("type"));
     }
 
     public static void install(Polyp polyp) {

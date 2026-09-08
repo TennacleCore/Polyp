@@ -56,6 +56,30 @@ class CompatPlacementBodyCheckTest extends HeadlessServerTest {
         }
     }
 
+    /** 1.8 ItemSlab checks the merged cube against every body, the placer included - standing on the half you
+     *  click is what refuses the double. The single-slab path is still ItemBlock's, exempt as ever. */
+    @Test
+    void aMergedSlabBlocksItsPlacer() {
+        FakePlayer fp = FakePlayer.connect(instance, new Pos(0.5, 64.5, 880.5), "SlabGate");
+        OptimizedPlayer op = (OptimizedPlayer) fp.player;
+        BoundingBox player = new BoundingBox(0.6, 1.8, 0.6);
+        Vec standing = new Vec(0.5, 0.5, 0.5); // feet on the top face of the half they clicked
+        try {
+            op.compat().setLegacyClient(true);
+            assertTrue(CompatPlacement.placementBodyCheck(op, op,
+                            Block.OAK_SLAB.withProperty("type", "double"), standing, player),
+                    "the double would engulf the placer");
+            assertFalse(CompatPlacement.placementBodyCheck(op, op,
+                            Block.OAK_SLAB.withProperty("type", "top"), standing, player),
+                    "a single slab into your own body is ItemBlock's exempt path");
+            assertFalse(CompatPlacement.placementBodyCheck(op, op,
+                            Block.OAK_SLAB.withProperty("type", "double"), standing.add(3, 0, 0), player),
+                    "a cell clear of the body still merges");
+        } finally {
+            fp.player.remove();
+        }
+    }
+
     /** legacySelfPlace(false) - the hypixel profile: self-overlap refused for legacy too, ladders still clutch. */
     @Test
     void profileCanRefuseLegacySelfOverlapAndStillAllowLadders() {
