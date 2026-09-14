@@ -35,6 +35,7 @@ public final class AttackConfigResolver {
                 FieldValue.resolve(cfg.ruleset, ctx, Attack.ruleset()),
                 cfg.criticalRule != null ? cfg.criticalRule : AttackEvent.CriticalRule.DEFAULT,
                 FieldValue.resolve(cfg.fullHitScale, ctx, AttackConfig.VANILLA_FULL_HIT_SCALE),
+                FieldValue.resolve(cfg.suppressSprintResetEcho, ctx, false),
                 FieldValue.resolve(cfg.reachPadding, ctx)
         );
     }
@@ -44,6 +45,7 @@ public final class AttackConfigResolver {
             @Nullable AttackEvent.AttackRule.Ruleset ruleset,
             @Nullable AttackEvent.CriticalRule criticalRule,
             double fullHitScale,
+            boolean suppressSprintResetEcho,
             @Nullable Double reachPadding
     ) {
         public static ResolvedAttackConfig defaults() {
@@ -52,6 +54,7 @@ public final class AttackConfigResolver {
                     Attack.ruleset(),
                     AttackEvent.CriticalRule.DEFAULT,
                     AttackConfig.VANILLA_FULL_HIT_SCALE,
+                    false,
                     AttackConfig.VANILLA_REACH_PADDING
             );
         }

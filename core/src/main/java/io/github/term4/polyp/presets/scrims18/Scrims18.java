@@ -18,7 +18,8 @@ public final class Scrims18 {
     public static MechanicsProfile profile() {
         return Hypixel.profile().toBuilder()
                 .mutate(MechanicsKeys.ATTACK, attack -> AttackConfig.builder(attack)
-                        .reachPadding(AttackConfig.SCRIMS_REACH_PADDING).build())
+                        .reachPadding(AttackConfig.SCRIMS_REACH_PADDING)
+                        .suppressSprintResetEcho(true).build())
                 .mutate(MechanicsKeys.DAMAGE, Damage::config)
                 .set(MechanicsKeys.VELOCITY, Movement.velocity())
                 .set(MechanicsKeys.PROJECTILES, Projectiles.config())

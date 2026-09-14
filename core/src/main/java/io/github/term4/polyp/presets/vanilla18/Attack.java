@@ -66,7 +66,7 @@ public final class Attack {
             if (result.landed() && event.attacker() instanceof LivingEntity le) {
                 double scale = event.resolvedConfig().fullHitScale();
                 if (scale != 1.0 && sprintingForKb(le)) MotionTracker.scaleHorizontalResidual(le, scale);
-                if (le instanceof OptimizedPlayer op) {
+                if (le instanceof OptimizedPlayer op && event.resolvedConfig().suppressSprintResetEcho()) {
                     op.suppressSelf(() -> op.setSprinting(false));
                 } else {
                     le.setSprinting(false);

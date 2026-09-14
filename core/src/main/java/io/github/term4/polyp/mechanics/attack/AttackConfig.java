@@ -36,6 +36,12 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
      */
     public final FieldValue<AttackContext, Double> fullHitScale;
     /**
+     * Keeps the attack's own sprint reset off the attacker's own client: the hit still ends their sprint, and
+     * viewers still see it, but their prediction is left alone. A deliberate deviation - vanilla echoes it back,
+     * which costs the attacker a tick of stutter mid-combo. Off by default; the network presets turn it on.
+     */
+    public final FieldValue<AttackContext, Boolean> suppressSprintResetEcho;
+    /**
      * Vanilla's server gate: eye to the target's box within {@code entity_interaction_range + padding} (modern 3.0;
      * 1.8's 6-block rule lands the same). {@code null}/negative = off. Minestom's own gate
      * ({@code minestom.enforce-entity-interaction-range}, range + 1) runs first while on: a host turns it off or
@@ -50,6 +56,7 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
         criticalRule = b.criticalRule;
         fakeHits = b.fakeHits;
         fullHitScale = b.fullHitScale;
+        suppressSprintResetEcho = b.suppressSprintResetEcho;
         reachPadding = b.reachPadding;
     }
 
@@ -83,6 +90,7 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
             ruleset = FieldValue.constant(Attack.ruleset());
             criticalRule = null;
             fullHitScale = FieldValue.constant(VANILLA_FULL_HIT_SCALE);
+            suppressSprintResetEcho = FieldValue.constant(false);
             reachPadding = FieldValue.constant(VANILLA_REACH_PADDING);
         }
 

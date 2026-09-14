@@ -69,6 +69,26 @@ class PresetCompatTest extends HeadlessServerTest { // profile() boots Fx, which
         return value;
     }
 
+    /**
+     * The attack's sprint reset is vanilla; keeping it off the attacker's own client is not. The networks all
+     * do it, and the two vanilla presets are vanilla.
+     */
+    @Test
+    void onlyTheNetworksHideTheirOwnSprintReset() {
+        for (Preset network : new Preset[]{Preset.HYPIXEL, Preset.HYPIXEL_BEDWARS, Preset.MMC18, Preset.SCRIMS18}) {
+            assertEquals(Boolean.TRUE, hidesSprintReset(network), network + " spares the attacker the stutter");
+        }
+        for (Preset vanilla : new Preset[]{Preset.VANILLA, Preset.VANILLA18}) {
+            assertEquals(Boolean.FALSE, hidesSprintReset(vanilla), vanilla + " echoes it, as vanilla does");
+        }
+    }
+
+    private static Boolean hidesSprintReset(Preset preset) {
+        var attack = preset.profile().get(io.github.term4.polyp.MechanicsKeys.ATTACK);
+        if (attack == null) return Boolean.FALSE; // no attack config: the resolver's default, which is vanilla
+        return attack.suppressSprintResetEcho.constantOrNull();
+    }
+
     /** Every preset hands back a complete layer - callers set it, they never assemble one. */
     @Test
     void everyPresetCarriesAWholeLayer() {
