@@ -21,6 +21,7 @@ public final class Fixes18 {
                 .legacyConsume(FixToggleConfig.on())
                 .legacyFireDouse(FixToggleConfig.on())
                 .legacyInventorySlot(FixToggleConfig.on())
+                .legacyUseResync(FixToggleConfig.on())
                 .build();
     }
 }

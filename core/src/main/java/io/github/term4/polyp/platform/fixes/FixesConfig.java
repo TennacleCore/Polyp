@@ -19,6 +19,7 @@ public final class FixesConfig {
     private final @Nullable FixToggleConfig inventorySync;
     private final @Nullable FixToggleConfig legacyInventorySlot;
     private final @Nullable FixToggleConfig effectResync;
+    private final @Nullable FixToggleConfig legacyUseResync;
 
     private FixesConfig(Builder b) {
         this.visuals = b.visuals;
@@ -30,6 +31,7 @@ public final class FixesConfig {
         this.inventorySync = b.inventorySync;
         this.legacyInventorySlot = b.legacyInventorySlot;
         this.effectResync = b.effectResync;
+        this.legacyUseResync = b.legacyUseResync;
     }
 
     public @Nullable VisualsConfig visuals() { return visuals; }
@@ -62,6 +64,9 @@ public final class FixesConfig {
     /** Whether a new viewer is told the effects an entity already carries ({@link EffectResyncFix}). */
     public @Nullable FixToggleConfig effectResync() { return effectResync; }
 
+    /** Re-baselines a 1.8 client's inventory after a draw that fired nothing, which leaves it stuck drawing. */
+    public @Nullable FixToggleConfig legacyUseResync() { return legacyUseResync; }
+
     /** Merges this config over {@code base} (each member: this if set, else base; both set -&gt; member-merged). */
     public FixesConfig fromBase(FixesConfig base) {
         VisualsConfig v = visuals == null ? base.visuals
@@ -75,6 +80,7 @@ public final class FixesConfig {
                 .inventorySync(merge(inventorySync, base.inventorySync))
                 .legacyInventorySlot(merge(legacyInventorySlot, base.legacyInventorySlot))
                 .effectResync(merge(effectResync, base.effectResync))
+                .legacyUseResync(merge(legacyUseResync, base.legacyUseResync))
                 .build();
     }
 
@@ -85,7 +91,7 @@ public final class FixesConfig {
     /** The toggle names the {@code fixes/<toggle>/enabled} path addresses. */
     public static final java.util.List<String> TOGGLES = java.util.List.of("legacySelfPlacement", "equipmentFix",
             "legacyTabCompleteFix", "legacyConsume", "legacyFireDouse", "inventorySync", "legacyInventorySlot",
-            "effectResync");
+            "effectResync", "legacyUseResync");
 
     public @Nullable FixToggleConfig toggle(String name) {
         return switch (name) {
@@ -97,6 +103,7 @@ public final class FixesConfig {
             case "inventorySync" -> inventorySync;
             case "legacyInventorySlot" -> legacyInventorySlot;
             case "effectResync" -> effectResync;
+            case "legacyUseResync" -> legacyUseResync;
             default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
         };
     }
@@ -113,6 +120,7 @@ public final class FixesConfig {
             case "inventorySync" -> b.inventorySync(toggle);
             case "legacyInventorySlot" -> b.legacyInventorySlot(toggle);
             case "effectResync" -> b.effectResync(toggle);
+            case "legacyUseResync" -> b.legacyUseResync(toggle);
             default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
         }
         return b.build();
@@ -139,6 +147,7 @@ public final class FixesConfig {
         private @Nullable FixToggleConfig inventorySync;
         private @Nullable FixToggleConfig legacyInventorySlot;
         private @Nullable FixToggleConfig effectResync;
+        private @Nullable FixToggleConfig legacyUseResync;
 
         Builder() {}
         Builder(FixesConfig c) {
@@ -151,6 +160,7 @@ public final class FixesConfig {
             inventorySync = c.inventorySync;
             legacyInventorySlot = c.legacyInventorySlot;
             effectResync = c.effectResync;
+            legacyUseResync = c.legacyUseResync;
         }
 
         public Builder visuals(@Nullable VisualsConfig v) { this.visuals = v; return this; }
@@ -162,6 +172,7 @@ public final class FixesConfig {
         public Builder inventorySync(@Nullable FixToggleConfig v) { this.inventorySync = v; return this; }
         public Builder legacyInventorySlot(@Nullable FixToggleConfig v) { this.legacyInventorySlot = v; return this; }
         public Builder effectResync(@Nullable FixToggleConfig v) { this.effectResync = v; return this; }
+        public Builder legacyUseResync(@Nullable FixToggleConfig v) { this.legacyUseResync = v; return this; }
 
         public FixesConfig build() { return new FixesConfig(this); }
     }
