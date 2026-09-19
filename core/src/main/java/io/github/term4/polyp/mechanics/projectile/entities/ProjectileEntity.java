@@ -188,24 +188,31 @@ public abstract class ProjectileEntity extends MechanicsEntity {
     }
 
     /**
-     * Whether {@code target} is really hit this tick. Minestom answers an overlap of the two boxes with a hit
-     * from ANY side at fraction 0 ({@code EntityCollision.checkCollision}), which is neither vanilla's rule: 1.8
-     * takes only a face crossing on the move segment, and 26.1 adds the start point being inside. An overlap the
-     * era refuses is dropped; a swept hit Minestom found by crossing is kept as it stands.
+     * Whether {@code target} is really hit this tick. Minestom answers an overlap of the two boxes with a hit from
+     * ANY side at fraction 0 ({@code EntityCollision.checkCollision}); NEITHER vanilla does. Both eras clip the
+     * move segment against the target box and take only a face crossing - 1.8
+     * ({@code AxisAlignedBB.calculateIntercept}) and 26.1 ({@code ProjectileUtil.getEntityHitResult} ->
+     * {@code bb.clip(from, to)}) agree on the shape. An overlap off the path is dropped; a swept hit Minestom
+     * found by crossing is kept as it stands.
      */
+    /** 26.1 ramps the margin in over the first ticks of flight ({@code ProjectileUtil.computeMargin}); 1.8 is flat. */
+    double entityHitMargin() {
+        if (!entityHitGrowRamp) return entityHitGrow;
+        return Math.max(0.0, Math.min(entityHitGrow, (getAliveTicks() - 2) / 20.0));
+    }
+
     boolean contacts(Entity target, Pos from, Vec velocity) {
-        BoundingBox mine = collisionBox().growSymmetrically(entityHitGrow, entityHitGrow, entityHitGrow);
+        double grow = entityHitMargin();
+        BoundingBox mine = collisionBox().growSymmetrically(grow, grow, grow);
         if (!target.getBoundingBox().intersectBox(target.getPosition().sub(from), mine)) return true;
         BoundingBox box = target.getBoundingBox();
         Point at = target.getPosition();
         double t0 = 0, t1 = 1;
-        boolean inside = true;
         double[] p = {from.x(), from.y(), from.z()};
         double[] d = {velocity.x(), velocity.y(), velocity.z()};
-        double[] lo = {at.x() + box.minX() - entityHitGrow, at.y() + box.minY() - entityHitGrow, at.z() + box.minZ() - entityHitGrow};
-        double[] hi = {at.x() + box.maxX() + entityHitGrow, at.y() + box.maxY() + entityHitGrow, at.z() + box.maxZ() + entityHitGrow};
+        double[] lo = {at.x() + box.minX() - grow, at.y() + box.minY() - grow, at.z() + box.minZ() - grow};
+        double[] hi = {at.x() + box.maxX() + grow, at.y() + box.maxY() + grow, at.z() + box.maxZ() + grow};
         for (int axis = 0; axis < 3; axis++) {
-            if (p[axis] < lo[axis] || p[axis] > hi[axis]) inside = false;
             if (Math.abs(d[axis]) < 1.0E-7) { // vanilla's own getIntermediateWith*Value guard
                 if (p[axis] < lo[axis] || p[axis] > hi[axis]) return false;
                 continue;
@@ -215,9 +222,8 @@ public abstract class ProjectileEntity extends MechanicsEntity {
             t1 = Math.min(t1, Math.max(a, b));
             if (t0 > t1) return false;
         }
-        // a segment that never leaves the box crosses no face, which is exactly what 1.8 reads as a miss
-        boolean crossed = t0 > 0 || t1 < 1;
-        return crossed || (entityContact == ProjectileTypeConfig.EntityContact.INSIDE && inside);
+        // a segment that never leaves the box crosses no face, which is what both eras read as a miss
+        return t0 > 0 || t1 < 1;
     }
 
     /** Whether other projectiles/attacks can hit this one (vanilla {@code ad()}/canBeCollidedWith). Default {@code false}; a fireball overrides it (collidable + deflectable). */
@@ -308,8 +314,8 @@ public abstract class ProjectileEntity extends MechanicsEntity {
 
     public void setEntityHitGrow(double grow) { this.entityHitGrow = grow; }
 
-    public void setEntityContact(@NotNull ProjectileTypeConfig.EntityContact contact) { this.entityContact = contact; }
-    private ProjectileTypeConfig.EntityContact entityContact = ProjectileTypeConfig.EntityContact.INSIDE;
+    public void setEntityHitGrowRamp(boolean ramp) { this.entityHitGrowRamp = ramp; }
+    private boolean entityHitGrowRamp = true;
 
     public void setVelocitySyncInterval(int interval) { this.velocitySyncInterval = interval; }
 
@@ -533,8 +539,9 @@ public abstract class ProjectileEntity extends MechanicsEntity {
             if (leftOwnerImmunity && !leftOwner && shooter != null && !withinShooterBox(position)) leftOwner = true;
             boolean shooterImmune = (leftOwnerImmunity ? (shooter != null && !leftOwner)
                     : getAliveTicks() < shooterImmunityTicks) || getAliveTicks() < shooterImmuneUntilAlive;
+            double margin = entityHitMargin();
             Collection<EntityCollisionResult> hits = world.sweepEntities(
-                    collisionBox().growSymmetrically(entityHitGrow, entityHitGrow, entityHitGrow), position, velocityBt, 3,
+                    collisionBox().growSymmetrically(margin, margin, margin), position, velocityBt, 3,
                     e -> e != this && !(shooterImmune && e == shooter) && canHit(e), physics);
             hits = hits.stream().filter(h -> contacts(h.entity(), position, velocityBt)).toList();
             if (!hits.isEmpty()) {

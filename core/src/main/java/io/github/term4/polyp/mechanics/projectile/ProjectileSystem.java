@@ -251,7 +251,7 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
         entity.setShooterImmunityTicks(TickScaler.duration(scope, flight.shooterImmunityTicks(), KEY));
         entity.setStuckDespawnTicks(TickScaler.duration(scope, flight.stuckDespawnTicks(), KEY));
         entity.setEntityHitGrow(flight.entityHitGrow());
-        entity.setEntityContact(flight.entityContact());
+        entity.setEntityHitGrowRamp(flight.entityHitGrowRamp());
         entity.setPhysicsOrder(flight.physicsOrder());
         entity.setLeftOwnerImmunity(flight.leftOwnerImmunity());
         entity.setStickPullback(flight.stickPullback());

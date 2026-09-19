@@ -95,8 +95,8 @@ public final class ProjectileConfigResolver {
                 FieldValue.resolve(tc.shooterImmunityTicks, ctx, 5),
                 FieldValue.resolve(tc.stuckDespawnTicks, ctx, 1200), // vanilla EntityArrow ticksInGround
                 FieldValue.resolve(tc.entityHitGrow, ctx, 0.3), // vanilla 1.8 Entity{Arrow,Projectile}: target grow 0.3 each side
-                // 26.1 is the baseline; the 1.8 presets ask for PATH, which has no start-inside rule at all
-                FieldValue.resolve(tc.entityContact, ctx, ProjectileTypeConfig.EntityContact.INSIDE),
+                // 26.1 ramps the margin in over the first ticks of flight; the 1.8 presets turn it off
+                FieldValue.resolve(tc.entityHitGrowRamp, ctx, Boolean.TRUE),
                 FieldValue.resolve(tc.broadcastMovement, ctx, Boolean.FALSE), // vanilla trackers broadcast per tick; silent = the client-prediction mode
                 FieldValue.resolve(tc.syncInterval, ctx, 20),
                 FieldValue.resolve(tc.velocitySyncInterval, ctx, 0), // 0 = no per-tick velocity (vanilla arrow); the edge-slide fix
@@ -160,7 +160,7 @@ public final class ProjectileConfigResolver {
             int shooterImmunityTicks,
             int stuckDespawnTicks,
             double entityHitGrow,
-            ProjectileTypeConfig.EntityContact entityContact,
+            boolean entityHitGrowRamp,
             boolean broadcastMovement,
             int syncInterval,
             int velocitySyncInterval,

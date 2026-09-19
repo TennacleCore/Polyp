@@ -57,19 +57,6 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
      *  26.1 throwable (gravity, drag, move). 26.1 arrows kept the 1.8 order. */
     public enum PhysicsOrder { DRAG_AFTER_MOVE, DRAG_BEFORE_MOVE }
 
-    /**
-     * What a projectile may already be hitting when a tick starts. Minestom answers an overlap of the two boxes
-     * with a hit from any side at fraction 0, which neither vanilla does - it is why a fireball catches a pearl
-     * that is still metres off the path.
-     * <ul>
-     *   <li>{@link #PATH} - only what this tick's move segment crosses a face of (1.8
-     *       {@code AxisAlignedBB.calculateIntercept}, whose crossings are parameterised to {@code [0,1]}).</li>
-     *   <li>{@link #INSIDE} - that, plus a projectile whose own position already sits inside the grown target box
-     *       (26.1 {@code ProjectileUtil.getEntityHitResult}: {@code bb.contains(from)}).</li>
-     * </ul>
-     */
-    public enum EntityContact { PATH, INSIDE }
-
     /** Client wire the silent-flight spawn state snaps to (the sim must integrate what the client decoded):
      *  {@link #LEGACY_1_8} = 1/32 position + Via-translated velocity shorts; {@link #MODERN} = double position + LP velocity. */
     public enum WireGrid { LEGACY_1_8, MODERN }
@@ -156,8 +143,13 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
     public final @Nullable FieldValue<ProjectileContext, Integer> stuckDespawnTicks;
     /** Entity-hit margin: the target's bbox grows by this each side for the hit ray-test (vanilla {@code 0.3}). */
     public final @Nullable FieldValue<ProjectileContext, Double> entityHitGrow;
-    /** What already counts as a hit at the start of a tick ({@link EntityContact}; default {@code INSIDE} = 26.1). */
-    public final @Nullable FieldValue<ProjectileContext, EntityContact> entityContact;
+    /**
+     * Whether {@link #entityHitGrow} ramps in over the first ticks of flight instead of applying whole. 26.1
+     * grows it from nothing to the full margin between tick 2 and tick 8 ({@code ProjectileUtil.computeMargin}:
+     * {@code clamp((tickCount - 2) / 20, 0, 0.3)}), which is vanilla's own guard against a shot hitting something
+     * it spawned next to. 1.8 has no ramp - the margin is flat from the first tick. Default {@code true} = 26.1.
+     */
+    public final @Nullable FieldValue<ProjectileContext, Boolean> entityHitGrowRamp;
     /** What the projectile does when it hits its own shooter ({@link HitResponse}; default {@code HIT} = vanilla). */
     public final @Nullable FieldValue<ProjectileContext, HitResponse> selfHit;
     /** What the projectile does when it hits any other entity (default {@code HIT}); {@code DESTROY} = a pure impact trigger, no hit damage/KB (MineMen fireball). */
@@ -271,7 +263,7 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
         momentumVertical = b.momentumVertical;
         shooterImmunityTicks = b.shooterImmunityTicks;
         entityHitGrow = b.entityHitGrow;
-        entityContact = b.entityContact;
+        entityHitGrowRamp = b.entityHitGrowRamp;
         selfHit = b.selfHit;
         entityHit = b.entityHit;
         broadcastMovement = b.broadcastMovement;
