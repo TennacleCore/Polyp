@@ -15,8 +15,9 @@ import java.util.stream.Collectors;
 /**
  * Hypixel explosion: the 1.8 baseline ({@link io.github.term4.polyp.presets.vanilla18.Explosion}) plus a
  * constant radial base toward {@code feet+1} (magnitude 0.8 up, 0.8× horizontal, 0.4× downward). Damage is a flat 2.0
- * (measured: fireball + TNT both deal 2.0 regardless of distance) that ignores armor POINTS but still respects
- * enchants/effects - not the 1.8 falloff curve. Constants fitted on 240+ KB captures.
+ * (measured: fireball + TNT both deal 2.0 regardless of distance), halved for whoever set the blast off, that
+ * ignores armor POINTS but still respects enchants/effects - not the 1.8 falloff curve. Constants fitted on 240+
+ * KB captures.
  */
 public final class Explosion {
 
@@ -30,6 +31,8 @@ public final class Explosion {
     // weaker impacts deal no explosion KB - only the projectile KB lands
     private static final double KB_IMPACT_FLOOR = 0.435;
     private static final double FLAT_DAMAGE = 2.0;
+    // a fireball jump costs its thrower half what it costs anyone else
+    private static final double OWNER_DAMAGE = 1.0;
 
     /** Full glass blocks only - plain, stained and tinted; keyed so new variants are picked up, panes excluded. */
     private static final Set<Block> BLAST_PROOF_GLASS = Block.values().stream()
@@ -54,7 +57,8 @@ public final class Explosion {
                 .baseKnockback(BASE).baseHeight(BASE_HEIGHT)
                 .baseScale(RadialScale.builder().down(BASE_DOWNWARD_SCALE).horizontal(BASE_HORIZONTAL_SCALE).build())
                 .knockbackImpactFloor(KB_IMPACT_FLOOR)
-                .damageModel(DamageModel.flat(FLAT_DAMAGE)).damageBypass(Bypass.builder().armor(true).build())
+                .damageModel(DamageModel.byOwner(DamageModel.flat(OWNER_DAMAGE), DamageModel.flat(FLAT_DAMAGE)))
+                .damageBypass(Bypass.builder().armor(true).build())
                 .exposure(ExplosionExposure.Rays.LEGACY_1_8_FULL_CUBE) // Hypixel gates off-flat blasts (full-cube), unlike singleplayer 1.8
                 // Hypixel fireballs light fire ONLY where a block was broken - never on intact ground (observed in-game)
                 .fireScope(ExplosionConfig.FireScope.BROKEN)
