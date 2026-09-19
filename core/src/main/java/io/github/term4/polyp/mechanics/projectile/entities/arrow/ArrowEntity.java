@@ -154,9 +154,14 @@ public class ArrowEntity extends ManagedProjectile {
     /** Vanilla {@code Arrow.doPostHurtEffects}, routed through the attribute potion lifecycle (TPS scaling, source behavior). */
     private void applyOnHitEffects(LivingEntity le) {
         for (CustomPotionEffect e : onHitEffects) {
-            int duration = Math.max(1, Math.round(e.duration() * potionDurationScale));
-            VanillaPotions.addEffect(le, new Potion(e.id(), e.amplifier(), duration, (byte) (Potion.PARTICLES_FLAG | Potion.ICON_FLAG)));
+            VanillaPotions.addEffect(le, new Potion(e.id(), e.amplifier(), scaledDuration(e.duration()), VanillaPotions.flags(e)));
         }
+    }
+
+    /** {@code MobEffectInstance.withScaledDuration}: floors to a one-tick minimum, and leaves infinite and zero alone. */
+    private int scaledDuration(int duration) {
+        if (duration == Potion.INFINITE_DURATION || duration == 0) return duration;
+        return Math.max(1, (int) Math.floor(duration * (double) potionDurationScale));
     }
 
     @Override

@@ -127,6 +127,13 @@ public final class VanillaPotions {
             Map.entry(PotionType.STRENGTH, 8201), Map.entry(PotionType.LONG_STRENGTH, 8265), Map.entry(PotionType.STRONG_STRENGTH, 8233),
             Map.entry(PotionType.WEAKNESS, 8200), Map.entry(PotionType.LONG_WEAKNESS, 8264));
 
+    /** An effect's own ambient/particles/icon settings as a {@link Potion} flag byte. */
+    public static byte flags(CustomPotionEffect e) {
+        return (byte) ((e.isAmbient() ? Potion.AMBIENT_FLAG : 0)
+                | (e.showParticles() ? Potion.PARTICLES_FLAG : 0)
+                | (e.showIcon() ? Potion.ICON_FLAG : 0));
+    }
+
     /**
      * The 1.8 SPLASH damage value - what a real 1.8 server carries on the wire; the client reads it straight from level
      * event 2002, which Via passes through untranslated. Splash water for an unmapped type.

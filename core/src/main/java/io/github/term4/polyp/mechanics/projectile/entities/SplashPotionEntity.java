@@ -156,14 +156,8 @@ public class SplashPotionEntity extends ManagedProjectile {
             if (HealOrHarm.apply(services(), living, getShooter(), at, e, intensity)) continue;
             int duration = (int) (intensity * e.duration() * durationScale + 0.5);
             if (duration > MIN_EFFECT_TICKS) {
-                VanillaPotions.addEffect(living, new Potion(e.id(), e.amplifier(), duration, potionFlags(e)));
+                VanillaPotions.addEffect(living, new Potion(e.id(), e.amplifier(), duration, VanillaPotions.flags(e)));
             }
         }
-    }
-
-    private static byte potionFlags(CustomPotionEffect e) {
-        return (byte) ((e.isAmbient() ? Potion.AMBIENT_FLAG : 0)
-                | (e.showParticles() ? Potion.PARTICLES_FLAG : 0)
-                | (e.showIcon() ? Potion.ICON_FLAG : 0));
     }
 }
