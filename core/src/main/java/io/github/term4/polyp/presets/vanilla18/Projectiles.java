@@ -51,6 +51,8 @@ public final class Projectiles {
                 .spawnOffsetVertical(-0.1).spawnOffsetSideways(0.16)
                 .shooterImmunityTicks(5)
                 .entityHitGrow(0.3)
+                // 1.8 has no start-inside rule: only a face crossing on this tick's segment counts
+                .entityContact(ProjectileTypeConfig.EntityContact.PATH)
                 .legacyBlockRay(true) // 1.8 rayTraceBlocks: fences/walls ray as SELECTION boxes (envelope, 1.0 tall)
                 // 1.8 EntityTracker throwable row (64, 10, true)
                 .syncInterval(10).velocitySyncInterval(10)

@@ -187,6 +187,39 @@ public abstract class ProjectileEntity extends MechanicsEntity {
         return Boolean.TRUE.equals(entity.getTag(PROJECTILE_COLLIDABLE));
     }
 
+    /**
+     * Whether {@code target} is really hit this tick. Minestom answers an overlap of the two boxes with a hit
+     * from ANY side at fraction 0 ({@code EntityCollision.checkCollision}), which is neither vanilla's rule: 1.8
+     * takes only a face crossing on the move segment, and 26.1 adds the start point being inside. An overlap the
+     * era refuses is dropped; a swept hit Minestom found by crossing is kept as it stands.
+     */
+    boolean contacts(Entity target, Pos from, Vec velocity) {
+        BoundingBox mine = collisionBox().growSymmetrically(entityHitGrow, entityHitGrow, entityHitGrow);
+        if (!target.getBoundingBox().intersectBox(target.getPosition().sub(from), mine)) return true;
+        BoundingBox box = target.getBoundingBox();
+        Point at = target.getPosition();
+        double t0 = 0, t1 = 1;
+        boolean inside = true;
+        double[] p = {from.x(), from.y(), from.z()};
+        double[] d = {velocity.x(), velocity.y(), velocity.z()};
+        double[] lo = {at.x() + box.minX() - entityHitGrow, at.y() + box.minY() - entityHitGrow, at.z() + box.minZ() - entityHitGrow};
+        double[] hi = {at.x() + box.maxX() + entityHitGrow, at.y() + box.maxY() + entityHitGrow, at.z() + box.maxZ() + entityHitGrow};
+        for (int axis = 0; axis < 3; axis++) {
+            if (p[axis] < lo[axis] || p[axis] > hi[axis]) inside = false;
+            if (Math.abs(d[axis]) < 1.0E-7) { // vanilla's own getIntermediateWith*Value guard
+                if (p[axis] < lo[axis] || p[axis] > hi[axis]) return false;
+                continue;
+            }
+            double a = (lo[axis] - p[axis]) / d[axis], b = (hi[axis] - p[axis]) / d[axis];
+            t0 = Math.max(t0, Math.min(a, b));
+            t1 = Math.min(t1, Math.max(a, b));
+            if (t0 > t1) return false;
+        }
+        // a segment that never leaves the box crosses no face, which is exactly what 1.8 reads as a miss
+        boolean crossed = t0 > 0 || t1 < 1;
+        return crossed || (entityContact == ProjectileTypeConfig.EntityContact.INSIDE && inside);
+    }
+
     /** Whether other projectiles/attacks can hit this one (vanilla {@code ad()}/canBeCollidedWith). Default {@code false}; a fireball overrides it (collidable + deflectable). */
     protected boolean collidableTarget() { return false; }
 
@@ -274,6 +307,9 @@ public abstract class ProjectileEntity extends MechanicsEntity {
     private boolean entityHits = true;
 
     public void setEntityHitGrow(double grow) { this.entityHitGrow = grow; }
+
+    public void setEntityContact(@NotNull ProjectileTypeConfig.EntityContact contact) { this.entityContact = contact; }
+    private ProjectileTypeConfig.EntityContact entityContact = ProjectileTypeConfig.EntityContact.INSIDE;
 
     public void setVelocitySyncInterval(int interval) { this.velocitySyncInterval = interval; }
 
@@ -500,6 +536,7 @@ public abstract class ProjectileEntity extends MechanicsEntity {
             Collection<EntityCollisionResult> hits = world.sweepEntities(
                     collisionBox().growSymmetrically(entityHitGrow, entityHitGrow, entityHitGrow), position, velocityBt, 3,
                     e -> e != this && !(shooterImmune && e == shooter) && canHit(e), physics);
+            hits = hits.stream().filter(h -> contacts(h.entity(), position, velocityBt)).toList();
             if (!hits.isEmpty()) {
                 EntityCollisionResult hit = hits.iterator().next();
                 var event = new ProjectileCollideWithEntityEvent(this, hit.collisionPoint().asPos(), hit.entity());
