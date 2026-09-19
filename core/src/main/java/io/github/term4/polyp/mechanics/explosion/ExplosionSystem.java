@@ -10,7 +10,6 @@ import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.fx.FxContext;
 import io.github.term4.polyp.mechanics.attribute.defense.Bypass;
 import io.github.term4.polyp.mechanics.damage.DamageSnapshot;
-import io.github.term4.polyp.mechanics.projectile.entities.ProjectileEntity;
 import io.github.term4.polyp.mechanics.damage.DamageSystem;
 import io.github.term4.polyp.mechanics.itemdamage.ItemDamageSystem;
 import io.github.term4.polyp.mechanics.damage.types.explosion.ExplosionDamage;
@@ -209,7 +208,6 @@ public final class ExplosionSystem implements MechanicsModule {
         List<ExplosionEvent.Target> targets = new ArrayList<>();
         double doubleRadius = power * 2.0;
         if (doubleRadius <= 0.0) return targets;
-        Entity owner = source instanceof ProjectileEntity p ? p.getShooter() : source;
         for (Entity entity : world.nearbyEntities(center, doubleRadius + 1.0)) { // coarse query; the distance gate below is authoritative
             // sourceless = the exploding world itself acts
             if (source != null ? !WorldPolicy.canAffect(source, entity) : !MechanicsWorld.of(entity).equals(world)) continue;
@@ -236,7 +234,7 @@ public final class ExplosionSystem implements MechanicsModule {
             // health/pricing lives in the item-damage config, so the raw curve amount is what it receives
             float damage = entity instanceof ItemEntity ? hit.damage() : !living ? 0f
                     : resolved.damageModel().amount(
-                            new DamageModel.Hit(entity, owner, distance, exposure, hit.damage()));
+                            new DamageModel.Hit(entity, distance, exposure, hit.damage()));
             Vec push = kbTarget ? hit.knockback() : null; // a non-KB target (mob) still takes damage, no push
             targets.add(new ExplosionEvent.Target(entity, distance, exposure, push, damage));
         }

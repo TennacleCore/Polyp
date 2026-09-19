@@ -82,7 +82,7 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
         MechanicsProfile.Builder b = MechanicsProfile.builder();
         PathEdits.apply(b, null, "explosion/damageModel", "scale(0.5, curve)");
         ExplosionConfig cfg = b.build().get(MechanicsKeys.EXPLOSION);
-        assertEquals(3.75f, cfg.damageModel.constantOrNull().amount(new DamageModel.Hit(dummy(), null, 2.0, 1.0f, 7.5f)), 1e-4,
+        assertEquals(3.75f, cfg.damageModel.constantOrNull().amount(new DamageModel.Hit(dummy(), 2.0, 1.0f, 7.5f)), 1e-4,
                 "a scaled curve is a model, not a second knob");
     }
 
@@ -98,14 +98,14 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
         PathEdits.apply(toCurve, hypixelish, "explosion/damageModel", "curve");
         DamageModel curved = toCurve.build().get(MechanicsKeys.EXPLOSION).damageModel.constantOrNull();
         assertNotNull(curved);
-        assertEquals(7.5f, curved.amount(new DamageModel.Hit(dummy(), null, 2.0, 1.0f, 7.5f)), 1e-4);
+        assertEquals(7.5f, curved.amount(new DamageModel.Hit(dummy(), 2.0, 1.0f, 7.5f)), 1e-4);
 
         // and any flat amount, not just the one someone predeclared
         MechanicsProfile.Builder toFlat = MechanicsProfile.builder();
         PathEdits.apply(toFlat, hypixelish, "explosion/damageModel", "flat(3.5)");
         DamageModel flat = toFlat.build().get(MechanicsKeys.EXPLOSION).damageModel.constantOrNull();
         assertNotNull(flat);
-        assertEquals(3.5f, flat.amount(new DamageModel.Hit(dummy(), null, 2.0, 1.0f, 7.5f)), 1e-4);
+        assertEquals(3.5f, flat.amount(new DamageModel.Hit(dummy(), 2.0, 1.0f, 7.5f)), 1e-4);
     }
 
     @Test

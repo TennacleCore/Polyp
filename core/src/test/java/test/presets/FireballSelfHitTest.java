@@ -6,7 +6,6 @@ import io.github.term4.polyp.mechanics.projectile.ProjectileSnapshot;
 import io.github.term4.polyp.mechanics.projectile.ProjectileSystem;
 import io.github.term4.polyp.mechanics.projectile.entities.FireballEntity;
 import io.github.term4.polyp.mechanics.projectile.entities.ProjectileEntity;
-import io.github.term4.polyp.mechanics.explosion.ExplosionSystem;
 import io.github.term4.polyp.mechanics.projectile.types.Fireball;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
@@ -76,25 +75,6 @@ class FireballSelfHitTest extends HeadlessServerTest {
         } finally {
             shooter.player.remove();
             deflector.player.remove();
-        }
-    }
-
-    /** A fireball jump costs its thrower half what the same blast costs anyone else standing there. */
-    @Test
-    void aFireballJumpCostsHalf() {
-        Pos center = new Pos(680.5, 100, 10.5);
-        FakePlayer thrower = FakePlayer.connect(instance, center.add(1, 0, 0), "FbJumpA");
-        FakePlayer bystander = FakePlayer.connect(instance, center.sub(1, 0, 0), "FbJumpB");
-        try {
-            FireballEntity fb = (FireballEntity) launch(thrower, io.github.term4.polyp.presets.hypixel.Projectiles.config());
-            new ExplosionSystem(Polyp.getInstance(), io.github.term4.polyp.presets.hypixel.Explosion.config())
-                    .explode(instance, center, 1.0f, fb, null);
-            assertEquals(19f, thrower.player.getHealth(), 0.001f, "the thrower takes half a heart");
-            assertEquals(18f, bystander.player.getHealth(), 0.001f, "everyone else takes a full one");
-            fb.remove();
-        } finally {
-            thrower.player.remove();
-            bystander.player.remove();
         }
     }
 }
