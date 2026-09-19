@@ -1,6 +1,9 @@
 package io.github.term4.polyp.presets.hypixel;
 
 import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.mechanics.damage.types.burning.InFireDamage;
+import io.github.term4.polyp.mechanics.damage.types.burning.BurningConfig;
+import io.github.term4.polyp.mechanics.damage.DamageConfig;
 import io.github.term4.polyp.mechanics.attack.AttackConfig;
 import io.github.term4.polyp.fx.FxRegistry;
 import io.github.term4.polyp.MechanicsProfile;
@@ -41,10 +44,17 @@ public final class Hypixel {
                 .register(Fx.PEARL_TELEPORT, Fx.pearlTeleport());
     }
 
-    /** {@link #profile()} with the BedWars-only game-wide pearl landing ({@link Fx#pearlTeleportGameWide}). */
+    /**
+     * {@link #profile()} with the BedWars-only quirks: the game-wide pearl landing
+     * ({@link Fx#pearlTeleportGameWide}), and fire that takes on contact rather than on the second felt hit.
+     */
     public static MechanicsProfile bedwars() {
         return profile().toBuilder()
                 .set(MechanicsKeys.FX, fx().register(Fx.PEARL_TELEPORT, Fx.pearlTeleportGameWide()))
+                .mutate(MechanicsKeys.DAMAGE, damage -> DamageConfig.builder(damage)
+                        .typeConfig(((BurningConfig) damage.typeConfig(InFireDamage.KEY)).toBuilder()
+                                .igniteWarmupTicks(1).build())
+                        .build())
                 .build();
     }
 }
