@@ -184,6 +184,10 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
     public final @Nullable FieldValue<ProjectileContext, Double> critChance;
     /** Fall damage dealt to a player shooter when the ender pearl lands (vanilla {@code 5}); {@code 0} = none. Ender-pearl only. */
     public final @Nullable FieldValue<ProjectileContext, Double> teleportDamage;
+    /** The damage type that cost is billed as: 1.8 bills fall, 26.1 its own {@code ender_pearl}. Default 26.1. */
+    public final @Nullable FieldValue<ProjectileContext, io.github.term4.polyp.mechanics.damage.types.DamageType> teleportDamageType;
+    /** Whether the teleport ejects a riding thrower first (1.8 {@code mountEntity(null)}); 26.1 does not. Default {@code false}. */
+    public final @Nullable FieldValue<ProjectileContext, Boolean> teleportDismounts;
     /** Pluggable {@link ProjectileBehavior} layered over the built-in effects (no subclassing); on fireball/pearl it
      *  OWNS the impact effect. Default {@link ProjectileBehavior#NONE}. */
     public final @Nullable FieldValue<ProjectileContext, ProjectileBehavior> behavior;
@@ -264,6 +268,8 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
         shooterImmunityTicks = b.shooterImmunityTicks;
         entityHitGrow = b.entityHitGrow;
         entityHitGrowRamp = b.entityHitGrowRamp;
+        teleportDamageType = b.teleportDamageType;
+        teleportDismounts = b.teleportDismounts;
         selfHit = b.selfHit;
         entityHit = b.entityHit;
         broadcastMovement = b.broadcastMovement;

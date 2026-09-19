@@ -70,6 +70,9 @@ public final class Projectiles {
     public static ProjectileTypeConfig pearl() {
         return ProjectileTypeConfig.builder(Pearl.KEY)
                 .selfHit(ProjectileTypeConfig.HitResponse.PASS_THROUGH)
+                // 1.8 bills the arrival as plain fall damage and throws the rider off first; 26.1 does neither
+                .teleportDamageType(io.github.term4.polyp.mechanics.damage.types.fall.FallDamage.INSTANCE)
+                .teleportDismounts(true)
                 .build();
     }
 

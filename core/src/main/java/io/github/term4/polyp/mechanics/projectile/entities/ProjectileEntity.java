@@ -149,6 +149,7 @@ public abstract class ProjectileEntity extends MechanicsEntity {
     private boolean burning;
     private int stuckDespawnTicks = 1200;
     private int stuckTicks;
+    private Vec stuckVelocity = Vec.ZERO;
     // a 1.8 client counts its own ticksInGround and setDead()s at 1200 from ITS stick; a longer server life
     // (or none) leaves an invisible, still collectable arrow there unless the spawn is re-sent under that window
     private static final int LEGACY_STUCK_LIFE = 1200;
@@ -738,6 +739,7 @@ public abstract class ProjectileEntity extends MechanicsEntity {
         this.collisionDirection = normal;
         this.stuckCollisionPoint = hitPoint;
         this.stuckSyncCounter = 0;
+        this.stuckVelocity = velocityBt; // vanilla keeps motion while in ground; unstick() scales THIS, not zero
         setNoGravity(true);
         setVelocityBt(Vec.ZERO);
     }
@@ -781,6 +783,14 @@ public abstract class ProjectileEntity extends MechanicsEntity {
         collisionDirection = null;
         stuckCollisionPoint = null;
         setNoGravity(false);
+        // a dislodged shot leaves on a random fraction of the motion it arrived with, drawn per axis, and starts
+        // its life over (1.8 EntityArrow/EntityFireball, 26.1 AbstractArrow.startFalling - identical in both)
+        var rng = java.util.concurrent.ThreadLocalRandom.current();
+        setVelocityBt(new Vec(stuckVelocity.x() * rng.nextFloat() * 0.2,
+                stuckVelocity.y() * rng.nextFloat() * 0.2,
+                stuckVelocity.z() * rng.nextFloat() * 0.2));
+        stuckVelocity = Vec.ZERO;
+        stuckTicks = 0;
         onUnstuck();
         // a relogged 1.8 client may briefly "freeze then fall" (it holds inGround until its block-changed check) - vanilla too
     }

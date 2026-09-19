@@ -9,6 +9,7 @@ import io.github.term4.polyp.Services;
 import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.mechanics.damage.DamageSnapshot;
 import io.github.term4.polyp.mechanics.damage.types.fall.FallDamage;
+import io.github.term4.polyp.mechanics.damage.types.projectile.EnderPearlDamage;
 import io.github.term4.polyp.mechanics.projectile.ProjectileConfigResolver.ProjectileContext;
 import io.github.term4.polyp.mechanics.projectile.ProjectileSnapshot;
 import io.github.term4.polyp.mechanics.projectile.types.ProjectileTypeConfig;
@@ -34,6 +35,8 @@ public class PearlEntity extends ManagedProjectile {
 
     /** Vanilla 5. */
     private final float teleportDamage;
+    private final io.github.term4.polyp.mechanics.damage.types.DamageType teleportDamageType;
+    private final boolean teleportDismounts;
     private boolean crossInstanceTeleport = false;
 
     public PearlEntity(@Nullable Entity shooter, @NotNull EntityType entityType,
@@ -41,6 +44,8 @@ public class PearlEntity extends ManagedProjectile {
         super(shooter, entityType, snap, effectiveConfig);
         ProjectileContext ctx = ProjectileContext.of(snap, services());
         this.teleportDamage = FieldValue.resolve(effectiveConfig.teleportDamage, ctx, 5.0).floatValue();
+        this.teleportDamageType = FieldValue.resolve(effectiveConfig.teleportDamageType, ctx, EnderPearlDamage.INSTANCE);
+        this.teleportDismounts = FieldValue.resolve(effectiveConfig.teleportDismounts, ctx, Boolean.FALSE);
     }
 
     /** Teleport the shooter even after they left the pearl's instance (stasis chambers); default false = vanilla. */
@@ -65,6 +70,8 @@ public class PearlEntity extends ManagedProjectile {
         EventDispatcher.call(event);
         if (event.isCancelled()) return;
         target = event.target();
+        // 1.8 ejects a riding thrower before moving them; 26.1 carries the ride through
+        if (teleportDismounts && shooter.getVehicle() != null) shooter.getVehicle().removePassenger(shooter);
         // RELATIVE-view teleport so the camera isn't snapped; the cross-instance spawn can't carry relative flags
         if (sameInstance) {
             Teleports.place(shooter, target.withView(0f, 0f), RelativeFlags.VIEW);
@@ -101,7 +108,7 @@ public class PearlEntity extends ManagedProjectile {
             Services s = services();
             if (s != null && s.damage() != null) {
                 // 1.8 DamageSource.fall: armor-bypassing, Feather Falling applies
-                s.damage().apply(DamageSnapshot.of(shooter, FallDamage.INSTANCE).withAmount(teleportDamage).withSource(this));
+                s.damage().apply(DamageSnapshot.of(shooter, teleportDamageType).withAmount(teleportDamage).withSource(this));
             }
         }
     }
