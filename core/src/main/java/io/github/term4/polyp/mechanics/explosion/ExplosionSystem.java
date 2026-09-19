@@ -184,7 +184,9 @@ public final class ExplosionSystem implements MechanicsModule {
 
     private ResolvedExplosionConfig resolve(MechanicsWorld world, Point center, @Nullable Entity source,
                                             @Nullable Double power) {
-        ExplosionConfig scoped = source != null
+        // a tick-late detonation (Hypixel's fireball) fires from a source already removed, and a removed entity
+        // has no instance to walk - the world we were handed still names the shard and the map
+        ExplosionConfig scoped = source != null && source.getInstance() != null
                 ? services.profiles().resolve(source, MechanicsKeys.EXPLOSION)
                 : services.profiles().resolveWorld(world, MechanicsKeys.EXPLOSION);
         return ExplosionConfigResolver.resolve(scoped != null ? scoped : config,
