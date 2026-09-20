@@ -241,7 +241,8 @@ public final class ExplosionSystem implements MechanicsModule {
                     : resolved.pushEye() != null ? resolved.pushEye().apply(entity)
                     : entity.getEntityType().eyeHeight();
             Point eyeOrigin = entity.getPosition().add(0, headHeight, 0);
-            float exposure = resolved.exposure().of(world, center, entity, cleared);
+            // players keep intact-geometry rays: their blast KB was fitted on those, the crater read is measured on TNT only
+            float exposure = resolved.exposure().of(world, center, entity, living ? null : cleared);
             // TODO knockback reduction (Blast Protection / KB resistance) via the attribute layer
             ExplosionCalculator.Hit hit = ExplosionCalculator.compute(center, power, eyeOrigin, distance, exposure,
                     resolved.damageConstant(), resolved.floorDamage(), resolved.knockbackMultiplier());

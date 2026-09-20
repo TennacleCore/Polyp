@@ -79,7 +79,7 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
     public final FieldValue<ExplosionContext, Double> knockbackImpactFloor;
     /** Carried on {@code ExplosionEvent} for a block/fire listener; the library itself never sets fire. */
     public final FieldValue<ExplosionContext, Boolean> fire;
-    /** Exposure rays ignore the cells this blast breaks (MineMen: a fireball inside a wool floor still shoves the TNT beside it full strength). */
+    /** Non-living victims' exposure rays ignore the cells this blast breaks (MineMen: a fireball inside a wool floor still shoves the TNT beside it full strength). Players unaffected. */
     public final FieldValue<ExplosionContext, Boolean> exposureAfterBreak;
     /** Where {@link #fire} lands; {@code null} = {@link FireScope#SELECTED} (vanilla). */
     public final FieldValue<ExplosionContext, FireScope> fireScope;
