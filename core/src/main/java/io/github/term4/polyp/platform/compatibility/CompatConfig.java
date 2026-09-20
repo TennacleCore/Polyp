@@ -61,13 +61,6 @@ public final class CompatConfig {
     /** A LEGACY placer's own body never blocks their placement, as Paper 1.8 had it; {@code null} = on.
      *  {@code false} = the hypixel refusal: stairs into your own face bounce, passable blocks still land. */
     public final @Nullable FieldValue<CompatContext, Boolean> legacySelfPlace;
-    /**
-     * Chests land the 1.8 way: beside at most one chest and never beside one already paired, and two singles side
-     * by side turn into one pair facing across the join, a chest in front of another included. The 1.8 client
-     * pairs by adjacency alone and draws the pair from one half's facing, so anything else draws a half where no
-     * block is. Server-side, any placer; {@code null} = on.
-     */
-    public final @Nullable FieldValue<CompatContext, Boolean> legacyChestShapes;
     /** Remove the modern attack cooldown + crosshair indicator (huge {@code ATTACK_SPEED}). Server-side, any client. */
     public final @Nullable FieldValue<CompatContext, Boolean> removeAttackCooldown;
     /** No arm-swing when a modern client throws a projectile: its inventory VIEW shows a non-usable reskin; the server item stays the real snowball/egg/pearl. */
@@ -140,7 +133,6 @@ public final class CompatConfig {
         disableEntityPush = b.disableEntityPush;
         oldPlacement = b.oldPlacement;
         legacySelfPlace = b.legacySelfPlace;
-        legacyChestShapes = b.legacyChestShapes;
         removeAttackCooldown = b.removeAttackCooldown;
         suppressThrowSwing = b.suppressThrowSwing;
         fistRayHits = b.fistRayHits;
@@ -173,7 +165,6 @@ public final class CompatConfig {
     public @Nullable Double blockPlaceReach(CompatContext ctx) { return FieldValue.resolve(blockPlaceReach, ctx); }
     public @Nullable Boolean oldPlacement(CompatContext ctx) { return FieldValue.resolve(oldPlacement, ctx); }
     public @Nullable Boolean legacySelfPlace(CompatContext ctx) { return FieldValue.resolve(legacySelfPlace, ctx); }
-    public @Nullable Boolean legacyChestShapes(CompatContext ctx) { return FieldValue.resolve(legacyChestShapes, ctx); }
     public @Nullable Boolean removeAttackCooldown(CompatContext ctx) { return FieldValue.resolve(removeAttackCooldown, ctx); }
     public @Nullable Boolean suppressThrowSwing(CompatContext ctx) { return FieldValue.resolve(suppressThrowSwing, ctx); }
     public @Nullable Boolean fistRayHits(CompatContext ctx) { return FieldValue.resolve(fistRayHits, ctx); }

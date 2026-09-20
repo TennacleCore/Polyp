@@ -113,9 +113,6 @@ public final class CompatState {
     /** A legacy placer's own body never blocks their placement (1.8); {@code false} = the hypixel refusal. */
     public boolean legacySelfPlace() { return !Boolean.FALSE.equals(policy.legacySelfPlace(ctx)); }
 
-    /** Chests land only in shapes a 1.8 client draws; {@code null} = on. */
-    public boolean legacyChestShapes() { return !Boolean.FALSE.equals(policy.legacyChestShapes(ctx)); }
-
     /** Whether this subject's modern attack cooldown (and its crosshair indicator) is off. */
     public boolean removeAttackCooldown() { return on(policy.removeAttackCooldown(ctx)); }
 

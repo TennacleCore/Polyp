@@ -35,7 +35,7 @@ class CompatCatalogTest {
     @Test
     void aModernClientLosesOnlyTheLegacyDrawing() {
         CompatConfig modern = Compat18.config().scopedTo(MODERN);
-        assertNotNull(modern.legacyChestShapes, "chest pairing is the SERVER's shape, whoever placed it");
+        assertNotNull(modern.legacyHitbox, "the server's hitbox model, whoever the client");
         assertNotNull(modern.removeAttackCooldown, "a modern client on a 1.8 preset still loses the cooldown");
         assertNotNull(modern.oldPlacement);
     }

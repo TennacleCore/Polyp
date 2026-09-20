@@ -100,6 +100,19 @@ public interface MechanicsWorld extends Block.Getter, ForwardingAudience, Taggab
         return entity instanceof Player p ? viewed(p) : of(entity);
     }
 
+    /** A block view handed to a placement rule (a staged or routed one) names the world it reads and writes. */
+    interface View extends Block.Getter {
+        @NotNull MechanicsWorld world();
+    }
+
+    /** The world behind a rule's getter: a world, a {@link View}, or an instance; {@code null} for anything else. */
+    static @Nullable MechanicsWorld ofView(@NotNull Block.Getter getter) {
+        if (getter instanceof MechanicsWorld world) return world;
+        if (getter instanceof View view) return view.world();
+        if (getter instanceof Instance instance) return of(instance);
+        return null;
+    }
+
     /** See {@link Resolver#externallyTicked}. */
     static boolean externallyTicked(@NotNull Entity entity) {
         return Holder.RESOLVER.externallyTicked(entity);

@@ -37,7 +37,6 @@ public final class Compat18 {
                 .suppressThrowSwing(true)  // modern only: 1.8 doesn't swing on use
                 .fistRayHits(true)         // modern only: attack_range can't ride an empty hand
                 .swordBlockingPose(true)   // modern only: blocks_attacks view stamp
-                .legacyChestShapes(true)   // server-side, any placer: only chest shapes a 1.8 client draws
                 .removeUseCooldowns(true)  // modern only: 1.8 has none - pearls spam-throw
                 .build();
     }
@@ -77,7 +76,6 @@ public final class Compat18 {
                 .suppressThrowSwing(false)
                 .fistRayHits(false)
                 .swordBlockingPose(false)
-                .legacyChestShapes(false)
                 .removeUseCooldowns(false)
                 .animatiumDebug(false)
                 .build();

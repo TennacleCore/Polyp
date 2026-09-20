@@ -39,9 +39,6 @@ public final class CompatCatalog {
         add("swordBlockingPose", ClientRange.MODERN, "1.8 blocks natively; this restyles a modern client's use pose");
         add("disableElytraFlight", ClientRange.MODERN, "the glider strip; a 1.8 client cannot glide");
         add("blockPlaceReach", ClientRange.MODERN, "only a modern survival client can sneak-bridge past 1.8 reach");
-        add("legacyChestShapes", ClientRange.ANY,
-                "1.8 chest shapes and pairing; server-side for ANY placer, since what lands must read the same "
-                        + "to the 1.8 client that predicted it and to every other viewer");
         add("legacySelfPlace", ClientRange.LEGACY, "1.8 predicts a placement inside its own box");
 
         // server-shaped: an era's mechanics, applied to every client on the scope
