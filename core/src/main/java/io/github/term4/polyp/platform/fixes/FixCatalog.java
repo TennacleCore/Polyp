@@ -55,6 +55,11 @@ public final class FixCatalog {
                 "a byte cursor cannot say 9/16, so a hit just above a side face's middle arrives as 0.5");
         add("legacyHealthRounding", ClientRange.LEGACY,
                 "the 1.8 heart bar ceils; off by default, since captured networks send fractions");
+        add("blockUpdateOrder", ClientRange.ANY,
+                "server-side, every client. OFF by default: Minestom's face array is vanilla's UPDATE_SHAPE_ORDER "
+                        + "and drives the SHAPE pass (what pairs chests, connects fences), so reordering it to the "
+                        + "neighbour order trades one wrong answer for another - vanilla runs two passes, Minestom one "
+                        + "(Minestom#3356)");
         add("legacyTabSlots", ClientRange.ANY,
                 "ONLY 1.7 reads it - its whole tab grid is Join Game's max players - but it rides a join, which "
                         + "lands before the protocol is known, and 1.8+ ignores the field");

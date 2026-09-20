@@ -7,6 +7,7 @@ import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.rule.BlockPlacementRule;
 import org.jetbrains.annotations.Nullable;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -35,6 +36,12 @@ class BlockUpdateOrderFixTest extends HeadlessServerTest {
                 return updateState.currentBlock();
             }
         });
+    }
+
+    // the array is static and shared: every later test in this JVM would inherit the reorder
+    @AfterAll
+    static void restore() {
+        BlockUpdateOrderFix.restore();
     }
 
     @Test

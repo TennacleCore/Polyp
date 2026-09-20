@@ -84,7 +84,6 @@ public final class FixesSystem extends ScopedSystem<FixesConfig> {
         LegacyPlacementGhostFix.install(system.node);
         LegacyUseOnBlockFix.install(system.node);
         UseItemInterruptFix.install(system.node);
-        BlockUpdateOrderFix.install();
         // Below ride server-wide listeners / send overrides, so they gate on the install config and cannot vary per scope.
         // Self-placement wraps the STOCK placement listener; an app that replaces that listener re-installs LAST with
         // its own as the delegate.
@@ -94,6 +93,7 @@ public final class FixesSystem extends ScopedSystem<FixesConfig> {
         if (enabled(cfg.legacyTabCompleteFix())) LegacyTabCompleteFix.install();
         if (enabled(cfg.inventorySync())) InventorySync.install(system.node);
         if (enabled(cfg.legacyInventorySlot())) LegacyInventorySlotFix.install();
+        if (enabled(cfg.blockUpdateOrder())) BlockUpdateOrderFix.install();
         return polyp.installModule(system);
     }
 

@@ -23,6 +23,7 @@ public final class FixesConfig {
     private final @Nullable FixToggleConfig legacyPlacementHalf;
     private final @Nullable FixToggleConfig legacyHealthRounding;
     private final @Nullable Integer legacyTabSlots;
+    private final @Nullable FixToggleConfig blockUpdateOrder;
 
     private FixesConfig(Builder b) {
         this.visuals = b.visuals;
@@ -38,6 +39,7 @@ public final class FixesConfig {
         this.legacyPlacementHalf = b.legacyPlacementHalf;
         this.legacyHealthRounding = b.legacyHealthRounding;
         this.legacyTabSlots = b.legacyTabSlots;
+        this.blockUpdateOrder = b.blockUpdateOrder;
     }
 
     public @Nullable VisualsConfig visuals() { return visuals; }
@@ -79,6 +81,9 @@ public final class FixesConfig {
     /** Whole-point health for the 1.8 heart bar. Off by default: captured networks send fractions. */
     public @Nullable FixToggleConfig legacyHealthRounding() { return legacyHealthRounding; }
 
+    /** Minestom's block-update faces reordered to vanilla's NEIGHBOUR order; install-level, default off. */
+    public @Nullable FixToggleConfig blockUpdateOrder() { return blockUpdateOrder; }
+
     /** Join Game's max players when the server sends none, which is the slot count a 1.7 client draws its whole
      *  tab grid from. Reaches every client (1.8+ ignores the field); unset leaves the packet alone. */
     public @Nullable Integer legacyTabSlots() { return legacyTabSlots; }
@@ -99,6 +104,7 @@ public final class FixesConfig {
                 .legacyUseResync(merge(legacyUseResync, base.legacyUseResync))
                 .legacyPlacementHalf(merge(legacyPlacementHalf, base.legacyPlacementHalf))
                 .legacyHealthRounding(merge(legacyHealthRounding, base.legacyHealthRounding))
+                .blockUpdateOrder(merge(blockUpdateOrder, base.blockUpdateOrder))
                 .legacyTabSlots(legacyTabSlots != null ? legacyTabSlots : base.legacyTabSlots)
                 .build();
     }
@@ -140,6 +146,7 @@ public final class FixesConfig {
             case "legacyUseResync" -> legacyUseResync;
             case "legacyPlacementHalf" -> legacyPlacementHalf;
             case "legacyHealthRounding" -> legacyHealthRounding;
+            case "blockUpdateOrder" -> blockUpdateOrder;
             default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
         };
     }
@@ -159,6 +166,7 @@ public final class FixesConfig {
             case "legacyUseResync" -> b.legacyUseResync(toggle);
             case "legacyPlacementHalf" -> b.legacyPlacementHalf(toggle);
             case "legacyHealthRounding" -> b.legacyHealthRounding(toggle);
+            case "blockUpdateOrder" -> b.blockUpdateOrder(toggle);
             default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
         }
         return b.build();
@@ -189,6 +197,7 @@ public final class FixesConfig {
         private @Nullable FixToggleConfig legacyPlacementHalf;
         private @Nullable FixToggleConfig legacyHealthRounding;
         private @Nullable Integer legacyTabSlots;
+        private @Nullable FixToggleConfig blockUpdateOrder;
 
         Builder() {}
         Builder(FixesConfig c) {
@@ -205,6 +214,7 @@ public final class FixesConfig {
             legacyPlacementHalf = c.legacyPlacementHalf;
             legacyHealthRounding = c.legacyHealthRounding;
             legacyTabSlots = c.legacyTabSlots;
+            blockUpdateOrder = c.blockUpdateOrder;
         }
 
         public Builder visuals(@Nullable VisualsConfig v) { this.visuals = v; return this; }
@@ -220,6 +230,7 @@ public final class FixesConfig {
         public Builder legacyPlacementHalf(@Nullable FixToggleConfig v) { this.legacyPlacementHalf = v; return this; }
         public Builder legacyHealthRounding(@Nullable FixToggleConfig v) { this.legacyHealthRounding = v; return this; }
         public Builder legacyTabSlots(@Nullable Integer v) { this.legacyTabSlots = v; return this; }
+        public Builder blockUpdateOrder(@Nullable FixToggleConfig v) { this.blockUpdateOrder = v; return this; }
 
         public FixesConfig build() { return new FixesConfig(this); }
     }
