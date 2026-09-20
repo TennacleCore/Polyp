@@ -39,9 +39,11 @@ public final class CompatPlacement {
      * The per-body placement entity check for mixed-version play (shaped for a shard router's body-check hook).
      * A LEGACY placer gets the 1.8 reference-server semantics, source-verified against Paper 1.8.8 + the 1.8.9
      * client: the placer's own body NEVER blocks their placement (Paper passes the placer into
-     * {@code checkNoEntityCollision}, which excludes it - and the 1.8 client sends every attempt before its own
-     * prediction runs, so the server's accept is what the player sees; stairs into your own face land), and
-     * no-collision-box blocks check nobody (1.8's null-AABB skip - the ladder clutch). A slab doubling in its
+     * {@code checkNoEntityCollision}, which excludes it), and no-collision-box blocks check nobody (1.8's
+     * null-AABB skip - the ladder clutch). The client gates its own body BEFORE sending
+     * ({@code canPlaceBlockOnSide}, entity null) against a position the server is a tick behind on, so re-checking
+     * here would refuse legal jump placements; what a vanilla 1.8 client never sends never arrives. A bare click
+     * on a chest or bed is sent WITHOUT that gate (a use), which the block's use rule consumes. A slab doubling in its
      * own cell is 1.8's one exception: {@code ItemSlab} checks the merged cube through the excludes-nobody
      * {@code checkNoEntityCollision}, so the placer standing on the half they click is what refuses it. Other
      * bodies stay on the precise check; everyone else (Animatium included, for now) is precise throughout,
