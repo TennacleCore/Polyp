@@ -122,21 +122,16 @@ public final class CompatPlacement {
         Direction placed = facingOf(mine);
         if (placed == null) return;
         Direction theirsFacing = facingOf(theirs);
-        Direction mineFacing = surrounding(world, at, join, theirsFacing);
-        theirsFacing = surrounding(world, other, join.opposite(), mineFacing);
-        mineFacing = placed;
-        if (crosses(placed, join)) theirsFacing = placed;
+        Direction facing = surrounding(world, at, join, theirsFacing);
+        // postPlace writes NOTHING when a chest stands there and the join does not cross the placer's facing: its
+        // three branches are no-neighbour, x-facing with a chest north or south, z-facing with one west or east.
+        // So the placer's look lands on both halves or on neither, and e()'s answer stands - both halves compute it
+        // off the same two cells, so they always agree.
+        if (crosses(placed, join)) facing = placed;
 
-        if (mineFacing == theirsFacing) {
-            boolean otherOnMyLeft = join == clockwise(mineFacing); // the left half's partner sits clockwise of the facing
-            world.setBlock(at, half(mine, mineFacing, otherOnMyLeft ? "left" : "right"));
-            world.setBlock(other, half(theirs, theirsFacing, otherOnMyLeft ? "right" : "left"));
-            return;
-        }
-        // 1.8 pairs by ADJACENCY - checkForAdjacentChests never reads a facing - so its halves may disagree, and a
-        // 1.8 client joins them itself. Modern has no state for that pair, so both stay single on the wire.
-        world.setBlock(at, half(mine, mineFacing, "single"));
-        world.setBlock(other, half(theirs, theirsFacing, "single"));
+        boolean otherOnMyLeft = join == clockwise(facing); // the left half's partner sits clockwise of the facing
+        world.setBlock(at, half(mine, facing, otherOnMyLeft ? "left" : "right"));
+        world.setBlock(other, half(theirs, facing, otherOnMyLeft ? "right" : "left"));
     }
 
     private static Block half(Block chest, Direction facing, String type) {

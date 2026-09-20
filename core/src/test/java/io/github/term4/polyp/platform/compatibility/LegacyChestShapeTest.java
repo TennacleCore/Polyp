@@ -10,6 +10,7 @@ import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockFace;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -21,6 +22,12 @@ class LegacyChestShapeTest extends HeadlessServerTest {
 
     private static final int Y = 64;
     private static final int Z = 800;
+
+    // the pair's tie-break reads the cells north of both halves, one chunk over from everything these tests set
+    @BeforeAll
+    static void loadTheNorthEdge() {
+        for (int x : new int[]{10, 29, 40}) instance.loadChunk(new BlockVec(x, Y, Z - 1)).join();
+    }
 
     @Test
     void besideOneNeverBesideAPair() {
@@ -42,46 +49,45 @@ class LegacyChestShapeTest extends HeadlessServerTest {
     }
 
     /** A chest placed in front of a north-facing single: 1.8 turns both to face across the join and pairs them. */
-    /** The look ran along the join, so postPlace never turns the old half: 1.8 leaves the two facing differently,
-     *  and pairs them by adjacency alone - modern has no state for that, so both stay single on the wire. */
+    /** The look ran along the join, so postPlace writes nothing at all: checkForSurroundingChests' answer stands
+     *  for BOTH halves, and the pair reads across the join - never along it, which is what a chest cannot do. */
     @Test
-    void theHalvesMayDisagree() {
+    void aLookAlongTheJoinLeavesItToTheSurroundings() {
         MechanicsWorld world = MechanicsWorld.of(instance);
         try {
-            instance.setBlock(30, Y, Z, Block.CHEST.withProperty("facing", "north"));
-            instance.setBlock(30, Y, Z + 1, Block.CHEST.withProperty("facing", "south")); // placed looking north
-            CompatPlacement.pairLike18(world, new BlockVec(30, Y, Z + 1), Block.CHEST);
+            instance.setBlock(30, Y, Z, Block.CHEST.withProperty("facing", "south"));
+            instance.setBlock(29, Y, Z, Block.CHEST.withProperty("facing", "east")); // placed from the east, looking west
+            CompatPlacement.pairLike18(world, new BlockVec(29, Y, Z), Block.CHEST);
 
-            assertEquals("south", instance.getBlock(30, Y, Z + 1).getProperty("facing"), "postPlace keeps the placer's");
-            assertEquals("east", instance.getBlock(30, Y, Z).getProperty("facing"), "the old half took the z-join default");
-            assertEquals("single", instance.getBlock(30, Y, Z + 1).getProperty("type"));
-            assertEquals("single", instance.getBlock(30, Y, Z).getProperty("type"));
+            assertEquals("south", instance.getBlock(29, Y, Z).getProperty("facing"), "the x-join default, not the look");
+            assertEquals("south", instance.getBlock(30, Y, Z).getProperty("facing"), "and the same for the old half");
+            assertEquals("right", instance.getBlock(29, Y, Z).getProperty("type"), "facing south, its partner sits east: right");
+            assertEquals("left", instance.getBlock(30, Y, Z).getProperty("type"));
         } finally {
+            instance.setBlock(29, Y, Z, Block.AIR);
             instance.setBlock(30, Y, Z, Block.AIR);
-            instance.setBlock(30, Y, Z + 1, Block.AIR);
         }
     }
 
     /** checkForSurroundingChests' tie-break: a FULL block against one side of either half turns the pair away -
      *  1.8 reads isFullBlock (isOpaqueCube, taken once in the constructor), so a slab or a pane is none. */
     @Test
-    void aBlockedSideTurnsTheOldHalf() {
+    void aBlockedSideTurnsThePair() {
         MechanicsWorld world = MechanicsWorld.of(instance);
         try {
             instance.setBlock(34, Y, Z, Block.CHEST.withProperty("facing", "west"));
             instance.setBlock(35, Y, Z, Block.CHEST.withProperty("facing", "east")); // placed looking west
             instance.setBlock(35, Y, Z + 1, Block.STONE);
             CompatPlacement.pairLike18(world, new BlockVec(35, Y, Z), Block.CHEST);
+            assertEquals("north", instance.getBlock(35, Y, Z).getProperty("facing"), "south is blocked: north");
+            assertEquals("north", instance.getBlock(34, Y, Z).getProperty("facing"), "both halves, one answer");
 
-            assertEquals("north", instance.getBlock(34, Y, Z).getProperty("facing"), "south is blocked: north");
-            assertEquals("east", instance.getBlock(35, Y, Z).getProperty("facing"), "postPlace still owns the new half");
-
-            // a bottom slab is opaque enough to occlude, but it is no full cube: 1.8 does not turn away from it
+            // a bottom slab occludes but is no full cube: 1.8 does not turn away from it
             instance.setBlock(35, Y, Z + 1, Block.STONE_SLAB);
             instance.setBlock(34, Y, Z, Block.CHEST.withProperty("facing", "west"));
             instance.setBlock(35, Y, Z, Block.CHEST.withProperty("facing", "east"));
             CompatPlacement.pairLike18(world, new BlockVec(35, Y, Z), Block.CHEST);
-            assertEquals("south", instance.getBlock(34, Y, Z).getProperty("facing"), "nothing opaque either side: the x-join default");
+            assertEquals("south", instance.getBlock(34, Y, Z).getProperty("facing"), "nothing full either side: the x-join default");
         } finally {
             instance.setBlock(34, Y, Z, Block.AIR);
             instance.setBlock(35, Y, Z, Block.AIR);

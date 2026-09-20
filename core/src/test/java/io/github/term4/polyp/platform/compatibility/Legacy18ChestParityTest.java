@@ -30,10 +30,12 @@ class Legacy18ChestParityTest extends HeadlessServerTest {
         Direction[] state = {look, old}; // new = getPlacedState (the LOOK), old = as it stood
         state[0] = surrounding(state[0], side.opposite(), state[1]); // e(new): its neighbour sits opposite the side
         state[1] = surrounding(state[1], side, state[0]);            // e(old): the new one sits on `side`
-        Direction placed = look.opposite();                          // postPlace
-        state[0] = placed;
-        boolean joinCrosses = placed.normalX() * side.normalX() + placed.normalZ() * side.normalZ() == 0;
-        if (joinCrosses) state[1] = placed; // both halves take it
+        // postPlace: with a chest beside it, it writes both halves or nothing at all
+        Direction placed = look.opposite();
+        if (placed.normalX() * side.normalX() + placed.normalZ() * side.normalZ() == 0) {
+            state[0] = placed;
+            state[1] = placed;
+        }
         return state;
     }
 
