@@ -59,7 +59,7 @@ class HypixelPearlSoundTest extends HeadlessServerTest {
             assertTrue(Math.abs(normal.origin().blockX() - landing.x()) <= 1.0,
                     "other modes: sound stays at the landing, got x=" + normal.origin().blockX());
         } finally {
-            if (previous != null) polyp.profiles().setGlobal(previous);
+            polyp.profiles().setGlobal(previous); // null included: a leaked global re-prices every later blast
             far.player.remove();
             thrower.player.remove();
         }
