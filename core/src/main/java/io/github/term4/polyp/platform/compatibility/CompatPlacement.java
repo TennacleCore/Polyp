@@ -154,8 +154,8 @@ public final class CompatPlacement {
         Direction negative = alongZ ? Direction.WEST : Direction.NORTH;
         Direction facing = partnerFacing == negative ? negative : positive;
         Point partner = at.add(toPartner.normalX(), 0, toPartner.normalZ());
-        boolean negativeBlocked = solid(world, at, negative) || solid(world, partner, negative);
-        boolean positiveBlocked = solid(world, at, positive) || solid(world, partner, positive);
+        boolean negativeBlocked = opaque(world, at, negative) || opaque(world, partner, negative);
+        boolean positiveBlocked = opaque(world, at, positive) || opaque(world, partner, positive);
         if (negativeBlocked && !positiveBlocked) facing = positive;
         if (positiveBlocked && !negativeBlocked) facing = negative;
         return facing;
@@ -166,8 +166,10 @@ public final class CompatPlacement {
         return facing != null && facing.normalX() * join.normalX() + facing.normalZ() * join.normalZ() == 0;
     }
 
-    private static boolean solid(MechanicsWorld world, Point from, Direction side) {
-        return world.getBlock(from.add(side.normalX(), 0, side.normalZ())).isSolid();
+    // 1.8 tests Block.o() = isOpaqueCube, which a chest, slab, stair, glass pane or door is NOT - isSolid() would
+    // turn the pair away from blocks 1.8 sees straight through
+    private static boolean opaque(MechanicsWorld world, Point from, Direction side) {
+        return world.getBlock(from.add(side.normalX(), 0, side.normalZ())).occludes();
     }
 
     private static Direction clockwise(Direction facing) {
