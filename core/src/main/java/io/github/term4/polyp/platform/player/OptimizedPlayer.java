@@ -13,12 +13,16 @@ import io.github.term4.polyp.platform.compatibility.CompatState;
 import io.github.term4.polyp.platform.fixes.RefreshPositionFix;
 import io.github.term4.polyp.platform.fixes.client.InventorySync;
 import io.github.term4.polyp.platform.fixes.client.LegacyInventorySlotFix;
+import io.github.term4.polyp.platform.fixes.client.LegacyPlacementHalfFix;
 import io.github.term4.polyp.platform.fixes.client.EquipmentSlotsFix;
 import io.github.term4.polyp.platform.fixes.client.SelfMetaFilter;
 import io.github.term4.polyp.util.tick.TickScaler;
 import io.github.term4.polyp.world.ExternallyTickable;
 import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.platform.fixes.EffectResyncFix;
+import io.github.term4.polyp.platform.fixes.FixToggleConfig;
+import io.github.term4.polyp.platform.fixes.FixesConfig;
+import io.github.term4.polyp.platform.fixes.FixesSystem;
 import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.EntityPose;
@@ -39,6 +43,7 @@ import org.jetbrains.annotations.Nullable;
 import java.time.Duration;
 import net.minestom.server.utils.time.Cooldown;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * The library's custom {@link Player}: self-echo suppression ({@link SelfMetaFilter}), a position-broadcast
@@ -256,8 +261,19 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
     // (a client can't use-item and attack in one tick), so chaining is order-free.
     @Override
     public void addPacketToQueue(ClientPacket packet) {
+        packet = LegacyPlacementHalfFix.rewrite(packet, this, () -> compat.legacyClient() && fixEnabled(FixesConfig::legacyPlacementHalf));
         attackSync.intercept(packet, this::attackAimSyncEnabled,
                 p -> aimSync.intercept(p, this::useItemAimSyncEnabled, super::addPacketToQueue));
+    }
+
+    /** A fix toggle from this player's scope chain; false before the module is up. */
+    private boolean fixEnabled(Function<FixesConfig, @Nullable FixToggleConfig> pick) {
+        Polyp polyp = Polyp.getInstance();
+        if (!polyp.isInitialized()) return false;
+        FixesSystem fixes = polyp.services().fixes();
+        if (fixes == null) return false;
+        FixToggleConfig toggle = pick.apply(fixes.configFor(this));
+        return toggle != null && toggle.enabled(this);
     }
 
     /** {@link ProjectileConfig#useItemAimSync} + a legacy client (a modern use packet already carries the click aim). */
