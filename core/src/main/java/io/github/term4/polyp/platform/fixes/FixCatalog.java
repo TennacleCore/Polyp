@@ -15,6 +15,9 @@ import java.util.Map;
  *
  * <p>{@link Fix#applies} is where a fix CAN act, which is not always the version that needs it: a note says so
  * when they differ.
+ *
+ * <p><b>A 1.8 fix is a 1.7 fix too.</b> {@link ClientRange#LEGACY} covers both, and that is the range every
+ * client-era fix takes; {@link ClientRange#V1_7} is for something 1.8 must NOT get, which so far is nothing.
  */
 public final class FixCatalog {
 
@@ -43,8 +46,7 @@ public final class FixCatalog {
         add("inventorySync", ClientRange.ANY,
                 "EXPERIMENTAL remote-slot echo suppression; install-level, and the echo is every client's");
         add("legacyInventorySlot", ClientRange.LEGACY,
-                "the player window arrives as -2 through ViaRewind. UNVERIFIED whether 1.8 needs it or only 1.7: "
-                        + "narrow it to V1_7 only with a capture");
+                "the player window arrives as -2 through ViaRewind");
         add("effectResync", ClientRange.ANY,
                 "a new viewer is owed the effects an entity already carries, on any client");
         add("legacyUseResync", ClientRange.LEGACY,
