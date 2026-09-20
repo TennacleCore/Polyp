@@ -3,7 +3,9 @@ package io.github.term4.polyp.platform.player;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.network.packet.client.ClientPacket;
+import net.minestom.server.instance.block.BlockFace;
 import net.minestom.server.network.packet.client.play.ClientAnimationPacket;
+import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerPositionAndRotationPacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerPositionPacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerPositionStatusPacket;
@@ -24,6 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 class UseItemAimSyncTest {
 
     private static final ClientUseItemPacket USE = new ClientUseItemPacket(PlayerHand.MAIN, 7, 10.0f, 20.0f); // Via-filled stale aim
+    // a click ON a block within reach: no rotation on it at all, the server reads the stored view
+    private static final ClientPlayerBlockPlacementPacket PLACE = new ClientPlayerBlockPlacementPacket(
+            PlayerHand.MAIN, new Pos(4, 63, 4), BlockFace.TOP, 0.5f, 1.0f, 0.5f, false, false, 8);
 
     private final UseItemAimSync sync = new UseItemAimSync();
     private final List<ClientPacket> out = new ArrayList<>();
@@ -68,6 +73,38 @@ class UseItemAimSyncTest {
         ClientPlayerRotationPacket rot = new ClientPlayerRotationPacket(90.0f, 0.0f, (byte) 1);
         feed(true, USE, swing, rot);
         assertEquals(List.of(swing, new ClientUseItemPacket(PlayerHand.MAIN, 7, 90.0f, 0.0f), rot), out);
+    }
+
+    /** The look lands first, so the placement is handled against the click aim, not the previous tick's. */
+    @Test
+    void placementWaitsForTheLook() {
+        ClientPlayerRotationPacket rot = new ClientPlayerRotationPacket(90.0f, -15.0f, (byte) 1);
+        feed(true, PLACE, rot);
+        assertEquals(List.of(rot, PLACE), out);
+    }
+
+    /** A 1.8 right-click at a block arrives as both; they keep their order behind the look. */
+    @Test
+    void placementAndUseKeepTheirOrder() {
+        ClientPlayerRotationPacket rot = new ClientPlayerRotationPacket(90.0f, -15.0f, (byte) 1);
+        feed(true, PLACE, USE, rot);
+        assertEquals(List.of(rot, PLACE, new ClientUseItemPacket(PlayerHand.MAIN, 7, 90.0f, -15.0f)), out);
+    }
+
+    @Test
+    void placementIdleReleasesInPlace() {
+        ClientPlayerPositionStatusPacket idle = new ClientPlayerPositionStatusPacket((byte) 1);
+        feed(true, PLACE, idle);
+        assertEquals(List.of(PLACE, idle), out);
+    }
+
+    @Test
+    void aReleasedPlacementPassesOnReFeed() {
+        ClientPlayerRotationPacket rot = new ClientPlayerRotationPacket(90.0f, -15.0f, (byte) 1);
+        feed(true, PLACE, rot);
+        out.clear();
+        feed(true, PLACE); // the queue re-feeds the very instance it was handed
+        assertEquals(List.of(PLACE), out);
     }
 
     @Test
