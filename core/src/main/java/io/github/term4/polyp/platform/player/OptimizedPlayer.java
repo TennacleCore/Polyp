@@ -162,7 +162,7 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         p = SpectatorHud.rewrite(this, p);
         p = LegacyHealthRoundingFix.rewrite(this, compat.legacyClient() && fixEnabled(FixesConfig::legacyHealthRounding), p);
         // not gated on the client: join lands before the protocol is known, and 1.8+ ignores the field
-        p = LegacyTabGridFix.rewrite(p, fixEnabled(FixesConfig::legacyTabGrid));
+        if (p instanceof JoinGamePacket) p = LegacyTabGridFix.rewrite(p, tabSlots());
         super.sendPacket(p);
         EffectResyncFix.afterSpawn(this, p); // a spawn owes this viewer the effects that entity already carries
         // a respawn or join carries the real game mode; the spoof follows it
@@ -278,6 +278,14 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         packet = LegacyPlacementHalfFix.rewrite(packet, this, () -> compat.legacyClient() && fixEnabled(FixesConfig::legacyPlacementHalf));
         attackSync.intercept(packet, this::attackAimSyncEnabled,
                 p -> aimSync.intercept(p, this::useItemAimSyncEnabled, super::addPacketToQueue));
+    }
+
+    /** {@link FixesConfig#legacyTabSlots} from this player's scope chain, or null before the module is up. */
+    private @Nullable Integer tabSlots() {
+        Polyp polyp = Polyp.getInstance();
+        if (!polyp.isInitialized()) return null;
+        FixesSystem fixes = polyp.services().fixes();
+        return fixes == null ? null : fixes.configFor(this).legacyTabSlots();
     }
 
     /** A fix toggle from this player's scope chain; false before the module is up. */

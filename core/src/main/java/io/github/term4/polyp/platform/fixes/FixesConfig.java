@@ -22,7 +22,7 @@ public final class FixesConfig {
     private final @Nullable FixToggleConfig legacyUseResync;
     private final @Nullable FixToggleConfig legacyPlacementHalf;
     private final @Nullable FixToggleConfig legacyHealthRounding;
-    private final @Nullable FixToggleConfig legacyTabGrid;
+    private final @Nullable Integer legacyTabSlots;
 
     private FixesConfig(Builder b) {
         this.visuals = b.visuals;
@@ -37,7 +37,7 @@ public final class FixesConfig {
         this.legacyUseResync = b.legacyUseResync;
         this.legacyPlacementHalf = b.legacyPlacementHalf;
         this.legacyHealthRounding = b.legacyHealthRounding;
-        this.legacyTabGrid = b.legacyTabGrid;
+        this.legacyTabSlots = b.legacyTabSlots;
     }
 
     public @Nullable VisualsConfig visuals() { return visuals; }
@@ -79,8 +79,9 @@ public final class FixesConfig {
     /** Whole-point health for the 1.8 heart bar. Off by default: captured networks send fractions. */
     public @Nullable FixToggleConfig legacyHealthRounding() { return legacyHealthRounding; }
 
-    /** Join Game's max players, which a 1.7 client draws its whole tab grid from. Sent to every client. */
-    public @Nullable FixToggleConfig legacyTabGrid() { return legacyTabGrid; }
+    /** Join Game's max players when the server sends none, which is the slot count a 1.7 client draws its whole
+     *  tab grid from. Reaches every client (1.8+ ignores the field); unset leaves the packet alone. */
+    public @Nullable Integer legacyTabSlots() { return legacyTabSlots; }
 
     /** Merges this config over {@code base} (each member: this if set, else base; both set -&gt; member-merged). */
     public FixesConfig fromBase(FixesConfig base) {
@@ -98,7 +99,7 @@ public final class FixesConfig {
                 .legacyUseResync(merge(legacyUseResync, base.legacyUseResync))
                 .legacyPlacementHalf(merge(legacyPlacementHalf, base.legacyPlacementHalf))
                 .legacyHealthRounding(merge(legacyHealthRounding, base.legacyHealthRounding))
-                .legacyTabGrid(merge(legacyTabGrid, base.legacyTabGrid))
+                .legacyTabSlots(legacyTabSlots != null ? legacyTabSlots : base.legacyTabSlots)
                 .build();
     }
 
@@ -109,7 +110,7 @@ public final class FixesConfig {
     /** The toggle names the {@code fixes/<toggle>/enabled} path addresses. */
     public static final java.util.List<String> TOGGLES = java.util.List.of("legacySelfPlacement", "equipmentFix",
             "legacyTabCompleteFix", "legacyConsume", "legacyFireDouse", "inventorySync", "legacyInventorySlot",
-            "effectResync", "legacyUseResync", "legacyPlacementHalf", "legacyHealthRounding", "legacyTabGrid");
+            "effectResync", "legacyUseResync", "legacyPlacementHalf", "legacyHealthRounding");
 
     public @Nullable FixToggleConfig toggle(String name) {
         return switch (name) {
@@ -124,7 +125,6 @@ public final class FixesConfig {
             case "legacyUseResync" -> legacyUseResync;
             case "legacyPlacementHalf" -> legacyPlacementHalf;
             case "legacyHealthRounding" -> legacyHealthRounding;
-            case "legacyTabGrid" -> legacyTabGrid;
             default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
         };
     }
@@ -144,7 +144,6 @@ public final class FixesConfig {
             case "legacyUseResync" -> b.legacyUseResync(toggle);
             case "legacyPlacementHalf" -> b.legacyPlacementHalf(toggle);
             case "legacyHealthRounding" -> b.legacyHealthRounding(toggle);
-            case "legacyTabGrid" -> b.legacyTabGrid(toggle);
             default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
         }
         return b.build();
@@ -174,7 +173,7 @@ public final class FixesConfig {
         private @Nullable FixToggleConfig legacyUseResync;
         private @Nullable FixToggleConfig legacyPlacementHalf;
         private @Nullable FixToggleConfig legacyHealthRounding;
-        private @Nullable FixToggleConfig legacyTabGrid;
+        private @Nullable Integer legacyTabSlots;
 
         Builder() {}
         Builder(FixesConfig c) {
@@ -190,7 +189,7 @@ public final class FixesConfig {
             legacyUseResync = c.legacyUseResync;
             legacyPlacementHalf = c.legacyPlacementHalf;
             legacyHealthRounding = c.legacyHealthRounding;
-            legacyTabGrid = c.legacyTabGrid;
+            legacyTabSlots = c.legacyTabSlots;
         }
 
         public Builder visuals(@Nullable VisualsConfig v) { this.visuals = v; return this; }
@@ -205,7 +204,7 @@ public final class FixesConfig {
         public Builder legacyUseResync(@Nullable FixToggleConfig v) { this.legacyUseResync = v; return this; }
         public Builder legacyPlacementHalf(@Nullable FixToggleConfig v) { this.legacyPlacementHalf = v; return this; }
         public Builder legacyHealthRounding(@Nullable FixToggleConfig v) { this.legacyHealthRounding = v; return this; }
-        public Builder legacyTabGrid(@Nullable FixToggleConfig v) { this.legacyTabGrid = v; return this; }
+        public Builder legacyTabSlots(@Nullable Integer v) { this.legacyTabSlots = v; return this; }
 
         public FixesConfig build() { return new FixesConfig(this); }
     }

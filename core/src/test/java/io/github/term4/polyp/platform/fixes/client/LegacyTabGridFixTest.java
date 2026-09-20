@@ -22,15 +22,17 @@ class LegacyTabGridFixTest {
 
     @Test
     void zeroBecomesAGrid() {
-        var out = LegacyTabGridFix.rewrite(join(0), true);
-        assertEquals(LegacyTabGridFix.SLOTS, assertInstanceOf(JoinGamePacket.class, out).maxPlayers());
+        var out = LegacyTabGridFix.rewrite(join(0), LegacyTabGridFix.VANILLA_SLOTS);
+        assertEquals(LegacyTabGridFix.VANILLA_SLOTS, assertInstanceOf(JoinGamePacket.class, out).maxPlayers());
+        assertEquals(8, assertInstanceOf(JoinGamePacket.class, LegacyTabGridFix.rewrite(join(0), 8)).maxPlayers());
     }
 
     @Test
     void aRealCountAndAnUnappliedFixPass() {
         JoinGamePacket real = join(64);
-        assertSame(real, LegacyTabGridFix.rewrite(real, true), "an app that sets its own is left alone");
+        assertSame(real, LegacyTabGridFix.rewrite(real, 20), "an app that sets its own is left alone");
         JoinGamePacket zero = join(0);
-        assertSame(zero, LegacyTabGridFix.rewrite(zero, false));
+        assertSame(zero, LegacyTabGridFix.rewrite(zero, null));
+        assertSame(zero, LegacyTabGridFix.rewrite(zero, 0));
     }
 }

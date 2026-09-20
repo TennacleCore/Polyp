@@ -4,6 +4,7 @@ import io.github.term4.polyp.platform.PacketShapes;
 import net.minestom.server.network.packet.server.SendablePacket;
 import net.minestom.server.network.packet.server.ServerPacket;
 import net.minestom.server.network.packet.server.play.JoinGamePacket;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * A 1.7 client sizes its whole tab list from Join Game's {@code maxPlayers} - that many slots, 20 to a column -
@@ -12,16 +13,17 @@ import net.minestom.server.network.packet.server.play.JoinGamePacket;
  */
 public final class LegacyTabGridFix {
 
-    /** A vanilla server's default {@code max-players}, which is what a 1.7 tab grid was drawn against. */
-    public static final int SLOTS = 20;
+    /** A vanilla server's default {@code max-players}, which is the grid 1.7 was drawn against. */
+    public static final int VANILLA_SLOTS = 20;
 
     private LegacyTabGridFix() {}
 
-    public static SendablePacket rewrite(SendablePacket packet, boolean apply) {
-        if (!apply) return packet;
+    /** {@code slots} = {@link io.github.term4.polyp.platform.fixes.FixesConfig#legacyTabSlots}; unset leaves the packet alone. */
+    public static SendablePacket rewrite(SendablePacket packet, @Nullable Integer slots) {
+        if (slots == null || slots <= 0) return packet;
         ServerPacket server = PacketShapes.unwrapStateless(packet);
         if (!(server instanceof JoinGamePacket join) || join.maxPlayers() > 0) return packet;
-        return new JoinGamePacket(join.entityId(), join.isHardcore(), join.worlds(), SLOTS,
+        return new JoinGamePacket(join.entityId(), join.isHardcore(), join.worlds(), slots,
                 join.viewDistance(), join.simulationDistance(), join.reducedDebugInfo(), join.enableRespawnScreen(),
                 join.doLimitedCrafting(), join.playerSpawnInfo(), join.onlineMode(), join.enforcesSecureChat());
     }

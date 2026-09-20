@@ -1,5 +1,6 @@
 package io.github.term4.polyp.platform.fixes;
 
+import io.github.term4.polyp.platform.fixes.client.LegacyTabGridFix;
 import io.github.term4.polyp.platform.fixes.visuals.VisualsConfig;
 import io.github.term4.polyp.platform.fixes.visuals.legacy_1_8.LegacyArrowVisibilityConfig;
 
@@ -24,7 +25,7 @@ public final class Fixes18 {
                 .legacyUseResync(FixToggleConfig.on())
                 .legacyPlacementHalf(FixToggleConfig.on())
                 .legacyHealthRounding(FixToggleConfig.of(false)) // captured networks send fractions; a preset opts in
-                .legacyTabGrid(FixToggleConfig.on())
+                .legacyTabSlots(LegacyTabGridFix.VANILLA_SLOTS)
                 .build();
     }
 }
