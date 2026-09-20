@@ -56,9 +56,10 @@ class LegacyChestShapeTest extends HeadlessServerTest {
             assertEquals("right", mine.getProperty("type"), "the south half, facing east, is the right one");
             assertEquals("left", theirs.getProperty("type"));
 
-            instance.setBlock(34, Y, Z, Block.CHEST.withProperty("facing", "west")); // already faces across an x join
-            instance.setBlock(35, Y, Z, Block.CHEST); // placed beside it facing north, on the west side's open ground
-            instance.setBlock(35, Y, Z + 1, Block.STONE); // south of the new half: 1.8 faces away from a solid block
+            // both halves face ALONG the join, so postPlace passes and the surroundings decide: away from the stone
+            instance.setBlock(34, Y, Z, Block.CHEST.withProperty("facing", "west"));
+            instance.setBlock(35, Y, Z, Block.CHEST.withProperty("facing", "east"));
+            instance.setBlock(35, Y, Z + 1, Block.STONE);
             CompatPlacement.pairLike18(world, new BlockVec(35, Y, Z), Block.CHEST);
             assertEquals("north", instance.getBlock(35, Y, Z).getProperty("facing"), "south is blocked: north");
             assertEquals("north", instance.getBlock(34, Y, Z).getProperty("facing"), "and the neighbor follows");
@@ -66,6 +67,25 @@ class LegacyChestShapeTest extends HeadlessServerTest {
             for (int x : new int[]{30, 34, 35}) instance.setBlock(x, Y, Z, Block.AIR);
             instance.setBlock(30, Y, Z + 1, Block.AIR);
             instance.setBlock(35, Y, Z + 1, Block.AIR);
+        }
+    }
+
+    /** 1.8's postPlace is the last word: the chest you just set turns the one already there, not the other way. */
+    @Test
+    void theNewChestTurnsTheOldOne() {
+        MechanicsWorld world = MechanicsWorld.of(instance);
+        try {
+            instance.setBlock(40, Y, Z, Block.CHEST.withProperty("facing", "east"));     // stood here facing east
+            instance.setBlock(40, Y, Z + 1, Block.CHEST.withProperty("facing", "west")); // placed from the other side
+            CompatPlacement.pairLike18(world, new BlockVec(40, Y, Z + 1), Block.CHEST);
+
+            assertEquals("west", instance.getBlock(40, Y, Z + 1).getProperty("facing"), "the placer's facing wins");
+            assertEquals("west", instance.getBlock(40, Y, Z).getProperty("facing"), "and the old chest turns to it");
+            assertEquals("left", instance.getBlock(40, Y, Z + 1).getProperty("type"), "north of a west-facing pair is left");
+            assertEquals("right", instance.getBlock(40, Y, Z).getProperty("type"));
+        } finally {
+            instance.setBlock(40, Y, Z, Block.AIR);
+            instance.setBlock(40, Y, Z + 1, Block.AIR);
         }
     }
 

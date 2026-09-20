@@ -96,9 +96,13 @@ public final class CompatPlacement {
     }
 
     /**
-     * 1.8 BlockChest.checkForSurroundingChests: two singles side by side become one pair facing across the join,
-     * whichever way either was set - a chest lands in front of another there. The modern rule pairs only equal
-     * facings, so the halves it left single are turned and joined here.
+     * 1.8's pair, both of its stages. {@code BlockChest.postPlace} runs last and wins: a chest placed beside another
+     * turns BOTH to the PLACER's facing, as long as the join crosses it - so the pair reads the way the last chest
+     * was set, not the first. Only where that stage passes (the join runs along the new chest's facing) does
+     * {@code checkForSurroundingChests} decide, off the neighbour's facing and the blocks around the pair.
+     *
+     * <p>The modern rule pairs equal facings alone, so the halves it left single are turned and joined here. The 1.8
+     * client predicts all of this locally, which is why a server that only does the second stage reads backwards.
      */
     static void pairLike18(MechanicsWorld world, Point at, Block placing) {
         Block mine = world.getBlock(at);
@@ -111,22 +115,30 @@ public final class CompatPlacement {
         Point other = at.add(join.normalX(), 0, join.normalZ());
         Block theirs = world.getBlock(other);
         if (!"single".equals(theirs.getProperty("type"))) return;
-        Direction facing = across(world, at, other, join, facingOf(theirs));
+        Direction facing = across(world, at, other, join, facingOf(mine), facingOf(theirs));
         String name = facing.name().toLowerCase(Locale.ROOT);
         boolean otherOnMyLeft = join == clockwise(facing); // the left half's partner sits clockwise of the facing
         world.setBlock(at, mine.withProperty("facing", name).withProperty("type", otherOnMyLeft ? "left" : "right"));
         world.setBlock(other, theirs.withProperty("facing", name).withProperty("type", otherOnMyLeft ? "right" : "left"));
     }
 
-    // the neighbor's facing when it already crosses the join, else south or east; then away from a solid block
-    // beside either half when the other side is open
-    private static Direction across(MechanicsWorld world, Point at, Point other, Direction join, @Nullable Direction theirs) {
+    // postPlace first: the new chest's own facing, when the join crosses it - the placer's look, and final in 1.8.
+    // Else the neighbor's facing when it crosses, else south or east; then away from a solid block beside either
+    // half when the other side is open
+    private static Direction across(MechanicsWorld world, Point at, Point other, Direction join,
+                                    @Nullable Direction mine, @Nullable Direction theirs) {
+        if (crosses(mine, join)) return mine;
         Direction facing = join.normalX() != 0 ? Direction.SOUTH : Direction.EAST;
-        if (theirs != null && theirs.normalX() * join.normalX() + theirs.normalZ() * join.normalZ() == 0) facing = theirs;
+        if (crosses(theirs, join)) facing = theirs;
         Direction back = facing.opposite();
         boolean frontBlocked = solid(world, at, facing) || solid(world, other, facing);
         boolean backBlocked = solid(world, at, back) || solid(world, other, back);
         return frontBlocked && !backBlocked ? back : facing;
+    }
+
+    /** Whether {@code facing} is perpendicular to the join - 1.8 pairs across a facing, never along it. */
+    private static boolean crosses(@Nullable Direction facing, Direction join) {
+        return facing != null && facing.normalX() * join.normalX() + facing.normalZ() * join.normalZ() == 0;
     }
 
     private static boolean solid(MechanicsWorld world, Point from, Direction side) {
