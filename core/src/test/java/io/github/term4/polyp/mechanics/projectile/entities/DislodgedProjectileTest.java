@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DislodgedProjectileTest extends HeadlessServerTest {
 
     @Test
-    void theEighteenPearlBillsFallAndThrowsTheRiderOff() {
+    void legacyPearlBillsFall() {
         var pearl = pearlOf(Preset.VANILLA18);
         assertEquals(FallDamage.INSTANCE, pearl.teleportDamageType.constantOrNull(), "1.8 bills the arrival as a fall");
         assertEquals(Boolean.TRUE, pearl.teleportDismounts.constantOrNull(), "and ejects the rider first");

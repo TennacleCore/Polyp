@@ -32,7 +32,7 @@ class LegacyInventorySlotFixTest {
     }
 
     @Test
-    void playerInventorySlotsBecomeWindowZeroSlots() {
+    void slotsBecomeWindowZero() {
         assertEquals((short) 36, windowSlot(0), "first hotbar slot");
         assertEquals((short) 44, windowSlot(8), "last hotbar slot");
         assertEquals((short) 9, windowSlot(9), "main inventory is unmoved");

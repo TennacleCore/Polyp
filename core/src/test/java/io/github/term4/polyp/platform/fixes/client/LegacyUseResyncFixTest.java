@@ -32,7 +32,7 @@ class LegacyUseResyncFixTest extends HeadlessServerTest {
     }
 
     @Test
-    void aReleaseThatFiredNothingRebaselinesTheClient() {
+    void emptyReleaseRebaselines() {
         assertTrue(refreshedAfterRelease(47), "a 1.8 client is re-baselined");
     }
 
