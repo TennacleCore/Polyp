@@ -184,6 +184,10 @@ public final class Projectiles {
                 // vanilla 10-tick tracker cadence and NEVER an entity_velocity - the 1.8 tracker only sends
                 // velocity when velocityChanged, which a fireball never sets
                 .syncInterval(10).velocitySyncInterval(0)
+                // no velocity wire would put this in lockstep, which truncates the spawn onto the 1/32 grid: the blast
+                // then lands 0.026 low and off-axis by the x/z remainder, so the boost read 1.667-1.674 by standing
+                // spot instead of the captured 1.6655. The blast is server-authoritative; the wire quantizes itself
+                .wireLockstep(false)
                 .removeOnEntityHit(true).removeOnBlockHit(true)
                 .selfHit(ProjectileTypeConfig.HitResponse.PASS_THROUGH) // your own fireball never hits you; a deflect reassigns ownership
                 .damage(CONTACT_DAMAGE)
