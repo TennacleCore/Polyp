@@ -60,8 +60,11 @@ public final class MeleeDamage extends DamageType {
 
         if (actx != null) amount += (float) actx.value(Attribute.MELEE_FLAT_ADD, 0);
 
-        return prelim.withAmount(amount);
+        return prelim.withAmount(amount).withDetail(new Hit(critical));
     }
+
+    /** A melee hit's producer detail: whether the 1.8 crit roll landed - the amount already carries the multiplier. */
+    public record Hit(boolean critical) {}
 
     /**
      * Whether the hit carries enchantment ("magic") damage - Sharpness, or Smite/Bane against an applicable target - the

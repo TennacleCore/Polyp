@@ -12,7 +12,7 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * mmc18 damage: the vanilla 1.8 damage ({@link io.github.term4.polyp.presets.vanilla18.Damage}) with
- * silent overdamage, no hurt-tick knockback, and the same-weapon overdamage block below.
+ * silent overdamage, no hurt-tick knockback, and the same-weapon crit overdamage block below.
  */
 public final class Damage {
 
@@ -24,15 +24,17 @@ public final class Damage {
                 // no KB on generic damage ticks; killing the broadcast is the only way off an inherited
                 // hurtKnockback (merge semantics can't null it)
                 .syncHurtVelocity(false)
-                .addCustomComponent(Damage::blockSameItemOverdamage)
+                .addCustomComponent(Damage::blockSameItemCritOverdamage)
                 .build();
     }
 
-    // no overdamage replacement when the incoming melee hit uses the same material as the hit that opened the window
+    // no overdamage replacement when a CRIT with the same item as the opening hit is what exceeds it: the extra
+    // is the crit roll's, not the weapon's. A stronger weapon, or the same one un-critted, still replaces
     @Nullable
-    private static Float blockSameItemOverdamage(DamageContext ctx, DamageEvent event, float amount, boolean overdamage) {
+    private static Float blockSameItemCritOverdamage(DamageContext ctx, DamageEvent event, float amount, boolean overdamage) {
         if (!overdamage || amount <= 0) return null;
         if (!MeleeDamage.KEY.equals(event.type().key())) return null;
+        if (!(event.detail() instanceof MeleeDamage.Hit hit) || !hit.critical()) return null;
         if (!(event.target() instanceof LivingEntity le)) return null;
         if (sameItem(event.item(), DamageSystem.openingHitItem(le))) return 0f;
         return null;
