@@ -21,6 +21,7 @@ public final class FixesConfig {
     private final @Nullable FixToggleConfig effectResync;
     private final @Nullable FixToggleConfig legacyUseResync;
     private final @Nullable FixToggleConfig legacyPlacementHalf;
+    private final @Nullable FixToggleConfig legacyHealthRounding;
 
     private FixesConfig(Builder b) {
         this.visuals = b.visuals;
@@ -34,6 +35,7 @@ public final class FixesConfig {
         this.effectResync = b.effectResync;
         this.legacyUseResync = b.legacyUseResync;
         this.legacyPlacementHalf = b.legacyPlacementHalf;
+        this.legacyHealthRounding = b.legacyHealthRounding;
     }
 
     public @Nullable VisualsConfig visuals() { return visuals; }
@@ -72,6 +74,9 @@ public final class FixesConfig {
     /** A 1.8 byte cursor of exactly 0.5 on a side face lands the upper half of a slab, stair or trapdoor. */
     public @Nullable FixToggleConfig legacyPlacementHalf() { return legacyPlacementHalf; }
 
+    /** Whole-point health for the 1.8 heart bar. Off by default: captured networks send fractions. */
+    public @Nullable FixToggleConfig legacyHealthRounding() { return legacyHealthRounding; }
+
     /** Merges this config over {@code base} (each member: this if set, else base; both set -&gt; member-merged). */
     public FixesConfig fromBase(FixesConfig base) {
         VisualsConfig v = visuals == null ? base.visuals
@@ -87,6 +92,7 @@ public final class FixesConfig {
                 .effectResync(merge(effectResync, base.effectResync))
                 .legacyUseResync(merge(legacyUseResync, base.legacyUseResync))
                 .legacyPlacementHalf(merge(legacyPlacementHalf, base.legacyPlacementHalf))
+                .legacyHealthRounding(merge(legacyHealthRounding, base.legacyHealthRounding))
                 .build();
     }
 
@@ -97,7 +103,7 @@ public final class FixesConfig {
     /** The toggle names the {@code fixes/<toggle>/enabled} path addresses. */
     public static final java.util.List<String> TOGGLES = java.util.List.of("legacySelfPlacement", "equipmentFix",
             "legacyTabCompleteFix", "legacyConsume", "legacyFireDouse", "inventorySync", "legacyInventorySlot",
-            "effectResync", "legacyUseResync", "legacyPlacementHalf");
+            "effectResync", "legacyUseResync", "legacyPlacementHalf", "legacyHealthRounding");
 
     public @Nullable FixToggleConfig toggle(String name) {
         return switch (name) {
@@ -111,6 +117,7 @@ public final class FixesConfig {
             case "effectResync" -> effectResync;
             case "legacyUseResync" -> legacyUseResync;
             case "legacyPlacementHalf" -> legacyPlacementHalf;
+            case "legacyHealthRounding" -> legacyHealthRounding;
             default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
         };
     }
@@ -129,6 +136,7 @@ public final class FixesConfig {
             case "effectResync" -> b.effectResync(toggle);
             case "legacyUseResync" -> b.legacyUseResync(toggle);
             case "legacyPlacementHalf" -> b.legacyPlacementHalf(toggle);
+            case "legacyHealthRounding" -> b.legacyHealthRounding(toggle);
             default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
         }
         return b.build();
@@ -157,6 +165,7 @@ public final class FixesConfig {
         private @Nullable FixToggleConfig effectResync;
         private @Nullable FixToggleConfig legacyUseResync;
         private @Nullable FixToggleConfig legacyPlacementHalf;
+        private @Nullable FixToggleConfig legacyHealthRounding;
 
         Builder() {}
         Builder(FixesConfig c) {
@@ -171,6 +180,7 @@ public final class FixesConfig {
             effectResync = c.effectResync;
             legacyUseResync = c.legacyUseResync;
             legacyPlacementHalf = c.legacyPlacementHalf;
+            legacyHealthRounding = c.legacyHealthRounding;
         }
 
         public Builder visuals(@Nullable VisualsConfig v) { this.visuals = v; return this; }
@@ -184,6 +194,7 @@ public final class FixesConfig {
         public Builder effectResync(@Nullable FixToggleConfig v) { this.effectResync = v; return this; }
         public Builder legacyUseResync(@Nullable FixToggleConfig v) { this.legacyUseResync = v; return this; }
         public Builder legacyPlacementHalf(@Nullable FixToggleConfig v) { this.legacyPlacementHalf = v; return this; }
+        public Builder legacyHealthRounding(@Nullable FixToggleConfig v) { this.legacyHealthRounding = v; return this; }
 
         public FixesConfig build() { return new FixesConfig(this); }
     }

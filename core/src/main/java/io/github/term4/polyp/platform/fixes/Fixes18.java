@@ -23,6 +23,7 @@ public final class Fixes18 {
                 .legacyInventorySlot(FixToggleConfig.on())
                 .legacyUseResync(FixToggleConfig.on())
                 .legacyPlacementHalf(FixToggleConfig.on())
+                .legacyHealthRounding(FixToggleConfig.of(false)) // captured networks send fractions; a preset opts in
                 .build();
     }
 }

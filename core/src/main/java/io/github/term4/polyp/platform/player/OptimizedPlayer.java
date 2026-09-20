@@ -13,6 +13,7 @@ import io.github.term4.polyp.platform.compatibility.CompatState;
 import io.github.term4.polyp.platform.fixes.RefreshPositionFix;
 import io.github.term4.polyp.platform.fixes.client.InventorySync;
 import io.github.term4.polyp.platform.fixes.client.LegacyInventorySlotFix;
+import io.github.term4.polyp.platform.fixes.client.LegacyHealthRoundingFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyPlacementHalfFix;
 import io.github.term4.polyp.platform.fixes.client.EquipmentSlotsFix;
 import io.github.term4.polyp.platform.fixes.client.SelfMetaFilter;
@@ -149,6 +150,7 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
             if (p == null) return; // redundant slot echo: the client already shows it
         }
         p = SpectatorHud.rewrite(this, p);
+        p = LegacyHealthRoundingFix.rewrite(this, compat.legacyClient() && fixEnabled(FixesConfig::legacyHealthRounding), p);
         super.sendPacket(p);
         EffectResyncFix.afterSpawn(this, p); // a spawn owes this viewer the effects that entity already carries
         // a respawn or join carries the real game mode; the spoof follows it
