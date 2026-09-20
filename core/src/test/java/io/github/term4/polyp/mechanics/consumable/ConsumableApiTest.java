@@ -75,6 +75,19 @@ class ConsumableApiTest extends HeadlessServerTest {
         assertEquals(6f, p.getFoodSaturation(), 1e-6);
     }
 
+    /** A golden apple restores once: 4 food, 9.6 saturation, Absorption I - the one behavior the finish dispatches. */
+    @Test
+    void goldenAppleRestoresOnce() {
+        p.setFood(10);
+        p.setFoodSaturation(0f);
+        p.setAdditionalHearts(0f);
+        finish(Material.GOLDEN_APPLE);
+        assertEquals(14, p.getFood(), "4 nutrition, applied once");
+        assertEquals(9.6f, p.getFoodSaturation(), 1e-6, "9.6 saturation, applied once");
+        assertEquals(4f, p.getAdditionalHearts(), 1e-6, "Absorption I once");
+        p.setAdditionalHearts(0f);
+    }
+
     @Test
     void componentFloorCanBeDisabled() {
         var cfg = ConsumableConfig.builder(Consumables.config())
