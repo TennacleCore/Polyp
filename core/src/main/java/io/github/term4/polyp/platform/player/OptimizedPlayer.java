@@ -42,6 +42,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
+import net.minestom.server.ServerFlag;
 import net.minestom.server.utils.time.Cooldown;
 import java.util.Map;
 import java.util.function.Function;
@@ -52,6 +54,8 @@ import java.util.function.Function;
  * state in {@link CompatState}). Each behavior is opt-in and wired by {@code Polyp}.
  */
 public class OptimizedPlayer extends Player implements ExternallyTickable {
+
+    private static final long FIRST_KEEP_ALIVE_MS = 2_000;
 
     private @Nullable SelfMetaFilter selfMetaFilter = SelfMetaFilter.defaultPlayerFilter();
     private boolean processingClientInput = false;
@@ -68,6 +72,11 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         this.itemPickupCooldown = new Cooldown(Duration.ZERO);
         // slot refreshes must reach sendPacket bare or the per-client item rewrite skips them (see PerViewerInventory)
         this.inventory = new PerViewerInventory();
+        // Minestom keep-alives on the tick a player joins; a 1.7 client that gets one inside the tick it switches to
+        // play still holds the login handler (KeepAlive is netty-thread priority there) and dies with a
+        // ClassCastException. Vanilla 1.8's first keep-alive comes 2s after join.
+        refreshKeepAlive(System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(ServerFlag.KEEP_ALIVE_DELAY - FIRST_KEEP_ALIVE_MS));
+        refreshAnswerKeepAlive(true);
     }
 
     // @ApiStatus.Internal override: super is exactly this field write + dispatcher().updateElement (verified
