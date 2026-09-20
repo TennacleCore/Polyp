@@ -115,28 +115,53 @@ public final class CompatPlacement {
         Point other = at.add(join.normalX(), 0, join.normalZ());
         Block theirs = world.getBlock(other);
         if (!"single".equals(theirs.getProperty("type"))) return;
-        Direction facing = across(world, at, other, join, facingOf(mine), facingOf(theirs));
-        String name = facing.name().toLowerCase(Locale.ROOT);
-        boolean otherOnMyLeft = join == clockwise(facing); // the left half's partner sits clockwise of the facing
-        world.setBlock(at, mine.withProperty("facing", name).withProperty("type", otherOnMyLeft ? "left" : "right"));
-        world.setBlock(other, theirs.withProperty("facing", name).withProperty("type", otherOnMyLeft ? "right" : "left"));
+
+        // 1.8's sequence. The block lands carrying the LOOK, both halves run checkForSurroundingChests, and
+        // postPlace lands last with the look's opposite - our placement rule already faced the chest at the placer,
+        // so that facing IS postPlace's answer and its opposite is the look e() saw.
+        Direction placed = facingOf(mine);
+        if (placed == null) return;
+        Direction theirsFacing = facingOf(theirs);
+        Direction mineFacing = surrounding(world, at, join, theirsFacing);
+        theirsFacing = surrounding(world, other, join.opposite(), mineFacing);
+        mineFacing = placed;
+        if (crosses(placed, join)) theirsFacing = placed;
+
+        if (mineFacing == theirsFacing) {
+            boolean otherOnMyLeft = join == clockwise(mineFacing); // the left half's partner sits clockwise of the facing
+            world.setBlock(at, half(mine, mineFacing, otherOnMyLeft ? "left" : "right"));
+            world.setBlock(other, half(theirs, theirsFacing, otherOnMyLeft ? "right" : "left"));
+            return;
+        }
+        // 1.8 pairs by ADJACENCY - checkForAdjacentChests never reads a facing - so its halves may disagree, and a
+        // 1.8 client joins them itself. Modern has no state for that pair, so both stay single on the wire.
+        world.setBlock(at, half(mine, mineFacing, "single"));
+        world.setBlock(other, half(theirs, theirsFacing, "single"));
     }
 
-    // postPlace first: the new chest's own facing, when the join crosses it - the placer's look, and final in 1.8.
-    // Else the neighbor's facing when it crosses, else south or east; then away from a solid block beside either
-    // half when the other side is open
-    private static Direction across(MechanicsWorld world, Point at, Point other, Direction join,
-                                    @Nullable Direction mine, @Nullable Direction theirs) {
-        if (crosses(mine, join)) return mine;
-        Direction facing = join.normalX() != 0 ? Direction.SOUTH : Direction.EAST;
-        if (crosses(theirs, join)) facing = theirs;
-        Direction back = facing.opposite();
-        boolean frontBlocked = solid(world, at, facing) || solid(world, other, facing);
-        boolean backBlocked = solid(world, at, back) || solid(world, other, back);
-        return frontBlocked && !backBlocked ? back : facing;
+    private static Block half(Block chest, Direction facing, String type) {
+        return chest.withProperty("facing", facing.name().toLowerCase(Locale.ROOT)).withProperty("type", type);
     }
 
-    /** Whether {@code facing} is perpendicular to the join - 1.8 pairs across a facing, never along it. */
+    /**
+     * {@code BlockChest.e}: the join's axis picks the default - SOUTH for a pair joined along x, EAST along z - the
+     * partner's facing can pull it to the other side, and an opaque block against one side with open air against the
+     * other overrides both. Reads the pair, never the chest's own facing.
+     */
+    private static Direction surrounding(MechanicsWorld world, Point at, Direction toPartner, @Nullable Direction partnerFacing) {
+        boolean alongZ = toPartner.normalZ() != 0;
+        Direction positive = alongZ ? Direction.EAST : Direction.SOUTH;
+        Direction negative = alongZ ? Direction.WEST : Direction.NORTH;
+        Direction facing = partnerFacing == negative ? negative : positive;
+        Point partner = at.add(toPartner.normalX(), 0, toPartner.normalZ());
+        boolean negativeBlocked = solid(world, at, negative) || solid(world, partner, negative);
+        boolean positiveBlocked = solid(world, at, positive) || solid(world, partner, positive);
+        if (negativeBlocked && !positiveBlocked) facing = positive;
+        if (positiveBlocked && !negativeBlocked) facing = negative;
+        return facing;
+    }
+
+    /** Whether {@code facing} is perpendicular to the join - 1.8's postPlace turns both halves only across a facing. */
     private static boolean crosses(@Nullable Direction facing, Direction join) {
         return facing != null && facing.normalX() * join.normalX() + facing.normalZ() * join.normalZ() == 0;
     }

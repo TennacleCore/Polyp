@@ -42,30 +42,41 @@ class LegacyChestShapeTest extends HeadlessServerTest {
     }
 
     /** A chest placed in front of a north-facing single: 1.8 turns both to face across the join and pairs them. */
+    /** The look ran along the join, so postPlace never turns the old half: 1.8 leaves the two facing differently,
+     *  and pairs them by adjacency alone - modern has no state for that, so both stay single on the wire. */
     @Test
-    void aNeighborTurnsThePairAcrossTheJoin() {
+    void theHalvesMayDisagree() {
         MechanicsWorld world = MechanicsWorld.of(instance);
         try {
-            instance.setBlock(30, Y, Z, Block.CHEST); // facing north, single
-            instance.setBlock(30, Y, Z + 1, Block.CHEST.withProperty("facing", "south")); // faces the placer, single
+            instance.setBlock(30, Y, Z, Block.CHEST.withProperty("facing", "north"));
+            instance.setBlock(30, Y, Z + 1, Block.CHEST.withProperty("facing", "south")); // placed looking north
             CompatPlacement.pairLike18(world, new BlockVec(30, Y, Z + 1), Block.CHEST);
-            Block mine = instance.getBlock(30, Y, Z + 1);
-            Block theirs = instance.getBlock(30, Y, Z);
-            assertEquals("east", mine.getProperty("facing"), "across a north-south join: east");
-            assertEquals("east", theirs.getProperty("facing"));
-            assertEquals("right", mine.getProperty("type"), "the south half, facing east, is the right one");
-            assertEquals("left", theirs.getProperty("type"));
 
-            // both halves face ALONG the join, so postPlace passes and the surroundings decide: away from the stone
+            assertEquals("south", instance.getBlock(30, Y, Z + 1).getProperty("facing"), "postPlace keeps the placer's");
+            assertEquals("east", instance.getBlock(30, Y, Z).getProperty("facing"), "the old half took the z-join default");
+            assertEquals("single", instance.getBlock(30, Y, Z + 1).getProperty("type"));
+            assertEquals("single", instance.getBlock(30, Y, Z).getProperty("type"));
+        } finally {
+            instance.setBlock(30, Y, Z, Block.AIR);
+            instance.setBlock(30, Y, Z + 1, Block.AIR);
+        }
+    }
+
+    /** checkForSurroundingChests' tie-break: a solid block against one side of either half turns the pair away. */
+    @Test
+    void aBlockedSideTurnsTheOldHalf() {
+        MechanicsWorld world = MechanicsWorld.of(instance);
+        try {
             instance.setBlock(34, Y, Z, Block.CHEST.withProperty("facing", "west"));
-            instance.setBlock(35, Y, Z, Block.CHEST.withProperty("facing", "east"));
+            instance.setBlock(35, Y, Z, Block.CHEST.withProperty("facing", "east")); // placed looking west
             instance.setBlock(35, Y, Z + 1, Block.STONE);
             CompatPlacement.pairLike18(world, new BlockVec(35, Y, Z), Block.CHEST);
-            assertEquals("north", instance.getBlock(35, Y, Z).getProperty("facing"), "south is blocked: north");
-            assertEquals("north", instance.getBlock(34, Y, Z).getProperty("facing"), "and the neighbor follows");
+
+            assertEquals("north", instance.getBlock(34, Y, Z).getProperty("facing"), "south is blocked: north");
+            assertEquals("east", instance.getBlock(35, Y, Z).getProperty("facing"), "postPlace still owns the new half");
         } finally {
-            for (int x : new int[]{30, 34, 35}) instance.setBlock(x, Y, Z, Block.AIR);
-            instance.setBlock(30, Y, Z + 1, Block.AIR);
+            instance.setBlock(34, Y, Z, Block.AIR);
+            instance.setBlock(35, Y, Z, Block.AIR);
             instance.setBlock(35, Y, Z + 1, Block.AIR);
         }
     }
