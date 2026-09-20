@@ -53,18 +53,28 @@ public final class MeleeDamage extends DamageType {
                 : null;
         if (actx != null) amount = (float) actx.value(Attribute.ATTACK_DAMAGE, amount);
 
+        float uncritted = amount;
         if (critical) {
             Double crit = cfg.critMultiplier(ctx);
             if (crit != null) amount *= crit.floatValue();
         }
 
-        if (actx != null) amount += (float) actx.value(Attribute.MELEE_FLAT_ADD, 0);
+        float flat = actx != null ? (float) actx.value(Attribute.MELEE_FLAT_ADD, 0) : 0f;
+        amount += flat;
+        uncritted += flat;
 
-        return prelim.withAmount(amount).withDetail(new Hit(critical));
+        return prelim.withAmount(amount).withDetail(new Hit(critical, amount > 0 ? uncritted / amount : 1f));
     }
 
-    /** A melee hit's producer detail: whether the 1.8 crit roll landed - the amount already carries the multiplier. */
-    public record Hit(boolean critical) {}
+    /**
+     * A melee hit's producer detail. The amount already carries the crit multiplier; {@code uncritRatio} is what the
+     * same swing would have dealt without the roll, as a fraction of it (1 when it was no crit), so a rule can price
+     * the weapon's share of a hit apart from the roll's after listeners have scaled the amount.
+     */
+    public record Hit(boolean critical, float uncritRatio) {
+        /** {@code amount} as the same swing would have dealt without the crit roll. */
+        public float uncritted(float amount) { return amount * uncritRatio; }
+    }
 
     /**
      * Whether the hit carries enchantment ("magic") damage - Sharpness, or Smite/Bane against an applicable target - the

@@ -12,7 +12,7 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * mmc18 damage: the vanilla 1.8 damage ({@link io.github.term4.polyp.presets.vanilla18.Damage}) with
- * silent overdamage, no hurt-tick knockback, and the same-weapon crit overdamage block below.
+ * silent overdamage, no hurt-tick knockback, and the same-weapon crit discount below.
  */
 public final class Damage {
 
@@ -24,19 +24,20 @@ public final class Damage {
                 // no KB on generic damage ticks; killing the broadcast is the only way off an inherited
                 // hurtKnockback (merge semantics can't null it)
                 .syncHurtVelocity(false)
-                .addCustomComponent(Damage::blockSameItemCritOverdamage)
+                .addCustomComponent(Damage::discountSameItemCrit)
                 .build();
     }
 
-    // no overdamage replacement when a CRIT with the same item as the opening hit is what exceeds it: the extra
-    // is the crit roll's, not the weapon's. A stronger weapon, or the same one un-critted, still replaces
+    // a crit with the same item as the opening hit replaces only what the swing would have dealt un-critted: the
+    // roll's share never counts, the weapon's does. Same sword, nothing changed -> nothing lands; the same sword
+    // given Sharpness since -> the Sharpness lands, the roll still does not. A different item keeps the full crit
     @Nullable
-    private static Float blockSameItemCritOverdamage(DamageContext ctx, DamageEvent event, float amount, boolean overdamage) {
+    private static Float discountSameItemCrit(DamageContext ctx, DamageEvent event, float amount, boolean overdamage) {
         if (!overdamage || amount <= 0) return null;
         if (!MeleeDamage.KEY.equals(event.type().key())) return null;
         if (!(event.detail() instanceof MeleeDamage.Hit hit) || !hit.critical()) return null;
         if (!(event.target() instanceof LivingEntity le)) return null;
-        if (sameItem(event.item(), DamageSystem.openingHitItem(le))) return 0f;
+        if (sameItem(event.item(), DamageSystem.openingHitItem(le))) return hit.uncritted(amount);
         return null;
     }
 
