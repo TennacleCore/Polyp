@@ -196,6 +196,20 @@ public final class CompatConfig {
     public @Nullable Boolean animatiumDebug(CompatContext ctx) { return FieldValue.resolve(animatiumDebug, ctx); }
 
 
+    /**
+     * This config as it applies to a client speaking {@code protocol}: a knob whose {@link CompatCatalog} range does
+     * not cover it reads unset. Most knobs are ANY - they are an era's mechanics, not a client's rendering.
+     */
+    public CompatConfig scopedTo(int protocol) {
+        Builder b = null;
+        for (var entry : io.github.term4.polyp.platform.compatibility.CompatConfigBuilderBase.KNOBS.entrySet()) {
+            if (entry.getValue().get().apply(this) == null || CompatCatalog.applies(entry.getKey()).covers(protocol)) continue;
+            if (b == null) b = toBuilder();
+            entry.getValue().set().accept(b, null);
+        }
+        return b == null ? this : b.build();
+    }
+
     public Builder toBuilder() { return new Builder(this); }
 
     public static Builder builder() { return builder(null); }

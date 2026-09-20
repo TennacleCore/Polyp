@@ -107,10 +107,25 @@ public final class FixesConfig {
         return over == null ? base : base == null ? over : over.fromBase(base);
     }
 
-    /** The toggle names the {@code fixes/<toggle>/enabled} path addresses. */
-    public static final java.util.List<String> TOGGLES = java.util.List.of("legacySelfPlacement", "equipmentFix",
-            "legacyTabCompleteFix", "legacyConsume", "legacyFireDouse", "inventorySync", "legacyInventorySlot",
-            "effectResync", "legacyUseResync", "legacyPlacementHalf", "legacyHealthRounding");
+    /** The toggle names the {@code fixes/<toggle>/enabled} path addresses, from {@link FixCatalog}. */
+    public static final java.util.List<String> TOGGLES =
+            FixCatalog.fixes().stream().map(FixCatalog.Fix::name).filter(n -> !"legacyTabSlots".equals(n)).toList();
+
+    /**
+     * This config as it applies to a client speaking {@code protocol}: a toggle whose {@link FixCatalog} range does
+     * not cover it reads unset, and so does {@code legacyTabSlots} outside its own. One seam, so every reader is
+     * gated at once - a fix cannot forget to ask.
+     */
+    public FixesConfig scopedTo(int protocol) {
+        FixesConfig out = this;
+        for (String name : TOGGLES) {
+            if (out.toggle(name) != null && !FixCatalog.applies(name).covers(protocol)) out = withToggle(out, name, null);
+        }
+        if (out.legacyTabSlots != null && !FixCatalog.applies("legacyTabSlots").covers(protocol)) {
+            out = out.toBuilder().legacyTabSlots(null).build();
+        }
+        return out;
+    }
 
     public @Nullable FixToggleConfig toggle(String name) {
         return switch (name) {

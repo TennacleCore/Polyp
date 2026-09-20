@@ -2,6 +2,10 @@ package io.github.term4.polyp.platform.compatibility;
 
 import net.minestom.server.component.DataComponents;
 import net.minestom.server.entity.Entity;
+import net.minestom.server.entity.Player;
+import io.github.term4.polyp.Polyp;
+import net.minestom.server.MinecraftServer;
+import io.github.term4.polyp.tracking.ClientVersion;
 import net.minestom.server.entity.EntityPose;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -58,15 +62,35 @@ public final class CompatState {
     private boolean animatiumClient = false;
     private @NotNull Set<AnimatiumFeature> supportedFeatures = Set.of();
     private boolean legacyClient;
+    /** What the scope set, before {@link CompatCatalog} narrowing; {@link #policy} is the scoped view. */
+    private CompatConfig configured = OFF;
 
     /**
      * Swaps the whole policy; {@code null} = all off (modern). Operational/identity state is left untouched; the
      * {@code attackHitboxMargin} re-send + attack-cooldown attribute are the caller's job (they touch the player).
      */
-    /** Adopts {@code config} for {@code subject}: every knob resolves against that player from here on. */
+    /** Adopts {@code config} for {@code subject}: every knob resolves against that player from here on, scoped to
+     *  what their client can take ({@link CompatCatalog}). */
     public void apply(@Nullable CompatConfig config, @Nullable Entity subject) {
-        this.policy = config != null ? config : OFF;
+        this.configured = config != null ? config : OFF;
         this.ctx = new CompatConfig.CompatContext(subject);
+        rescope();
+    }
+
+    /** The knobs this client can take, re-read whenever the config or the known protocol changes. */
+    private void rescope() {
+        this.policy = configured.scopedTo(scopeProtocol());
+    }
+
+    /** The client's real protocol where it is known, else what {@link #legacyClient} says, else modern - the same
+     *  order every other gate in this class reads, so a hand-set flag scopes the knobs with it. */
+    private int scopeProtocol() {
+        Polyp polyp = Polyp.getInstance();
+        if (ctx.subject() instanceof Player player && polyp.isInitialized() && polyp.clientInfo() != null) {
+            int known = polyp.clientInfo().getProtocol(player);
+            if (known != ClientVersion.UNKNOWN_PROTOCOL) return known;
+        }
+        return legacyClient ? ClientVersion.LEGACY_PROTOCOL_MAX : MinecraftServer.PROTOCOL_VERSION;
     }
 
     public @NotNull Set<EntityPose> disabledPoses() { return or(policy.disabledPoses(ctx), Set.of()); }
@@ -150,7 +174,7 @@ public final class CompatState {
 
     /** Confirmed legacy (&le;1.8) client: skips the {@code attack_range} stamp - already native, and it only round-trips through Via as junk NBT. */
     public boolean legacyClient() { return legacyClient; }
-    public void setLegacyClient(boolean v) { this.legacyClient = v; }
+    public void setLegacyClient(boolean v) { this.legacyClient = v; rescope(); } // the protocol just landed: re-scope the knobs
 
     public void recordInterceptedPose(@NotNull EntityPose pose) { this.interceptedPose = pose; }
 

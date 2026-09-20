@@ -285,7 +285,7 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         Polyp polyp = Polyp.getInstance();
         if (!polyp.isInitialized()) return null;
         FixesSystem fixes = polyp.services().fixes();
-        return fixes == null ? null : fixes.configFor(this).legacyTabSlots();
+        return fixes == null ? null : fixes.forClient(this).legacyTabSlots();
     }
 
     /** A fix toggle from this player's scope chain; false before the module is up. */
@@ -294,7 +294,7 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         if (!polyp.isInitialized()) return false;
         FixesSystem fixes = polyp.services().fixes();
         if (fixes == null) return false;
-        FixToggleConfig toggle = pick.apply(fixes.configFor(this));
+        FixToggleConfig toggle = pick.apply(fixes.forClient(this));
         return toggle != null && toggle.enabled(this);
     }
 

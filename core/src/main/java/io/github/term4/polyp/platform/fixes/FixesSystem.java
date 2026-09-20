@@ -17,6 +17,7 @@ import io.github.term4.polyp.platform.fixes.visuals.VisualsConfig;
 import io.github.term4.polyp.platform.fixes.visuals.legacy_1_8.LegacyArrowVisibility;
 import io.github.term4.polyp.platform.fixes.visuals.legacy_1_8.LegacyArrowVisibilityConfig;
 import net.minestom.server.entity.Entity;
+import net.minestom.server.entity.Player;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
 import org.jetbrains.annotations.NotNull;
@@ -41,6 +42,16 @@ public final class FixesSystem extends ScopedSystem<FixesConfig> {
 
     public EventNode<@NotNull Event> node() { return node; }
     public LegacyArrowVisibility legacyArrowVisibility() { return legacyArrowVisibility; }
+
+    /**
+     * {@link #configFor} scoped to what {@code subject}'s client can actually take ({@link FixCatalog}). Every
+     * per-player read goes through this, so a fix outside its range reads unset instead of each one asking.
+     */
+    public @NotNull FixesConfig forClient(@Nullable Entity subject) {
+        FixesConfig cfg = configFor(subject);
+        if (!(subject instanceof Player player)) return cfg;
+        return cfg.scopedTo(polyp.clientInfo().protocolOrAssumed(player));
+    }
 
     public @Nullable LegacyArrowVisibilityConfig legacyArrowVisibilityConfig(@Nullable Entity subject) {
         VisualsConfig v = configFor(subject).visuals();
