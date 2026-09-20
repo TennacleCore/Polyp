@@ -64,7 +64,8 @@ public final class ExplosionConfigResolver {
                 cfg != null ? cfg.knockbackTargets : null,
                 cfg != null ? cfg.pushEye : null,
                 breaking,
-                FieldValue.resolve(cfg != null ? cfg.blockBreakDelayTicks : null, ctx, 0));
+                FieldValue.resolve(cfg != null ? cfg.blockBreakDelayTicks : null, ctx, 0),
+                FieldValue.resolve(cfg != null ? cfg.exposureAfterBreak : null, ctx, false));
     }
 
     /** Resolved explosion knobs. {@code power} is {@code null} when neither the call nor the config set one (the system defaults it). */
@@ -89,6 +90,7 @@ public final class ExplosionConfigResolver {
             @Nullable Predicate<Entity> knockbackTargets,
             @Nullable Function<Entity, Double> pushEye,
             @Nullable BlockBreaking blockBreaking,
-            int blockBreakDelayTicks
+            int blockBreakDelayTicks,
+            boolean exposureAfterBreak
     ) {}
 }

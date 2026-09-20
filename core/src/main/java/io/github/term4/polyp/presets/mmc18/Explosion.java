@@ -92,6 +92,9 @@ public final class Explosion {
                 .packetPush(false)
                 .pushEye(Explosion::pushEye)
                 .exposure(ExplosionExposure.Rays.LEGACY_1_8_FULL_CUBE) // MineMen gates off-flat blasts (full-cube), unlike singleplayer 1.8
+                // 2026-09-20 wool vs obsidian floors: a fireball centered INSIDE the floor block beside a TNT shoves it 1.31x
+                // through wool (broken) and 0.14-0.88x through obsidian (kept); only surviving blocks shield
+                .exposureAfterBreak(true)
                 .fire(false) // MineMen fireballs never ignite (overrides vanilla18's fireball incendiary); fireballFight() inherits this
                 // ground loot: captured 3 fireballs / 2 TNT to clear, distance-independent, against vanilla
                 // health 5 (mmcfbitemdestroy 10/10 at n=3, mmctntdestroy 12/12 at n=2). Keyed on the blast's

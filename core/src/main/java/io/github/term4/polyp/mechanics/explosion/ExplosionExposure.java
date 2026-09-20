@@ -4,11 +4,14 @@ import io.github.term4.polyp.util.geometry.Sightline;
 import io.github.term4.polyp.world.MechanicsWorld;
 import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.collision.Shape;
+import net.minestom.server.coordinate.BlockVec;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Set;
 
 /**
  * Vanilla {@code getSeenPercent}: the fraction of a point grid across the entity's box with line of sight to the
@@ -28,11 +31,17 @@ public final class ExplosionExposure {
     @FunctionalInterface
     public interface Rays {
 
-        float of(MechanicsWorld world, Point center, Entity entity);
+        /** {@code cleared} = the cells this blast breaks, or null; rays that honor it see the crater (MineMen). */
+        float of(MechanicsWorld world, Point center, Entity entity, @Nullable Set<Point> cleared);
+
+        default float of(MechanicsWorld world, Point center, Entity entity) {
+            return of(world, center, entity, null);
+        }
 
         /** No occlusion: everything in range counts as fully seen. */
-        Rays NONE = (world, center, entity) -> 1.0f;
-        Rays MODERN = ExplosionExposure::seenPercent;
+        Rays NONE = (world, center, entity, cleared) -> 1.0f;
+        /** Swept collision, so the crater mask does not apply here. */
+        Rays MODERN = (world, center, entity, cleared) -> seenPercent(world, center, entity);
         /** Faithful 1.8 rayTraceBlocks against block-real shapes. */
         Rays LEGACY_1_8 = ExplosionExposure::seenPercent18;
         /** 1.8's march against full cubes - what servers gate off-flat blasts with. */
@@ -92,15 +101,29 @@ public final class ExplosionExposure {
      * the endpoint's own block never blocks.
      */
     public static float seenPercent18(MechanicsWorld world, Point center, Entity entity) {
-        return legacyExposure(world, center, entity, true);
+        return seenPercent18(world, center, entity, null);
+    }
+
+    public static float seenPercent18(MechanicsWorld world, Point center, Entity entity, @Nullable Set<Point> cleared) {
+        return legacyExposure(geometry(world, cleared), center, entity, true);
     }
 
     /** 1.8 exposure over full-cube solids - the Hypixel/MineMen off-flat gate. Capture-verified against MineMen ray-for-ray (k/27). */
     public static float seenPercent18FullCube(MechanicsWorld world, Point center, Entity entity) {
-        return legacyExposure(world, center, entity, false);
+        return seenPercent18FullCube(world, center, entity, null);
     }
 
-    private static float legacyExposure(MechanicsWorld world, Point center, Entity entity, boolean shaped) {
+    public static float seenPercent18FullCube(MechanicsWorld world, Point center, Entity entity, @Nullable Set<Point> cleared) {
+        return legacyExposure(geometry(world, cleared), center, entity, false);
+    }
+
+    // the crater's cells read as air: MineMen's push through a wool floor is full, through obsidian a fraction
+    private static Block.Getter geometry(MechanicsWorld world, @Nullable Set<Point> cleared) {
+        if (cleared == null || cleared.isEmpty()) return world;
+        return (x, y, z, condition) -> cleared.contains(new BlockVec(x, y, z)) ? Block.AIR : world.getBlock(x, y, z, condition);
+    }
+
+    private static float legacyExposure(Block.Getter world, Point center, Entity entity, boolean shaped) {
         Grid g = Grid.of(entity);
         if (g == null) return 0.0f;
         int clear = 0, total = 0;
@@ -125,7 +148,7 @@ public final class ExplosionExposure {
 
     // 1.8 World.rayTraceBlocks: start-block check, boundary march with the -0.0 -> -1e-4 quirk, terminates
     // unchecked when the march reaches the end block
-    private static boolean rayHits18(MechanicsWorld in, boolean shaped, double ax, double ay, double az, double bx, double by, double bz) {
+    private static boolean rayHits18(Block.Getter in, boolean shaped, double ax, double ay, double az, double bx, double by, double bz) {
         int i = (int) Math.floor(bx), j = (int) Math.floor(by), k = (int) Math.floor(bz);
         int l = (int) Math.floor(ax), i1 = (int) Math.floor(ay), j1 = (int) Math.floor(az);
         if (blockHit(in, shaped, l, i1, j1, ax, ay, az, bx, by, bz)) return true;
@@ -157,7 +180,7 @@ public final class ExplosionExposure {
         return false;
     }
 
-    private static boolean blockHit(MechanicsWorld in, boolean shaped, int x, int y, int z,
+    private static boolean blockHit(Block.Getter in, boolean shaped, int x, int y, int z,
                                     double ax, double ay, double az, double bx, double by, double bz) {
         Block block = in.getBlock(x, y, z);
         if (!block.solid()) return false;

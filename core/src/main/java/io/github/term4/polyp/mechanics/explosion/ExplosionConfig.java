@@ -79,6 +79,8 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
     public final FieldValue<ExplosionContext, Double> knockbackImpactFloor;
     /** Carried on {@code ExplosionEvent} for a block/fire listener; the library itself never sets fire. */
     public final FieldValue<ExplosionContext, Boolean> fire;
+    /** Exposure rays ignore the cells this blast breaks (MineMen: a fireball inside a wool floor still shoves the TNT beside it full strength). */
+    public final FieldValue<ExplosionContext, Boolean> exposureAfterBreak;
     /** Where {@link #fire} lands; {@code null} = {@link FireScope#SELECTED} (vanilla). */
     public final FieldValue<ExplosionContext, FireScope> fireScope;
     /** Whether the source entity is hit by its own explosion (vanilla excludes it). */
@@ -108,6 +110,7 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
         exposure = b.exposure;
         knockbackImpactFloor = b.knockbackImpactFloor;
         fire = b.fire;
+        exposureAfterBreak = b.exposureAfterBreak;
         fireScope = b.fireScope;
         affectsSource = b.affectsSource;
         knockbackTargets = b.knockbackTargets;

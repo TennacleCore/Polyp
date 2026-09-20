@@ -53,6 +53,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 
 /**
@@ -206,17 +207,20 @@ public final class ExplosionSystem implements MechanicsModule {
     /** Builds the per-entity result set, fires the event, and returns the (possibly listener-edited) targets, or {@code null} if cancelled. */
     private @Nullable ExplosionEvent computeAndFire(MechanicsWorld world, Point center, float power,
                                                     @Nullable Entity source, ResolvedExplosionConfig resolved) {
-        List<ExplosionEvent.Target> targets = computeTargets(world, center, power, source, resolved);
-        // selected against INTACT geometry, before any damage: exposure rays must meet the blocks the blast still has
+        // selected against INTACT geometry, before any damage; exposure rays meet those blocks too unless the
+        // profile lets them see the crater (exposureAfterBreak)
         List<Point> blocks = resolved.blockBreaking() == null ? new ArrayList<>()
                 : ExplosionBlocks.select(world, center, power, resolved.blockBreaking(), context(world, center, source));
+        Set<Point> cleared = resolved.exposureAfterBreak() && !blocks.isEmpty() ? Set.copyOf(blocks) : null;
+        List<ExplosionEvent.Target> targets = computeTargets(world, center, power, source, resolved, cleared);
         ExplosionEvent event = new ExplosionEvent(world, center, power, source, resolved.fire(), targets, blocks);
         EventDispatcher.call(event);
         return event.isCancelled() ? null : event;
     }
 
     private List<ExplosionEvent.Target> computeTargets(MechanicsWorld world, Point center, float power,
-                                                       @Nullable Entity source, ResolvedExplosionConfig resolved) {
+                                                       @Nullable Entity source, ResolvedExplosionConfig resolved,
+                                                       @Nullable Set<Point> cleared) {
         List<ExplosionEvent.Target> targets = new ArrayList<>();
         double doubleRadius = power * 2.0;
         if (doubleRadius <= 0.0) return targets;
@@ -237,7 +241,7 @@ public final class ExplosionSystem implements MechanicsModule {
                     : resolved.pushEye() != null ? resolved.pushEye().apply(entity)
                     : entity.getEntityType().eyeHeight();
             Point eyeOrigin = entity.getPosition().add(0, headHeight, 0);
-            float exposure = resolved.exposure().of(world, center, entity);
+            float exposure = resolved.exposure().of(world, center, entity, cleared);
             // TODO knockback reduction (Blast Protection / KB resistance) via the attribute layer
             ExplosionCalculator.Hit hit = ExplosionCalculator.compute(center, power, eyeOrigin, distance, exposure,
                     resolved.damageConstant(), resolved.floorDamage(), resolved.knockbackMultiplier());
