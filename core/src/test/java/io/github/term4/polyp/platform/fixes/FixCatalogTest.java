@@ -17,20 +17,14 @@ class FixCatalogTest {
     @Test
     void everyToggleIsCatalogued() {
         FixesConfig cfg = FixesLegacy.config();
-        assertEquals(12, FixesConfig.TOGGLES.size(), "a new toggle needs its FixCatalog entry");
+        assertEquals(11, FixesConfig.TOGGLES.size(), "a new toggle needs its FixCatalog entry");
         for (String name : FixesConfig.TOGGLES) {
             assertNotNull(FixCatalog.of(name), name);
             cfg.toggle(name); // a name the switch does not know throws
         }
-        assertEquals(13, FixCatalog.fixes().size(), "twelve toggles and the one value knob");
+        assertEquals(12, FixCatalog.fixes().size(), "eleven toggles and the one value knob");
         assertNotNull(FixCatalog.of("legacyTabSlots"), "the value knob is catalogued too, though it is no toggle");
         assertTrue(FixCatalog.describe().stream().anyMatch(l -> l.startsWith("legacyTabSlots  [any]")));
-    }
-
-    @Test
-    void theUpdateOrderPatchIsOffUntilAskedFor() {
-        assertNull(FixesLegacy.config().blockUpdateOrder(), "Minestom's own order drives the SHAPE pass: leave it");
-        assertNotNull(FixCatalog.of("blockUpdateOrder"));
     }
 
     @Test

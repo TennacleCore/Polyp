@@ -93,7 +93,6 @@ public final class FixesSystem extends ScopedSystem<FixesConfig> {
         if (enabled(cfg.legacyTabCompleteFix())) LegacyTabCompleteFix.install();
         if (enabled(cfg.inventorySync())) InventorySync.install(system.node);
         if (enabled(cfg.legacyInventorySlot())) LegacyInventorySlotFix.install();
-        if (enabled(cfg.blockUpdateOrder())) BlockUpdateOrderFix.install();
         return polyp.installModule(system);
     }
 
