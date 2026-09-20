@@ -67,7 +67,7 @@ public final class BlockBreaking {
 
         /** The rays alone decide. */
         Shielding NONE = (hit, world, center, power, cfg, ctx) -> hit;
-        /** Hard shadow (Hypixel): a selected cell is dropped when the line from the blast centre crosses a blast-proof block. */
+        /** Hard shadow (Hypixel): a selected cell is dropped when the line from the blast center crosses a blast-proof block. */
         Shielding OCCLUSION = ExplosionBlocks::occlude;
     }
 
@@ -315,7 +315,7 @@ public final class BlockBreaking {
          *  the same blast at the same sub-block phase breaks the same cells. Length must match the {@link #rayGrid} shell. */
         public Builder intensityTable(float @Nullable [] v) { this.intensityTable = v; return this; }
 
-        /** Raises the ray origin above the blast centre for BLOCK selection only (KB/damage/packet unaffected);
+        /** Raises the ray origin above the blast center for BLOCK selection only (KB/damage/packet unaffected);
          *  MineMen fireball 0.25 - their footprints shrink faster with standoff than the flat-origin geometry. */
         public Builder originLift(double v) { this.originLift = v; return this; }
 

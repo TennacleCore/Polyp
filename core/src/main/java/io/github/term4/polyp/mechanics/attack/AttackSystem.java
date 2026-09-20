@@ -88,7 +88,7 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
     }
 
     /** Installs inert (no install-level config): a detected hit with no scoped or snapshot config is dropped. Pass an empty config to process at the vanilla floor. */
-    // vanilla's server gate: 1.8 takes 6 blocks centre to centre, modern range + 3 from the eye to the box
+    // vanilla's server gate: 1.8 takes 6 blocks center to center, modern range + 3 from the eye to the box
     private static boolean withinReach(AttackSnapshot snap, @Nullable Double padding) {
         if (padding == null || padding < 0 || snap.target() == null || !(snap.attacker() instanceof Player p)) return true;
         double max = p.getAttributeValue(Attribute.ENTITY_INTERACTION_RANGE) + padding;

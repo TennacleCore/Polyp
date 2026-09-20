@@ -22,7 +22,7 @@ class ProjectileContactTest extends HeadlessServerTest {
     @Test
     void anOverlapOffThePathIsNoHit() {
         // one position, two directions: the boxes overlap either way, and only the aim differs
-        Pos beside = new Pos(700.65, 64, 700.0); // grown boxes touch, the centre is outside the target's
+        Pos beside = new Pos(700.65, 64, 700.0); // grown boxes touch, the center is outside the target's
         run(false, (shot, target) -> {
             assertFalse(shot.contacts(target, beside, new Vec(0, 0, -0.5)),
                     "an overlap the segment never crosses is not a hit");
@@ -34,7 +34,7 @@ class ProjectileContactTest extends HeadlessServerTest {
     /** Neither era has a start-inside rule for a flying projectile: a segment that crosses no face is a miss. */
     @Test
     void aStartInsideCrossesNoFace() {
-        Pos inside = new Pos(700.0, 64.5, 700.0); // dead centre of the target, going nowhere
+        Pos inside = new Pos(700.0, 64.5, 700.0); // dead center of the target, going nowhere
         run(false, (shot, target) ->
                 assertFalse(shot.contacts(target, inside, new Vec(0, 0, 0)), "no crossing, no hit"));
     }
@@ -61,7 +61,7 @@ class ProjectileContactTest extends HeadlessServerTest {
             for (int tick = 1; tick <= 4; tick++) shot.tick(tick * 50L);
             assertFalse(shot.isRemoved(), "still flying");
 
-            // alongside it, boxes touching, centre outside the grown target box - the old overlap rule ate this
+            // alongside it, boxes touching, center outside the grown target box - the old overlap rule ate this
             beside = zombie(shot.getPosition().add(0.65, -1.4, 0));
             for (int tick = 5; tick <= 10; tick++) shot.tick(tick * 50L);
             assertFalse(shot.isRemoved(), "an overlap beside the path does not end the flight");
@@ -107,8 +107,8 @@ class ProjectileContactTest extends HeadlessServerTest {
     private static void run(boolean ramp, java.util.function.BiConsumer<ProjectileEntity, LivingEntity> body) {
         LivingEntity target = new LivingEntity(EntityType.ZOMBIE);
         target.setInstance(instance, new Pos(700.0, 64, 700.0)).join();
-        ProjectileEntity shot = new ProjectileEntity(null, EntityType.SNOWBALL) {}; // geometry only: no type behaviour involved
-        shot.setBoundingBox(0.25, 0.25, 0.25); // a pearl's: the overlap reaches past the grown target box, the centre does not
+        ProjectileEntity shot = new ProjectileEntity(null, EntityType.SNOWBALL) {}; // geometry only: no type behavior involved
+        shot.setBoundingBox(0.25, 0.25, 0.25); // a pearl's: the overlap reaches past the grown target box, the center does not
         shot.setEntityHitGrow(0.3);
         shot.setEntityHitGrowRamp(ramp);
         try {

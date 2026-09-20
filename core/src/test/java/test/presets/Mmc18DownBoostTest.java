@@ -73,7 +73,7 @@ class Mmc18DownBoostTest extends HeadlessServerTest {
             String at = spots[i][0] + "," + spots[i][1];
             Vec v = boostAt(spots[i][0], spots[i][1], String.valueOf((char) ('A' + i))); // a name, not a coordinate
             assertEquals(1.6655, v.y(), WIRE, "vertical at " + at);
-            // dead-centre blast: the hurt-KB horizontal is the coincident diagonal, never a leaked offset
+            // dead-center blast: the hurt-KB horizontal is the coincident diagonal, never a leaked offset
             assertEquals(-0.3728, v.x(), WIRE * 2, "x at " + at);
             assertEquals(-0.3728, v.z(), WIRE * 2, "z at " + at);
         }

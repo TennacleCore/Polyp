@@ -2,7 +2,7 @@ package io.github.term4.polyp.config;
 
 
 /**
- * The shipped behaviour vocabularies, registered exactly once and BEFORE any {@link FieldFns} read - so a
+ * The shipped behavior vocabularies, registered exactly once and BEFORE any {@link FieldFns} read - so a
  * help command or a server's own registration that touches the registry first does not see it empty, and
  * the order the classes happened to load in stops being load-bearing.
  */

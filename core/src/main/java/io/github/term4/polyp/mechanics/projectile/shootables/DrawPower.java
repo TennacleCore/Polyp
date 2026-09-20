@@ -34,7 +34,7 @@ public interface DrawPower {
     /**
      * One factory, because {@code instant} and {@code vanilla} are just {@code full-draw-at(0)} and
      * {@code full-draw-at(1)} - naming them would be naming cases. A curve of a different SHAPE is open-ended
-     * game logic: define it in code and register it here by name, the way any behaviour is selected.
+     * game logic: define it in code and register it here by name, the way any behavior is selected.
      */
     static void registerFactories() {
         FieldFns.register(DrawPower.class, "full-draw-at(seconds)",

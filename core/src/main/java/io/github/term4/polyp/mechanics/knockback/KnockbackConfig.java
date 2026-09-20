@@ -19,7 +19,7 @@ public final class KnockbackConfig extends Config<KnockbackContext, KnockbackCon
 
     /**
      * How the position-based and look-based direction inputs combine - at the direction stage, and again when
-     * base and extra add. A behaviour, not a switch: the two vanilla answers are constants here, and a server
+     * base and extra add. A behavior, not a switch: the two vanilla answers are constants here, and a server
      * with a third combines the same way.
      */
     public interface DirectionMode {

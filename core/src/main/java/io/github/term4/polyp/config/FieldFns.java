@@ -13,12 +13,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /**
- * Named FACTORIES for behaviour-typed config values, so a data path can build one:
+ * Named FACTORIES for behavior-typed config values, so a data path can build one:
  * <pre>explosion/damageModel = flat(2.0)   fx/polyp:pearl_teleport = to(at-listener(watchers), sound(entity.player.teleport, player, 1, 1))</pre>
  * Not a fixed menu of instances - a factory takes arguments, so one registration covers every parameterisation,
  * and registering another extends the vocabulary for that type everywhere. Unknown names list what the type offers.
  *
- * <p>Parsing happens once, when a ruleset folds; what lands in the config is the built behaviour, so the runtime
+ * <p>Parsing happens once, when a ruleset folds; what lands in the config is the built behavior, so the runtime
  * path is the same lambda a preset would have written by hand.
  */
 public final class FieldFns {
@@ -73,7 +73,7 @@ public final class FieldFns {
 
     /**
      * The registered nullary name whose product IS {@code value}, or {@code null}: the reverse of {@link #parse}
-     * for constants, so a behaviour can be written to NBT by the name it was built from.
+     * for constants, so a behavior can be written to NBT by the name it was built from.
      */
     public static <T> @Nullable String nameOf(@NotNull Class<T> type, @NotNull T value) {
         Vocabulary.ensure();

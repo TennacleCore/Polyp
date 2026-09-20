@@ -69,7 +69,7 @@ public final class PathEdits {
 
     /**
      * @param configClass the class knobs are looked up on for {@code member/knob}, or decoded from for a scalar
-     * @param scalar      whether the one-part form {@code member = value} replaces the whole member (a behaviour or enum)
+     * @param scalar      whether the one-part form {@code member = value} replaces the whole member (a behavior or enum)
      * @param targetable  whether a per-player write stores the edited member for those players
      *                    ({@link MechanicsProfile.Builder#target}) - for a member with no knob table to target inside
      */

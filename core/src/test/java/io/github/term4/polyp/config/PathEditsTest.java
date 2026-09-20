@@ -86,9 +86,9 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
                 "a scaled curve is a model, not a second knob");
     }
 
-    /** Behaviour-typed values are built by named FACTORIES with arguments - open, not a fixed menu. */
+    /** Behavior-typed values are built by named FACTORIES with arguments - open, not a fixed menu. */
     @Test
-    void behaviourValuesAreBuiltByFactoryCall() {
+    void factoriesBuildBehaviors() {
         MechanicsProfile hypixelish = MechanicsProfile.builder()
                 .set(MechanicsKeys.EXPLOSION, ExplosionConfig.builder().damageModel(DamageModel.flat(2.0)).build())
                 .build();
@@ -261,7 +261,7 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
     }
 
     /**
-     * Data SELECTS a code-defined behaviour by name - it never authors one. The item, its eat time and its
+     * Data SELECTS a code-defined behavior by name - it never authors one. The item, its eat time and its
      * edibility gate all stay; only what it dishes out is swapped.
      */
     @Test
@@ -278,7 +278,7 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
             var apple = b.build().get(MechanicsKeys.CONSUMABLES)
                     .typeConfig(net.kyori.adventure.key.Key.key("minecraft:golden_apple"));
             assertNotNull(apple);
-            assertEquals(custom, apple.behavior.constantOrNull(), "the named behaviour, not a rebuilt one");
+            assertEquals(custom, apple.behavior.constantOrNull(), "the named behavior, not a rebuilt one");
             assertNotNull(apple.canConsume, "the preset's 1.8 edibility gate rides along");
         } finally {
             FieldFns.unregister(ConsumableBehavior.class, "test-apple");
