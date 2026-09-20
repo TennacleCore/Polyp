@@ -87,6 +87,7 @@ public final class Explosion {
         return ExplosionConfig.builder(base)
                 .knockbackMultiplier(KB_SCALE)
                 .blockBreaking(ctx -> ctx.source() instanceof FireballEntity ? FIREBALL_RAYS : TNT_RAYS)
+                .blockBreakDelayTicks(1) // observed in play: a head hitter over a TNT jump still stands for the push
                 .damageKnockback(Knockback.explosionHurt())
                 .packetPush(false)
                 .pushEye(Explosion::pushEye)

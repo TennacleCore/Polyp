@@ -63,7 +63,8 @@ public final class ExplosionConfigResolver {
                 FieldValue.resolve(cfg != null ? cfg.affectsSource : null, ctx, false),
                 cfg != null ? cfg.knockbackTargets : null,
                 cfg != null ? cfg.pushEye : null,
-                breaking);
+                breaking,
+                FieldValue.resolve(cfg != null ? cfg.blockBreakDelayTicks : null, ctx, 0));
     }
 
     /** Resolved explosion knobs. {@code power} is {@code null} when neither the call nor the config set one (the system defaults it). */
@@ -87,6 +88,7 @@ public final class ExplosionConfigResolver {
             boolean affectsSource,
             @Nullable Predicate<Entity> knockbackTargets,
             @Nullable Function<Entity, Double> pushEye,
-            @Nullable BlockBreaking blockBreaking
+            @Nullable BlockBreaking blockBreaking,
+            int blockBreakDelayTicks
     ) {}
 }

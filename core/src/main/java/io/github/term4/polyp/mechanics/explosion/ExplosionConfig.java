@@ -59,6 +59,8 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
     public final FieldValue<ExplosionContext, BlockBreaking> blockBreaking;
     /** ANDed onto {@link #blockBreaking}'s own rule - narrows a preset (only player-placed blocks) without rebuilding it. */
     public final FieldValue<ExplosionContext, BlockBreaking.BreakRule> breakRule;
+    /** Ticks between the push landing and the blocks going (MineMen 1: a head hitter stands for the tick the client integrates it); 0 = the same tick, as vanilla. */
+    public final FieldValue<ExplosionContext, Integer> blockBreakDelayTicks;
     /** Scale on the radial falloff push ({@code impact · multiplier}); vanilla 1.0. */
     public final FieldValue<ExplosionContext, Double> knockbackMultiplier;
     /** Damage-knockback on a fresh hit (before the push); {@code null} = the vanilla 1.8 {@code a()}. Only used when {@link #baseKnockback} is 0. */
@@ -96,6 +98,7 @@ public final class ExplosionConfig extends Config<ExplosionContext, ExplosionCon
         damageBypass = b.damageBypass;
         blockBreaking = b.blockBreaking;
         breakRule = b.breakRule;
+        blockBreakDelayTicks = b.blockBreakDelayTicks;
         knockbackMultiplier = b.knockbackMultiplier;
         damageKnockback = b.damageKnockback;
         packetPush = b.packetPush;

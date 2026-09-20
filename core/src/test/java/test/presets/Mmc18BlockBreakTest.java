@@ -66,6 +66,7 @@ class Mmc18BlockBreakTest extends HeadlessServerTest {
         // captured centers sit at the exact pad surface with a fractional x/z; seedShift varies it like the TNT hop
         Pos center = new Pos(PAD_X + 0.3 + (seedShift % 5) * 0.1, PAD_Y + 1, PAD_Z + 0.3 + (seedShift % 3) * 0.15);
         system().explode(inst, center, power, source);
+        inst.scheduler().processTick(); // MineMen clears a tick after the push
         int gone = 0;
         for (int dx = -6; dx <= 5; dx++)
             for (int dz = -6; dz <= 5; dz++)
@@ -114,6 +115,7 @@ class Mmc18BlockBreakTest extends HeadlessServerTest {
         var pure = Explosion.fireballFrozenTable().toBuilder().intensityNoise(0).build();
         var sys = new ExplosionSystem(polyp, ExplosionConfig.builder(Explosion.config()).blockBreaking(ctx -> pure).build());
         sys.explode(inst, new Pos(x0 + 0.6875, PAD_Y + 1.9532, z0 + 0.3125), 2.0f, fireball());
+        inst.scheduler().processTick();
         Set<String> broken = new HashSet<>();
         for (int dx = -6; dx <= 5; dx++)
             for (int dz = -6; dz <= 5; dz++)
@@ -157,6 +159,7 @@ class Mmc18BlockBreakTest extends HeadlessServerTest {
         fb.setVelocityBt(new Vec(0, 0, 1.0));
         for (int i = 0; i < 10 && !fb.isRemoved(); i++) fb.tick(i);
         assertTrue(fb.isRemoved(), "fireball hit the wall");
+        inst.scheduler().processTick();
         assertTrue(inst.getBlock(wx, wy, wz - 1).air(), "protruding wood breaks off the near-miss");
         assertTrue(inst.getBlock(wx + 1, wy, wz).compare(Block.END_STONE), "the wall itself holds");
     }
@@ -171,8 +174,10 @@ class Mmc18BlockBreakTest extends HeadlessServerTest {
         ExplosionSystem sys = system();
         Pos farSide = new Pos(wx + 0.5, wy + 0.5, wz + 1.6); // in air, within the wood's ball radius
         sys.explode(inst, farSide, 2.0f, fireball());
+        inst.scheduler().processTick();
         assertTrue(inst.getBlock(wx, wy, wz - 1).compare(Block.OAK_PLANKS), "wood behind the wall survives a fireball");
         sys.explode(inst, farSide, 4.0f, null);
+        inst.scheduler().processTick();
         assertTrue(inst.getBlock(wx, wy, wz - 1).air(), "TNT rays punch through");
     }
 }

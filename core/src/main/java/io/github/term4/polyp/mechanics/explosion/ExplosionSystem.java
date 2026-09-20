@@ -150,10 +150,20 @@ public final class ExplosionSystem implements MechanicsModule {
         if (power >= 2.0f) Fx.play(services, Fx.EXPLOSION_EMITTER, FxContext.at(world, center, source));
         // AFTER the damage pass, per vanilla (ServerExplosion.explode: select -> hurtEntities -> interactWithBlocks)
         if (resolved.blockBreaking() != null && !event.blocks().isEmpty()) {
-            List<Point> broken = ExplosionBlocks.destroy(world, event.blocks(), power, resolved.blockBreaking(), source);
-            // BROKEN (Hypixel) lights only vacated cells; SELECTED (vanilla) may light any cell the blast reached
-            if (resolved.fire()) ExplosionBlocks.placeFire(world, resolved.fireScope().cells(event.blocks(), broken));
+            Runnable clear = () -> {
+                List<Point> broken = ExplosionBlocks.destroy(world, event.blocks(), power, resolved.blockBreaking(), source);
+                // BROKEN (Hypixel) lights only vacated cells; SELECTED (vanilla) may light any cell the blast reached
+                if (resolved.fire()) ExplosionBlocks.placeFire(world, resolved.fireScope().cells(event.blocks(), broken));
+            };
+            // the push went out above; MineMen clears a tick later, so the ceiling is still there for the tick
+            // the client integrates it. Selected against intact geometry either way
+            afterTicks(world, resolved.blockBreakDelayTicks(), clear);
         }
+    }
+
+    private static void afterTicks(MechanicsWorld world, int ticks, Runnable task) {
+        if (ticks <= 0) { task.run(); return; }
+        world.scheduleNextTick(w -> afterTicks(w, ticks - 1, task));
     }
 
     private ExplosionContext context(MechanicsWorld world, Point center, @Nullable Entity source) {
