@@ -27,7 +27,7 @@ polyp.init();
 
 polyp.profiles().setGlobal(Preset.MMC18.profile().toBuilder()
         .set(MechanicsKeys.COMPAT, Compat18.config())   // 1.8 behavior for modern clients
-        .set(MechanicsKeys.FIXES, Fixes18.config())     // legacy-client wire fixes
+        .set(MechanicsKeys.FIXES, FixesLegacy.config())     // legacy-client wire fixes
         .build());
 
 AttackSystem.install(polyp);

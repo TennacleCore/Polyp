@@ -13,7 +13,7 @@ import io.github.term4.polyp.mechanics.projectile.ProjectileSystem;
 import io.github.term4.polyp.platform.fixes.FixesSystem;
 import io.github.term4.polyp.vri.Vri;
 import io.github.term4.polyp.vri.VriConfig;
-import io.github.term4.polyp.platform.fixes.Fixes18;
+import io.github.term4.polyp.platform.fixes.FixesLegacy;
 import io.github.term4.polyp.platform.compatibility.Compat18;
 import io.github.term4.polyp.platform.compatibility.CompatConfig;
 import io.github.term4.polyp.mechanics.consumable.ConsumableSystem;
@@ -82,7 +82,7 @@ public class ExampleServer {
         // profile swaps the whole setup.
         polyp.profiles().setGlobal(PRESET.profile().toBuilder()
                 .set(MechanicsKeys.COMPAT, Compat18.config())
-                .set(MechanicsKeys.FIXES, Fixes18.config())
+                .set(MechanicsKeys.FIXES, FixesLegacy.config())
                 .build());
 
         AttackSystem.install(polyp);

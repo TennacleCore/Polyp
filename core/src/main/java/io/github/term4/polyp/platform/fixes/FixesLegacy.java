@@ -5,12 +5,13 @@ import io.github.term4.polyp.platform.fixes.visuals.VisualsConfig;
 import io.github.term4.polyp.platform.fixes.visuals.legacy_1_8.LegacyArrowVisibilityConfig;
 
 /**
- * The full 1.8/Via legacy-client {@link FixesConfig} - {@link Fixes#qol()} plus every legacy fix; install with
- * {@code FixesSystem.install(polyp, Fixes18.config())}.
+ * The full legacy-client {@link FixesConfig} - {@link Fixes#qol()} plus every legacy fix; install with
+ * {@code FixesSystem.install(polyp, FixesLegacy.config())}. Legacy is every client through 1.8
+ * ({@link io.github.term4.polyp.tracking.ClientVersion#isLegacy}), so 1.7-only fixes live here too.
  */
-public final class Fixes18 {
+public final class FixesLegacy {
 
-    private Fixes18() {}
+    private FixesLegacy() {}
 
     public static FixesConfig config() {
         return FixesConfig.builder(Fixes.qol())
