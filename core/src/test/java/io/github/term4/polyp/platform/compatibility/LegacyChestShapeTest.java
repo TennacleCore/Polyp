@@ -62,8 +62,8 @@ class LegacyChestShapeTest extends HeadlessServerTest {
         }
     }
 
-    /** checkForSurroundingChests' tie-break: an OPAQUE block against one side of either half turns the pair away -
-     *  1.8 reads isOpaqueCube, so a chest or a slab on that side is no block at all. */
+    /** checkForSurroundingChests' tie-break: a FULL block against one side of either half turns the pair away -
+     *  1.8 reads isFullBlock (isOpaqueCube, taken once in the constructor), so a slab or a pane is none. */
     @Test
     void aBlockedSideTurnsTheOldHalf() {
         MechanicsWorld world = MechanicsWorld.of(instance);
@@ -76,8 +76,8 @@ class LegacyChestShapeTest extends HeadlessServerTest {
             assertEquals("north", instance.getBlock(34, Y, Z).getProperty("facing"), "south is blocked: north");
             assertEquals("east", instance.getBlock(35, Y, Z).getProperty("facing"), "postPlace still owns the new half");
 
-            // a glass pane is solid but see-through: 1.8 does not turn away from it
-            instance.setBlock(35, Y, Z + 1, Block.GLASS_PANE);
+            // a bottom slab is opaque enough to occlude, but it is no full cube: 1.8 does not turn away from it
+            instance.setBlock(35, Y, Z + 1, Block.STONE_SLAB);
             instance.setBlock(34, Y, Z, Block.CHEST.withProperty("facing", "west"));
             instance.setBlock(35, Y, Z, Block.CHEST.withProperty("facing", "east"));
             CompatPlacement.pairLike18(world, new BlockVec(35, Y, Z), Block.CHEST);

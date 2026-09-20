@@ -154,8 +154,8 @@ public final class CompatPlacement {
         Direction negative = alongZ ? Direction.WEST : Direction.NORTH;
         Direction facing = partnerFacing == negative ? negative : positive;
         Point partner = at.add(toPartner.normalX(), 0, toPartner.normalZ());
-        boolean negativeBlocked = opaque(world, at, negative) || opaque(world, partner, negative);
-        boolean positiveBlocked = opaque(world, at, positive) || opaque(world, partner, positive);
+        boolean negativeBlocked = fullBlock(world, at, negative) || fullBlock(world, partner, negative);
+        boolean positiveBlocked = fullBlock(world, at, positive) || fullBlock(world, partner, positive);
         if (negativeBlocked && !positiveBlocked) facing = positive;
         if (positiveBlocked && !negativeBlocked) facing = negative;
         return facing;
@@ -166,10 +166,11 @@ public final class CompatPlacement {
         return facing != null && facing.normalX() * join.normalX() + facing.normalZ() * join.normalZ() == 0;
     }
 
-    // 1.8 tests Block.o() = isOpaqueCube, which a chest, slab, stair, glass pane or door is NOT - isSolid() would
-    // turn the pair away from blocks 1.8 sees straight through
-    private static boolean opaque(MechanicsWorld world, Point from, Direction side) {
-        return world.getBlock(from.add(side.normalX(), 0, side.normalZ())).occludes();
+    // 1.8 tests Block.isFullBlock, which is isOpaqueCube read once in the constructor: opaque AND a whole cube. A
+    // chest, slab, stair, pane or door is none of it, and turns nothing
+    private static boolean fullBlock(MechanicsWorld world, Point from, Direction side) {
+        Block block = world.getBlock(from.add(side.normalX(), 0, side.normalZ()));
+        return block.occludes() && BlockContact.isFullCube(block);
     }
 
     private static Direction clockwise(Direction facing) {
