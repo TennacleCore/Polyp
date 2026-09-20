@@ -95,6 +95,33 @@ class SpectatorModeTest extends HeadlessServerTest {
     }
 
     @Test
+    void ghostRidesAndComesBack() {
+        FakePlayer w = FakePlayer.connect(instance, new Pos(0.5, 64, 40.5), "RideGhost");
+        FakePlayer a = FakePlayer.connect(instance, new Pos(4.5, 64, 40.5), "RideTarget");
+        try {
+            SpectatorMode.enter(w.player, SpectatorMode.Mode.GHOST);
+            SpectatorMode.enter(w.player, SpectatorMode.Mode.TRUE);
+            assertTrue(SpectatorMode.camera(w.player, a.player, SpectatorMode.Mode.GHOST));
+
+            w.player.refreshInput(false, false, false, false, false, true, false);
+            MinecraftServer.getSchedulerManager().processTick();
+            assertNull(SpectatorMode.camera(w.player), "sneak dismounts");
+            assertEquals(SpectatorMode.Mode.GHOST, SpectatorMode.mode(w.player), "and hands the ghost body back");
+            assertEquals(GameMode.ADVENTURE, w.player.getGameMode());
+
+            w.player.refreshInput(false, false, false, false, false, false, false);
+            assertTrue(SpectatorMode.enter(w.player, SpectatorMode.Mode.TRUE));
+            assertTrue(SpectatorMode.camera(w.player, a.player), "a ride with no body named stays in spectator mode");
+            SpectatorMode.cameraHome(w.player);
+            assertEquals(SpectatorMode.Mode.TRUE, SpectatorMode.mode(w.player));
+        } finally {
+            SpectatorMode.exit(w.player);
+            w.player.remove();
+            a.player.remove();
+        }
+    }
+
+    @Test
     void aSevenClientHasNoSpectatorMode() {
         FakePlayer w = FakePlayer.connect(instance, new Pos(0.5, 64, 0.5), "ModeSeven");
         try {

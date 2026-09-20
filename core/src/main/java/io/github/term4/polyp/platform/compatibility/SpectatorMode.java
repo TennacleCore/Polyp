@@ -40,6 +40,7 @@ public final class SpectatorMode {
     private static final Tag<Worn> WORN = Tag.Transient("polyp:spectator-worn");
     private static final Tag<Entity> CAMERA = SpectatorCamera.RIDING;
     private static final Tag<Task> RIDE = Tag.Transient("polyp:spectator-ride");
+    private static final Tag<String> RETURN = Tag.Transient("polyp:spectator-camera-return");
     private static final int FIRST_SPECTATOR_PROTOCOL = 47; // 1.8
 
     private SpectatorMode() {}
@@ -77,7 +78,10 @@ public final class SpectatorMode {
         if (player.getTag(WORN) == null) {
             player.setTag(WORN, new Worn(player.getGameMode(), player.isAllowFlying(), player.isFlying()));
         }
-        if (mode != Mode.TRUE) cameraHome(player);
+        if (mode != Mode.TRUE) { // an explicit body outranks whatever a ride meant to come home to
+            player.removeTag(RETURN);
+            cameraHome(player);
+        }
         player.setTag(MODE, mode.name());
         switch (mode) {
             case GHOST -> {
@@ -99,6 +103,7 @@ public final class SpectatorMode {
     public static boolean exit(@NotNull Player player) {
         Worn was = player.getTag(WORN);
         if (mode(player) == null && was == null) return false;
+        player.removeTag(RETURN); // the body they walked in with, not the one the ride left
         cameraHome(player);
         player.removeTag(MODE);
         player.removeTag(WORN);
@@ -114,7 +119,13 @@ public final class SpectatorMode {
 
     /** The camera rides {@code target}; TRUE mode only. */
     public static boolean camera(@NotNull Player player, @NotNull Entity target) {
+        return camera(player, target, null);
+    }
+
+    /** {@link #camera} that wears {@code returnTo} once the camera comes home - for a ghost who took TRUE only to ride. */
+    public static boolean camera(@NotNull Player player, @NotNull Entity target, @Nullable Mode returnTo) {
         if (mode(player) != Mode.TRUE || target == player || target.isRemoved()) return false;
+        if (returnTo == null) player.removeTag(RETURN); else player.setTag(RETURN, returnTo.name());
         player.setTag(CAMERA, target);
         WorldPolicy.refreshSight(player); // a rider's body reaches no one
         if (target.getInstance() == player.getInstance()) player.teleport(target.getPosition());
@@ -143,8 +154,10 @@ public final class SpectatorMode {
         return player.getTag(CAMERA);
     }
 
-    /** The camera back in the player's own eyes, where the ride left them. */
+    /** The camera back in the player's own eyes, where the ride left them, and the body {@link #camera} named. */
     public static void cameraHome(@NotNull Player player) {
+        String returnTo = player.getTag(RETURN);
+        player.removeTag(RETURN);
         Task task = player.getTag(RIDE);
         if (task != null) {
             task.cancel();
@@ -157,5 +170,6 @@ public final class SpectatorMode {
         WorldPolicy.refreshSight(player);
         if (!riding.isRemoved() && riding.getInstance() == player.getInstance()) player.teleport(riding.getPosition());
         player.stopSpectating();
+        if (returnTo != null && mode(player) != null) enter(player, Mode.valueOf(returnTo));
     }
 }
