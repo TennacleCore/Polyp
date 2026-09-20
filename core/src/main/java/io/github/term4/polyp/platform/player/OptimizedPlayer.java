@@ -15,6 +15,7 @@ import io.github.term4.polyp.platform.fixes.client.InventorySync;
 import io.github.term4.polyp.platform.fixes.client.LegacyInventorySlotFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyHealthRoundingFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyPlacementHalfFix;
+import io.github.term4.polyp.platform.fixes.client.LegacyTabGridFix;
 import io.github.term4.polyp.platform.fixes.client.EquipmentSlotsFix;
 import io.github.term4.polyp.platform.fixes.client.SelfMetaFilter;
 import io.github.term4.polyp.util.tick.TickScaler;
@@ -160,6 +161,8 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         }
         p = SpectatorHud.rewrite(this, p);
         p = LegacyHealthRoundingFix.rewrite(this, compat.legacyClient() && fixEnabled(FixesConfig::legacyHealthRounding), p);
+        // not gated on the client: join lands before the protocol is known, and 1.8+ ignores the field
+        p = LegacyTabGridFix.rewrite(p, fixEnabled(FixesConfig::legacyTabGrid));
         super.sendPacket(p);
         EffectResyncFix.afterSpawn(this, p); // a spawn owes this viewer the effects that entity already carries
         // a respawn or join carries the real game mode; the spoof follows it
