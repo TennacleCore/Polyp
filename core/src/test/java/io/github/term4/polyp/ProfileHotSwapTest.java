@@ -26,6 +26,7 @@ class ProfileHotSwapTest extends HeadlessServerTest {
     static void install() {
         FixesSystem.install(polyp, FixesConfig.builder().build()); // douse off at install
         miner = FakePlayer.connect(instance, new Pos(52.5, 43, 20.5), "SwapMiner");
+        polyp.clientInfo().setProtocol(miner.player, 47); // the douse is a legacy-scoped fix
     }
 
     private static void dig(BlockVec base) {

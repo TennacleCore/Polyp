@@ -34,6 +34,7 @@ class LegacyFireDouseFixTest extends HeadlessServerTest {
     static void install() {
         FixesSystem.install(polyp, FixesConfig.builder().legacyFireDouse(FixToggleConfig.on()).build());
         miner = FakePlayer.connect(instance, new Pos(20.5, 43, 20.5), "DouseMiner");
+        polyp.clientInfo().setProtocol(miner.player, 47); // the catalog scopes this fix to legacy clients
         // the fizz is an fx: the miner needs a registry that carries it
         polyp.profiles().setPlayer(miner.player, MechanicsProfile.builder().set(MechanicsKeys.FX, Fx.vanilla18()).build());
     }
