@@ -38,14 +38,15 @@ public final class Knockback {
     }
 
     /**
-     * The combo-duel melee: the same horizontal over MineMen's older additive vertical, {@code VY + 0.3614} outright
-     * with no cap or hold, a ground hit landing the add alone (captured 2026-09-21, 16 of 16 shorts).
+     * The combo-duel melee: the same horizontal over MineMen's older vertical, {@code 0.3614 + min(VY, 0)} with no
+     * hold: a falling victim's VY folds in whole, a rising or grounded one lands the add alone (captured 2026-09-21,
+     * 16 of 16 no-jump shorts and 7 of 8 along a chain).
      */
     public static KnockbackConfig combo() {
         return horizontal()
                 .vertical(COMBO_VERTICAL)
                 .extraVertical(0.0)
-                .verticalBounds((Double) null, (Double) null)
+                .verticalBounds(null, COMBO_VERTICAL)
                 .frictionV(1.0)
                 .addCustomComponent(Knockback::groundHitAdd)
                 .build();
@@ -242,7 +243,7 @@ public final class Knockback {
         return ctx.victimVelocity().y() <= VERTICAL_HOLD_RELEASE ? null : new Vec(kb.x(), VERTICAL_CAP, kb.z());
     }
 
-    private static final double COMBO_VERTICAL = VERTICAL_CAP; // the old KB adds the cap outright
+    private static final double COMBO_VERTICAL = VERTICAL_CAP; // the old KB's add, also its ceiling
 
     // MineMen's ground hit lands the add alone; the -0.0784 a grounded travel step leaves in the tracker is not folded
     @Nullable

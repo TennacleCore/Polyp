@@ -22,8 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * MineMen's combo-duel vertical, captured 2026-09-21 on their old KB: the wire short is
- * {@code trunc((VY + 0.3614) * 8000)} with VY the server's motY at the hit, floored to +-0.05, the ground hit the add alone.
- * Air ticks 0 to 15 all matched once the drag was the float 0.98; the shorts here are those captures.
+ * {@code trunc((0.3614 + min(VY, 0)) * 8000)} with VY the server's motY at the hit, floored to +-0.05, the ground hit
+ * the add alone. Air ticks 0 to 15 of a no-jump fall all matched once the drag was the float 0.98, and a chain of hits
+ * through a launch the 1.8 server reads as a jump matched 7 of 8; the shorts here are those captures.
  */
 class Mmc18ComboKbTest extends HeadlessServerTest {
     private static Instance scoped;
@@ -55,6 +56,16 @@ class Mmc18ComboKbTest extends HeadlessServerTest {
     private static double airTickVy(int tick) {
         double vy = 0;
         for (int i = 0; i < tick; i++) vy = (vy - VelocityConfig.GRAVITY) * VelocityConfig.DRAG_V;
+        return vy;
+    }
+
+    /** The 1.8 server's motY {@code ticks} travel steps after a launch it read as a jump, zeroed below 0.005 as {@code EntityLiving.m()} does. */
+    private static double jumpVy(int ticks) {
+        double vy = VelocityConfig.JUMP_VELOCITY;
+        for (int i = 0; i < ticks; i++) {
+            if (Math.abs(vy) < VelocityConfig.ZERO_BELOW) vy = 0;
+            vy = (vy - VelocityConfig.GRAVITY) * VelocityConfig.DRAG_V;
+        }
         return vy;
     }
 
@@ -100,13 +111,31 @@ class Mmc18ComboKbTest extends HeadlessServerTest {
     }
 
     @Test
-    void risingVictimUncapped() {
+    void risingVictimAddAlone() {
         FakePlayer victim = FakePlayer.connect(scoped, new Pos(8.5, 200, 8.5), "ComboJ");
         FakePlayer attacker = FakePlayer.connect(scoped, new Pos(6.5, 200, 8.5, 90f, 0f), "ComboJA");
         try {
             move(victim.player, 200.0, false);
-            MotionTracker.foldDelivered(victim.player, new Vec(0, 0.3332, 0)); // the jump's first air tick
-            assertEquals(5556, hitShorts(victim, attacker)); // 0.6946, past the melee model's 0.3614 cap
+            MotionTracker.foldDelivered(victim.player, new Vec(0, jumpVy(1), 0));
+            assertEquals(2891, hitShorts(victim, attacker)); // never 0.6946: the fold only lowers the add
+        } finally {
+            victim.player.remove();
+            attacker.player.remove();
+        }
+    }
+
+    /** The chaining log: hits at the logged air ticks read the previous travel step of the jump-seeded chain. */
+    @Test
+    void chainMatchesTheCapture() {
+        int[][] hits = {{2, 2891}, {4, 2891}, {7, 2263}, {9, 1046}, {11, -400}, {14, -1788}, {16, -2845}};
+        FakePlayer victim = FakePlayer.connect(scoped, new Pos(8.5, 200, 8.5), "ComboC");
+        FakePlayer attacker = FakePlayer.connect(scoped, new Pos(6.5, 200, 8.5, 90f, 0f), "ComboCA");
+        try {
+            move(victim.player, 200.0, false);
+            for (int[] hit : hits) {
+                MotionTracker.foldDelivered(victim.player, new Vec(0, jumpVy(hit[0] - 1), 0));
+                assertEquals(hit[1], hitShorts(victim, attacker), "air tick " + hit[0]);
+            }
         } finally {
             victim.player.remove();
             attacker.player.remove();

@@ -21,7 +21,7 @@ public enum Preset {
     /** {@link #HYPIXEL} with the BedWars-only quirks (the game-wide pearl landing). */
     HYPIXEL_BEDWARS(Hypixel::bedwars, Compat::config),
     MMC18(Mmc18::profile, Compat18::config),
-    /** {@link #MMC18} with the combo-duel vertical, {@code VY + 0.3614} outright with no cap or hold, and no hit delay. */
+    /** {@link #MMC18} with the combo-duel vertical, {@code 0.3614 + min(VY, 0)} with no hold, and no hit delay. */
     MMC18_COMBO(Mmc18::combo, Compat18::config),
     SCRIMS18(Scrims18::profile, Compat18::config);
 
