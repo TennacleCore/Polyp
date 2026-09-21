@@ -29,7 +29,9 @@ public final class SilentDamage {
 
         var maxAttr = player.getAttribute(Attribute.MAX_HEALTH);
         double originalBase = maxAttr.getBaseValue();
-        maxAttr.setBaseValue(Math.max(0.5, newHealth)); // min 0.5 for attribute validity
+        // the client clamps to the MODIFIED max, so a Health Boost modifier has to come off the base too
+        double modifiers = maxAttr.getValue() - originalBase;
+        maxAttr.setBaseValue(Math.max(0.5, newHealth - modifiers)); // min 0.5 for attribute validity
         player.setHealth(newHealth);
         maxAttr.setBaseValue(originalBase);
     }

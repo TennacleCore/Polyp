@@ -1,15 +1,16 @@
 package io.github.term4.polyp.platform.fixes.client;
 
+import net.minestom.server.listener.UseItemListener;
 import net.minestom.server.tag.Tag;
 import net.minestom.server.event.player.PlayerPacketEvent;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.MinecraftServer;
+import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.Polyp;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.PlayerUseItemOnBlockEvent;
-import net.minestom.server.listener.UseItemListener;
 import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
 
 /**
@@ -44,6 +45,9 @@ public final class LegacyUseOnBlockFix {
             MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
                 if (!p.isOnline() || !Boolean.TRUE.equals(p.getTag(PENDING))) return;
                 p.removeTag(PENDING);
+                // straight to the listener, not the queue: a queued use lands a tick later, which a bow draw feels.
+                // The queue's own hook is what marks the slot unverified, so call it here instead
+                if (p instanceof OptimizedPlayer op) op.inventorySync().onPredictedUse(p.getItemInHand(hand));
                 UseItemListener.useItemListener(new ClientUseItemPacket(hand, 0,
                         p.getPosition().yaw(), p.getPosition().pitch()), p);
             });

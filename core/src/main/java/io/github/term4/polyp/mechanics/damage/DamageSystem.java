@@ -528,6 +528,9 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         return install(polyp, polyp.profiles().resolve(null, MechanicsKeys.DAMAGE), extraTypes);
     }
 
+    /** Whether {@code key}'s producer is running: a scoped config naming a disabled type is inert. */
+    public boolean producerRunning(Key key) { return registry.isEnabled(key); }
+
     /** The enabled types run their own tick hooks and listeners, so a teardown has to stop them. */
     @Override public void uninstall() {
         for (Key key : registry.enabledKeys()) registry.disable(key);

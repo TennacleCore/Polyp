@@ -8,6 +8,9 @@ import net.minestom.server.network.packet.client.play.ClientPlayerPositionStatus
 import net.minestom.server.network.packet.client.play.ClientPlayerRotationPacket;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Set;
+import java.util.IdentityHashMap;
+import java.util.Collections;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
@@ -30,9 +33,13 @@ final class AttackAimSync {
 
     private @Nullable ClientAttackPacket held;
     private long heldAt;
+    // addPacketToQueue re-feeds hand the SAME instances back through here: without this the attack is held a
+    // second time and its synthetic look duplicated, which inverts the ordering the sync exists for
+    private final Set<ClientPacket> emitted = Collections.newSetFromMap(new IdentityHashMap<>());
 
     /** Routes one arriving packet to {@code out}, possibly holding an attack until its tick's look is applied. */
-    void intercept(ClientPacket packet, BooleanSupplier gate, Consumer<ClientPacket> out) {
+    synchronized void intercept(ClientPacket packet, BooleanSupplier gate, Consumer<ClientPacket> out) {
+        if (emitted.remove(packet)) { out.accept(packet); return; }
         if (held != null && System.nanoTime() - heldAt > HOLD_TIMEOUT_NANOS) releaseHeld(out);
         if (packet instanceof ClientAttackPacket attack) {
             if (held != null) releaseHeld(out); // a vanilla 1.8 client can't double-attack in a tick; don't stack
@@ -53,7 +60,10 @@ final class AttackAimSync {
             case ClientPlayerRotationPacket rot -> { out.accept(rot); releaseHeld(out); }
             // position + look: apply the look alone first (position stays pre-move for the away-vector), attack, then the move
             case ClientPlayerPositionAndRotationPacket posRot -> {
-                out.accept(new ClientPlayerRotationPacket(posRot.position().yaw(), posRot.position().pitch(), posRot.flags()));
+                ClientPlayerRotationPacket look =
+                        new ClientPlayerRotationPacket(posRot.position().yaw(), posRot.position().pitch(), posRot.flags());
+                emitted.add(look);
+                out.accept(look);
                 releaseHeld(out);
                 out.accept(posRot);
             }
@@ -65,7 +75,9 @@ final class AttackAimSync {
     }
 
     private void releaseHeld(Consumer<ClientPacket> out) {
-        out.accept(held);
+        ClientAttackPacket attack = held;
         held = null;
+        emitted.add(attack);
+        out.accept(attack);
     }
 }

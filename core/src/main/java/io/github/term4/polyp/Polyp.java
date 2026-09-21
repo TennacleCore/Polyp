@@ -137,6 +137,8 @@ public final class Polyp {
         try {
             doInit();
         } catch (RuntimeException | Error e) {
+            // the mounts already made would otherwise double on the retry this flag invites
+            for (EventNode<? extends Event> child : List.copyOf(root.getChildren())) root.removeChild(child);
             initialized = false;
             throw e;
         }

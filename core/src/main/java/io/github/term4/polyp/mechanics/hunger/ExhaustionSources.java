@@ -70,6 +70,7 @@ final class ExhaustionSources {
         }
     }
 
+    // the victim's accumulator is read-modify-write and its own tick drains it: charge on the victim's thread
     private static void onDamage(HungerSystem hunger, DamageAppliedEvent e) {
         // vanilla gates the victim's charge on non-zero post-mitigation damage
         if (e.target() instanceof Player victim && e.dealt() != 0) {
