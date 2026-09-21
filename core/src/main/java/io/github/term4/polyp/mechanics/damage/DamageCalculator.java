@@ -27,8 +27,9 @@ public final class DamageCalculator {
 
     public DamageResult compute(DamageSnapshot snap) {
         ResolvedDamageConfig cfg = resolveConfig(snap);
-        return new DamageResult(cfg.baseAmount());
+        return new DamageResult(cfg.baseAmount(), cfg);
     }
 
-    public record DamageResult(float amount) {}
+    /** {@code config} is what {@code amount} was read from: the caller reuses it instead of resolving again. */
+    public record DamageResult(float amount, ResolvedDamageConfig config) {}
 }

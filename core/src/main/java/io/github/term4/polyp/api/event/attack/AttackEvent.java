@@ -35,12 +35,19 @@ public final class AttackEvent extends CancellableMechanicsEvent<AttackSnapshot>
     public @Nullable AttackConfig config() { return finalSnap().config(); }
     public void config(AttackConfig config) { finalSnap(finalSnap().withConfig(config)); }
 
-    /** Re-resolved from {@link #finalSnap()} each call, so it reflects listener changes. */
+    private @Nullable AttackSnapshot resolvedFor;
+    private @Nullable AttackConfigResolver.ResolvedAttackConfig resolved;
+
+    /** Resolved from {@link #finalSnap()}, so it reflects listener changes; memoized per snapshot (the hit reads it seven times). */
     public AttackConfigResolver.ResolvedAttackConfig resolvedConfig() {
         AttackSnapshot s = finalSnap();
-        return s.config() != null
-                ? AttackConfigResolver.resolve(s.config(), AttackConfigResolver.AttackContext.of(s, services()))
-                : AttackConfigResolver.ResolvedAttackConfig.defaults();
+        if (s != resolvedFor) {
+            resolved = s.config() != null
+                    ? AttackConfigResolver.resolve(s.config(), AttackConfigResolver.AttackContext.of(s, services()))
+                    : AttackConfigResolver.ResolvedAttackConfig.defaults();
+            resolvedFor = s;
+        }
+        return resolved;
     }
 
     /** Whether the attack proceeds to the ruleset ({@code false} = detected but not processed). */

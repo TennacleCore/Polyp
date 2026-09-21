@@ -72,6 +72,7 @@ public final class DamageConfig extends Config<DamageContext, DamageConfig> {
 
     /** Merges this config over base. */
     public DamageConfig fromBase(DamageConfig base) {
+        if (this == base) return this;
         Map<Key, DamageTypeConfig> mergedTypes = new LinkedHashMap<>(base.typeConfigs);
         mergedTypes.putAll(typeConfigs);
         Builder b = new Builder();

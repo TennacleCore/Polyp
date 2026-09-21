@@ -38,6 +38,9 @@ public final class Attack {
 
     private record LegacyAttack(Services services) implements AttackEvent.AttackRule {
         @Override public void processAttack(AttackEvent event) {
+            // crit runs a collision probe and item reads the hand: freeze both, the hit reads them twice
+            event.overrideCritical(event.critical());
+            event.overrideItem(event.item());
             DamageSystem.DamageOutcome result = DamageSystem.DamageOutcome.FRESH_DAMAGE; // no damage system -> nothing absorbs the hit
             DamageSystem dmg = services.damage();
             if (dmg != null && event.target() != null) {

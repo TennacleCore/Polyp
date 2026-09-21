@@ -272,7 +272,9 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
             return DamageOutcome.BLOCKED;
         }
 
-        ResolvedDamageConfig resolved = calc.resolveConfig(typeCtx.snap());
+        // the same snapshot the base amount came from, unless a listener swapped the config under us
+        ResolvedDamageConfig resolved = typeCtx.snap() == working
+                ? result.config() : calc.resolveConfig(typeCtx.snap());
 
         boolean overdamage = Boolean.TRUE.equals(pick(typeCfg.overdamage(typeCtx), resolved.enableOverdamage()));
         boolean generalSilent = Boolean.TRUE.equals(pick(typeCfg.silent(typeCtx), resolved.silent()));

@@ -10,6 +10,7 @@ import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
 import net.minestom.server.network.packet.server.play.UpdateHealthPacket;
 import net.minestom.server.tag.Tag;
 
+import java.util.function.BooleanSupplier;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,16 +26,17 @@ public final class LegacyHealthRoundingFix {
 
     private LegacyHealthRoundingFix() {}
 
-    /** The same instance unless {@code apply} (legacy client + toggle) and the packet carries the viewer's health. */
-    public static SendablePacket rewrite(Player viewer, boolean apply, SendablePacket packet) {
-        if (!apply) return packet;
+    /** The same instance unless {@code apply} (legacy client + toggle) and the packet carries the viewer's health.
+     *  {@code apply} is read only for a health-carrying packet: it is a scope walk. */
+    public static SendablePacket rewrite(Player viewer, BooleanSupplier apply, SendablePacket packet) {
         ServerPacket server = PacketShapes.unwrapStateless(packet);
         if (server instanceof UpdateHealthPacket uh) {
+            if (!apply.getAsBoolean()) return packet;
             return new UpdateHealthPacket(next(viewer, uh.health()), uh.food(), uh.foodSaturation());
         }
         if (server instanceof EntityMetaDataPacket meta && meta.entityId() == viewer.getEntityId()) {
             Metadata.Entry<?> entry = meta.entries().get(HEALTH_INDEX);
-            if (entry != null && entry.value() instanceof Float health) {
+            if (entry != null && entry.value() instanceof Float health && apply.getAsBoolean()) {
                 Map<Integer, Metadata.Entry<?>> entries = new HashMap<>(meta.entries());
                 entries.put(HEALTH_INDEX, Metadata.Float(next(viewer, health)));
                 return new EntityMetaDataPacket(meta.entityId(), entries);

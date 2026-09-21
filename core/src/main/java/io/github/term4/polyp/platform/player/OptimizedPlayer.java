@@ -43,6 +43,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
+import java.util.function.BooleanSupplier;
 import java.util.concurrent.TimeUnit;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.utils.time.Cooldown;
@@ -66,6 +67,8 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
     private final UseItemAimSync aimSync = new UseItemAimSync();
     private final AttackAimSync attackSync = new AttackAimSync();
     private final InventorySync inventorySync = new InventorySync();
+    private final BooleanSupplier healthRounding =
+            () -> compat.legacyClient() && fixEnabled(FixesConfig::legacyHealthRounding);
 
     public OptimizedPlayer(PlayerConnection connection, GameProfile gameProfile) {
         super(connection, gameProfile);
@@ -160,7 +163,7 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
             if (p == null) return; // redundant slot echo: the client already shows it
         }
         p = SpectatorHud.rewrite(this, p);
-        p = LegacyHealthRoundingFix.rewrite(this, compat.legacyClient() && fixEnabled(FixesConfig::legacyHealthRounding), p);
+        p = LegacyHealthRoundingFix.rewrite(this, healthRounding, p);
         // not gated on the client: join lands before the protocol is known, and 1.8+ ignores the field
         if (p instanceof JoinGamePacket) p = LegacyTabGridFix.rewrite(p, tabSlots());
         super.sendPacket(p);

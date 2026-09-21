@@ -82,6 +82,11 @@ public final class DrowningDamage extends DamageType implements EnvironmentalTic
     @Override
     public void tick(LivingEntity living, DamageSystem sys) {
         if (living.getInstance() == null) return;
+        // the cheap state first: a dry entity with full air has nothing to drain or refill, and the resolve below
+        // is a snapshot, a context and an overlay per entity per tick
+        Integer air0 = living.getTag(AIR);
+        boolean submerged = headInWater(living);
+        if (air0 == null && !submerged) return;
 
         DamageSnapshot snap = DamageSnapshot.of(living, this);
         DamageContext ctx = sys.contextFor(snap);
@@ -97,10 +102,9 @@ public final class DrowningDamage extends DamageType implements EnvironmentalTic
             if (r != null) refill = r;
         }
 
-        Integer stored = living.getTag(AIR);
-        int air = stored != null ? stored : maxAir;
+        int air = air0 != null ? air0 : maxAir;
 
-        boolean inWater = headInWater(living);
+        boolean inWater = submerged;
         boolean canBreathe = !inWater || living.hasEffect(PotionEffect.WATER_BREATHING); // identical 1.8/26; invulnerable already filtered
 
         if (!canBreathe) {

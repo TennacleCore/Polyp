@@ -14,6 +14,7 @@ import net.minestom.server.item.component.BlocksAttacks;
 import net.minestom.server.utils.Unit;
 import io.github.term4.polyp.mechanics.blocking.BlockingSystem;
 import io.github.term4.polyp.platform.PacketShapes;
+import net.minestom.server.network.packet.server.ServerPacket;
 import net.minestom.server.network.packet.server.SendablePacket;
 import net.minestom.server.network.packet.server.play.EntityEquipmentPacket;
 import net.minestom.server.network.packet.server.play.SetCursorItemPacket;
@@ -258,9 +259,11 @@ public final class CompatState {
      * next full {@link WindowItemsPacket}.
      */
     public @NotNull SendablePacket rewriteItems(@NotNull SendablePacket packet) {
-        Rewrites r = rewrites(); // the five knobs, read once per packet rather than per item
+        ServerPacket server = PacketShapes.unwrapStateless(packet);
+        if (!carriesItems(server)) return packet; // the shape first: the knobs below are five resolves
+        Rewrites r = rewrites(); // read once per packet rather than per item
         if (!r.any()) return packet;
-        return switch (PacketShapes.unwrapStateless(packet)) {
+        return switch (server) {
             case SetSlotPacket p -> new SetSlotPacket(p.windowId(), p.stateId(), p.slot(), rewrite(p.itemStack(), r));
             case SetPlayerInventorySlotPacket p -> new SetPlayerInventorySlotPacket(p.slot(), rewrite(p.itemStack(), r));
             case WindowItemsPacket p -> new WindowItemsPacket(p.windowId(), p.stateId(),
@@ -292,6 +295,12 @@ public final class CompatState {
             if (prototype != null) out = out.with(DataComponents.USE_COOLDOWN, prototype);
         }
         return out;
+    }
+
+    private static boolean carriesItems(@Nullable ServerPacket packet) {
+        return packet instanceof SetSlotPacket || packet instanceof SetPlayerInventorySlotPacket
+                || packet instanceof WindowItemsPacket || packet instanceof SetCursorItemPacket
+                || packet instanceof EntityEquipmentPacket;
     }
 
     private record Rewrites(boolean range, boolean throwSwing, boolean blockPose, boolean glider, boolean cooldowns) {
