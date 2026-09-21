@@ -123,7 +123,10 @@ public class ArrowEntity extends ManagedProjectile {
         // vanilla: ceil(speed * (damage + Power bonus)), +rand(i/2+2) on crit
         double damage = hit.damage();
         if (powerLevel() > 0) damage += powerLevel() * 0.5 + 0.5;
-        int dmg = (int) Math.ceil(velocityBt.length() * damage);
+        // vanilla reads the CLIENT-rate velocity: a coarse scope stores the server step, which is scaled
+        double speed = subStepping() ? velocityBt.length()
+                : velocityBt.length() / Math.max(1.0e-6, TickScaler.stepsPerTick(scopeSubject()));
+        int dmg = (int) Math.ceil(speed * damage);
         if (dmg < 0) dmg = 0;
         Boolean roll = hit.critDamage();
         if (roll != null ? roll : critical) dmg += ThreadLocalRandom.current().nextInt(dmg / 2 + 2);

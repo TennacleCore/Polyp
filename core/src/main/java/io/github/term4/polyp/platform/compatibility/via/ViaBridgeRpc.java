@@ -174,7 +174,11 @@ public final class ViaBridgeRpc {
         future.whenComplete((ignored, err) -> {
             pending.remove(requestId);
             if (err == null) availability.put(player.getUuid(), Availability.AVAILABLE);
-            else if (err instanceof ViaBridgeException && player.isOnline()) availability.put(player.getUuid(), Availability.UNAVAILABLE);
+            // a later timeout is a hiccup: only the login probe may write UNAVAILABLE, or one slow call
+            // costs the player the exact wire for the rest of the session
+            else if (err instanceof ViaBridgeException && player.isOnline()) {
+                availability.putIfAbsent(player.getUuid(), Availability.UNAVAILABLE);
+            }
         });
         return future;
     }

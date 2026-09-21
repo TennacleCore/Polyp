@@ -85,7 +85,9 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
             if (!(e.getTarget() instanceof ProjectileEntity target)) return;
             // viewing is not being: a spectator's punch must not steer what it only watches
             if (e.getEntity() instanceof Player p && MechanicsWorld.viewed(p) != MechanicsWorld.of(p)) return;
-            target.deflectBy(e.getEntity());
+            // the attacker's partition is not the projectile's: land the redirect on its own tick
+            Entity by = e.getEntity();
+            target.scheduler().scheduleNextTick(() -> { if (!target.isRemoved()) target.deflectBy(by); });
         });
     }
 

@@ -3,6 +3,9 @@ package io.github.term4.polyp.platform.player;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
+import net.minestom.server.event.Event;
+import net.minestom.server.event.EventNode;
+import net.minestom.server.event.instance.InstanceUnregisterEvent;
 import net.minestom.server.event.instance.RemoveEntityFromInstanceEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.instance.Instance;
@@ -44,6 +47,11 @@ public final class Wardrobe {
 
     public static void install() {
         if (!INSTALLED.compareAndSet(false, true)) return;
+        // a per-match instance registered here would otherwise be pinned for the process's life
+        EventNode<Event> lifecycle = EventNode.all("polyp:wardrobe-lifecycle");
+        lifecycle.addListener(InstanceUnregisterEvent.class,
+                e -> forget(e.getInstance()));
+        MinecraftServer.getGlobalEventHandler().addChild(lifecycle);
         var events = MinecraftServer.getGlobalEventHandler();
         events.addListener(RemoveEntityFromInstanceEvent.class, e -> {
             if (e.getEntity() instanceof Player p) leave(p, e.getInstance());
