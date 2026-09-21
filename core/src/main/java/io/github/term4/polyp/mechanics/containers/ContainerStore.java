@@ -29,7 +29,7 @@ final class ContainerStore {
     /** Keys whose fill has run: an emptied container stays empty. */
     final Set<String> filled = ConcurrentHashMap.newKeySet();
     final Map<BlockVec, ContainerTypeConfig> declared = new ConcurrentHashMap<>();
-    final Map<String, Window> windows = new HashMap<>();
+    final Map<String, Window> windows = new ConcurrentHashMap<>();
 
     static @NotNull ContainerStore of(@NotNull MechanicsWorld world) {
         ContainerStore store = world.getTag(TAG);
@@ -59,6 +59,11 @@ final class ContainerStore {
             holdings.remove(key);
             return;
         }
-        holdings.computeIfAbsent(key, k -> new ItemStack[size])[slot] = stack;
+        ItemStack[] slots = holdings.computeIfAbsent(key, k -> new ItemStack[size]);
+        if (slots.length < size) { // a restore may hand back fewer slots than the block declares
+            slots = java.util.Arrays.copyOf(slots, size);
+            holdings.put(key, slots);
+        }
+        slots[slot] = stack;
     }
 }

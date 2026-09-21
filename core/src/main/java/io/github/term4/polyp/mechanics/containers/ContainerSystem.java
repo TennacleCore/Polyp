@@ -25,6 +25,7 @@ import net.minestom.server.event.inventory.InventoryCloseEvent;
 import net.minestom.server.event.inventory.InventoryItemChangeEvent;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerBlockInteractEvent;
+import net.minestom.server.event.player.PlayerDisconnectEvent;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.inventory.AbstractInventory;
 import net.minestom.server.inventory.Inventory;
@@ -57,7 +58,8 @@ public final class ContainerSystem extends ScopedSystem<ContainersConfig> {
     private final Map<AbstractInventory, ContainerStore.Window> open = new ConcurrentHashMap<>();
     /** Contents waiting for the block's own dropped item to carry them ({@link Spill#PACK}). */
     private final Map<BlockVec, ItemStack[]> packing = new ConcurrentHashMap<>();
-    private boolean loading;
+    // a load runs on the opener's thread while another viewer's change lands on theirs
+    private final ThreadLocal<Boolean> loading = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     private ContainerSystem(Polyp polyp, ContainersConfig config) {
         super(polyp, MechanicsKeys.CONTAINERS, config);
@@ -69,6 +71,11 @@ public final class ContainerSystem extends ScopedSystem<ContainersConfig> {
             if (!e.isCancelled()) broken(MechanicsWorld.viewed(e.getPlayer()), e.getBlockPosition(), e.getBlock(), e.getPlayer());
         }));
         node.addListener(ItemSpawnEvent.class, this::onItemSpawn);
+        // Player.remove pulls the viewer with no close event, so the lid would stay open and the window listed
+        node.addListener(PlayerDisconnectEvent.class, e -> {
+            AbstractInventory inventory = e.getPlayer().getOpenInventory();
+            if (inventory != null) close(inventory, e.getPlayer());
+        });
     }
 
     public static ContainerSystem install(Polyp polyp) {
@@ -197,19 +204,19 @@ public final class ContainerSystem extends ScopedSystem<ContainersConfig> {
 
     private void load(Inventory inventory, int offset, int half, ItemStack @Nullable [] slots, boolean silent) {
         if (slots == null) return;
-        loading = silent;
+        if (silent) loading.set(Boolean.TRUE);
         try {
             for (int i = 0; i < half && i < slots.length; i++) {
                 if (slots[i] != null && !slots[i].isAir()) inventory.setItemStack(offset + i, slots[i]);
             }
         } finally {
-            loading = false;
+            loading.remove();
         }
     }
 
     private void onChange(InventoryItemChangeEvent e) {
         ContainerStore.Window window = open.get(e.getInventory());
-        if (window == null || loading) return;
+        if (window == null || loading.get()) return;
         int half = window.half();
         String key = window.keys().get(e.getSlot() / half);
         int slot = e.getSlot() % half;
@@ -218,12 +225,16 @@ public final class ContainerSystem extends ScopedSystem<ContainersConfig> {
     }
 
     private void onClose(InventoryCloseEvent e) {
-        ContainerStore.Window window = open.get(e.getInventory());
+        close(e.getInventory(), e.getPlayer());
+    }
+
+    private void close(AbstractInventory inventory, Player by) {
+        ContainerStore.Window window = open.get(inventory);
         if (window == null) return;
-        // the closing viewer is still counted: the event runs before the removal
+        // the leaving viewer is still counted: both events run before the removal
         if (window.inventory().getViewers().size() > 1) return;
         drop(window);
-        lid(window, false, e.getPlayer());
+        lid(window, false, by);
     }
 
     private void drop(ContainerStore.Window window) {

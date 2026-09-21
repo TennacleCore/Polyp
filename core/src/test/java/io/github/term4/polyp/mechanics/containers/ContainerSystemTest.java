@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -234,6 +235,27 @@ class ContainerSystemTest extends HeadlessServerTest {
             spawned.forEach(Entity::remove); // other classes count the shared instance's items
             instance.setBlock(pos, Block.AIR);
             p.player.remove();
+        }
+    }
+
+    /** Player.remove pulls the viewer with no close event, so the window would stay listed and be handed on. */
+    @Test
+    void disconnectDropsTheWindow() {
+        BlockVec pos = new BlockVec(34, Y, Z);
+        FakePlayer leaver = FakePlayer.connect(instance, new Pos(34.5, Y, Z + 2.5), "ChestLeaver");
+        FakePlayer next = FakePlayer.connect(instance, new Pos(34.5, Y, Z + 3.5), "ChestNext");
+        try {
+            instance.setBlock(pos, Block.CHEST);
+            click(leaver, pos);
+            Inventory abandoned = window(leaver);
+            leaver.player.remove();
+
+            click(next, pos);
+            assertNotSame(abandoned, window(next), "a fresh window, not the leaver's");
+        } finally {
+            instance.setBlock(pos, Block.AIR);
+            leaver.player.remove();
+            next.player.remove();
         }
     }
 
