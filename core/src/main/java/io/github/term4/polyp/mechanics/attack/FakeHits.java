@@ -121,7 +121,10 @@ public final class FakeHits {
             if (rule == null || TickSystem.tick(atk) - s.swingTick > look) s.swingTick = Long.MIN_VALUE;
             else if (tryFill(polyp, atk, s, rule, e.getNewPosition())) s.swingTick = Long.MIN_VALUE;
         });
-        node.addListener(PlayerDisconnectEvent.class, e -> swings.remove(e.getPlayer()));
+        node.addListener(PlayerDisconnectEvent.class, e -> {
+            swings.remove(e.getPlayer());
+            for (Swing s : swings.values()) if (s.lastVictim == e.getPlayer()) s.lastVictim = null;
+        });
         polyp.install(node);
     }
 

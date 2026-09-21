@@ -19,6 +19,7 @@ import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.PlayerCancelDiggingEvent;
 import net.minestom.server.event.player.PlayerFinishDiggingEvent;
+import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.player.PlayerStartDiggingEvent;
 import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
@@ -117,6 +118,8 @@ public final class AttackLog {
         node.addListener(PlayerStartDiggingEvent.class, e -> e.getPlayer().setTag(DIGGING, true));
         node.addListener(PlayerCancelDiggingEvent.class, e -> e.getPlayer().setTag(DIGGING, false));
         node.addListener(PlayerFinishDiggingEvent.class, e -> e.getPlayer().setTag(DIGGING, false));
+        // an interrupted dig (teleport, instance swap) sends no cancel packet
+        node.addListener(PlayerSpawnEvent.class, e -> e.getPlayer().removeTag(DIGGING));
         polyp.install(node);
     }
 
