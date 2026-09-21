@@ -3,6 +3,7 @@ package io.github.term4.polyp.presets.mmc18;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.fx.Fx;
+import io.github.term4.polyp.mechanics.damage.DamageConfig;
 import io.github.term4.polyp.presets.vanilla18.Vanilla18;
 
 /**
@@ -28,6 +29,14 @@ public final class Mmc18 {
                 .set(MechanicsKeys.PROJECTILES, Projectiles.config())
                 // arrow hit-marker ding to the shooter; vanilla presets don't
                 .set(MechanicsKeys.FX, Fx.vanilla18().register(Fx.ARROW_HIT_PLAYER, Fx.arrowHitMarker()))
+                .build();
+    }
+
+    /** {@link #profile()} with the combo-duel vertical, {@link Knockback#combo()}, and no hit delay. */
+    public static MechanicsProfile combo() {
+        return profile().toBuilder()
+                .set(MechanicsKeys.KNOCKBACK, Knockback.combo())
+                .mutate(MechanicsKeys.DAMAGE, damage -> DamageConfig.builder(damage).invulTicks(0).build())
                 .build();
     }
 }

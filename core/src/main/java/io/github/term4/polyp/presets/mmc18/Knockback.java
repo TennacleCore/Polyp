@@ -15,7 +15,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * mmc18 melee knockback, reverse-engineered from MineMen captures. Horizontal magnitude is the product
  * {@code H = B(L) * axial * scale(d)} - the vanilla base pipeline supplies only the direction; see {@link #baseStrength},
- * {@link #axialFactor}, {@link #rangeReduction}. Vertical is the launch-hold then decay ({@link #verticalLaunchHold}).
+ * {@link #axialFactor}, {@link #rangeReduction}. Vertical is the launch-hold then decay ({@link #verticalLaunchHold}); {@link #combo()} carries the older additive vertical.
  *
  * <p>The 1.8 per-axis +-3.9 wire cap is NOT applied here: it lives in {@code LegacyVelocity} (gated by {@code quantizeVelocity}).
  * The vertical fold reads {@code ctx.victimVelocity()} - the velocity rule inherited from {@code Vanilla18}.
@@ -28,20 +28,38 @@ public final class Knockback {
     static final int SPRINT_BUFFER = 5;
 
     public static KnockbackConfig melee() {
+        return horizontal()
+                .vertical(VERTICAL_BASE)
+                .extraVertical(0.0)
+                .verticalBounds(null, VERTICAL_CAP)
+                .frictionV(VERTICAL_FRIC)
+                .addCustomComponent(Knockback::verticalLaunchHold)
+                .build();
+    }
+
+    /**
+     * The combo-duel melee: the same horizontal over MineMen's older additive vertical, {@code VY + 0.3614} outright
+     * with no cap or hold, a ground hit landing the add alone (captured 2026-09-21, 16 of 16 shorts).
+     */
+    public static KnockbackConfig combo() {
+        return horizontal()
+                .vertical(COMBO_VERTICAL)
+                .extraVertical(0.0)
+                .verticalBounds((Double) null, (Double) null)
+                .frictionV(1.0)
+                .addCustomComponent(Knockback::groundHitAdd)
+                .build();
+    }
+
+    private static KnockbackConfig.Builder horizontal() {
         return KnockbackConfig.builder(Vanilla18.knockback())
                 .sprintBuffer(SPRINT_BUFFER)
                 .horizontal(Knockback::baseStrength)
                 .extraHorizontal(0.0)
-                .vertical(VERTICAL_BASE)
-                .extraVertical(0.0)
-                .verticalBounds(null, VERTICAL_CAP)
                 .yawWeight(0.5)
                 .frictionH(0.0)
-                .frictionV(VERTICAL_FRIC)
-                .addCustomComponent(Knockback::verticalLaunchHold)
                 .addCustomComponent(Knockback::axialFactor)
-                .addCustomComponent(Knockback::rangeReduction)
-                .build();
+                .addCustomComponent(Knockback::rangeReduction);
     }
 
     /**
@@ -222,5 +240,14 @@ public final class Knockback {
     @Nullable
     private static Vec verticalLaunchHold(KnockbackContext ctx, Vec kb) {
         return ctx.victimVelocity().y() <= VERTICAL_HOLD_RELEASE ? null : new Vec(kb.x(), VERTICAL_CAP, kb.z());
+    }
+
+    private static final double COMBO_VERTICAL = VERTICAL_CAP; // the old KB adds the cap outright
+
+    // MineMen's ground hit lands the add alone; the -0.0784 a grounded travel step leaves in the tracker is not folded
+    @Nullable
+    private static Vec groundHitAdd(KnockbackContext ctx, Vec kb) {
+        Entity target = ctx.snap().target();
+        return target != null && target.isOnGround() ? new Vec(kb.x(), COMBO_VERTICAL, kb.z()) : null;
     }
 }
