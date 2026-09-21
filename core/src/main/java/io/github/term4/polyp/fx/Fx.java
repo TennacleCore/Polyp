@@ -167,7 +167,7 @@ public final class Fx {
 
     // 1.8 TileEntityChest.update: random.chestopen / chestclosed 0.5F, pitch rand*0.1+0.9, to everyone near; a
     // 1.8 client plays its own copy off the block action too, as it did on a 1.8 server. The ender chest has the
-    // same two sounds in 1.8 (TileEntityEnderChest); its own are 1.9+, and the 1.8 wire has no name for them
+    // same two sounds in 1.8 (TileEntityEnderChest); its own are 1.9+
     private static @NotNull FxHandler containerSound(boolean opening, boolean modern) {
         return ctx -> {
             Block block = ctx.detail(Block.class);
