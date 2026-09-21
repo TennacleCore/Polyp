@@ -58,6 +58,9 @@ final class ExhaustionSources {
             hunger.chargePriced(p, p.isSprinting() ? HungerSystem.SPRINT_JUMP_COST : HungerSystem.JUMP_COST, 1f);
         double h2 = dx * dx + dz * dz;
         if (h2 == 0 && dy == 0) return;
+        // the block scans below are ~15 reads per move packet; a scope pricing none of these wants none of them
+        if (!hunger.prices(p, HungerSystem.DIVE_COST) && !hunger.prices(p, HungerSystem.SWIM_COST)
+                && !hunger.prices(p, HungerSystem.SPRINT_COST) && !hunger.prices(p, HungerSystem.WALK_COST)) return;
         if (eyeInWater(p)) {
             hunger.chargePriced(p, HungerSystem.DIVE_COST, (float) Math.sqrt(h2 + dy * dy));
         } else if (BlockContact.touching(p, b -> b.compare(Block.WATER))) {

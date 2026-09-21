@@ -157,8 +157,12 @@ public final class ItemDamageSystem implements MechanicsModule {
      * Returns true when this destroyed it.
      */
     public boolean hurt(ItemEntity item, Key source, float amount) {
-        ItemDamageConfig cfg = configFor(item);
-        if (!on(cfg, item) || item.isRemoved() || immune(item, source)) return false;
+        return hurt(item, source, amount, configFor(item));
+    }
+
+    // the tick resolves once and passes it down: the walk is per item per tick otherwise
+    private boolean hurt(ItemEntity item, Key source, float amount, @Nullable ItemDamageConfig cfg) {
+        if (!on(cfg, item) || item.isRemoved() || immune(item, source, cfg)) return false;
         Float priced = cfg.damage(source);
         float dealt = priced != null ? priced : amount;
         if (!(dealt > 0)) return false;
@@ -171,8 +175,11 @@ public final class ItemDamageSystem implements MechanicsModule {
 
     /** Scope override (either way) &gt; the stack's resistance component (26.1) &gt; 1.8's nether star. */
     public boolean immune(ItemEntity item, Key source) {
+        return immune(item, source, configFor(item));
+    }
+
+    private boolean immune(ItemEntity item, Key source, @Nullable ItemDamageConfig cfg) {
         Material material = item.getItemStack().material();
-        ItemDamageConfig cfg = configFor(item);
         if (cfg != null) {
             if (cfg.vulnerable(material, source)) return false;
             if (cfg.immune(material, source)) return true;
@@ -227,7 +234,7 @@ public final class ItemDamageSystem implements MechanicsModule {
         int left = ticks - 1;
         item.setTag(FIRE_TICKS, left);
         if (left <= 0) item.getEntityMeta().setOnFire(false);
-        return !(charge && hurt(item, BURN, BURN_DAMAGE));
+        return !(charge && hurt(item, BURN, BURN_DAMAGE, cfg));
     }
 
     /** The blocks the item is standing in. Lava/cactus/flame all charge per tick; flame and lava also ignite. */
@@ -246,7 +253,7 @@ public final class ItemDamageSystem implements MechanicsModule {
         if (hot[3]) extinguish(item); // vanilla fizz: water parks the stock
         if (hot[0]) {
             if (!hot[3]) ignite(item, TickScaler.duration(item, FieldValue.resolve(cfg.lavaIgniteTicks, ctx(item), LAVA_IGNITE_TICKS), KEY));
-            if (hurt(item, LAVA, LAVA_DAMAGE)) return;
+            if (hurt(item, LAVA, LAVA_DAMAGE, cfg)) return;
         }
         if (hot[1]) {
             // vanilla counts contact ticks up from -maxFireTicks and lights the moment it reaches 0
@@ -257,8 +264,8 @@ public final class ItemDamageSystem implements MechanicsModule {
                     ignite(item, TickScaler.duration(item, FieldValue.resolve(cfg.fireIgniteTicks, ctx(item), FIRE_IGNITE_TICKS), KEY));
                 }
             }
-            if (hurt(item, FIRE, FIRE_TICK_DAMAGE)) return;
+            if (hurt(item, FIRE, FIRE_TICK_DAMAGE, cfg)) return;
         }
-        if (hot[2]) hurt(item, CACTUS, CACTUS_DAMAGE);
+        if (hot[2]) hurt(item, CACTUS, CACTUS_DAMAGE, cfg);
     }
 }

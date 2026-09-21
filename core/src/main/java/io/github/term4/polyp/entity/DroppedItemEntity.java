@@ -218,11 +218,26 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
         Vec v0 = getVelocity().div(TPS); // b/t; Minestom already applied gravity + drag this tick
 
         MechanicsWorld world = MechanicsWorld.of(this);
+        // an item at rest out of any fluid can only be moved by the world changing under it; the models below
+        // sample every cell of the box for water and lava, which is ~30 reads a tick for a generator floor
+        if (settled(world, pos, v0)) return;
         Vec v = effectiveModel().tick(this, world, pos, v0);
         if (buried(world, pos)) v = pushOutOfBlocks(world, pos, v);
 
         // silent: setVelocity broadcasts, fighting the client's own item sim
         if (!v.samePoint(v0)) this.velocity = v.mul(TPS);
+    }
+
+    /** Grounded, still, and neither the item's cell nor the one above holds a fluid: two reads instead of thirty. */
+    private boolean settled(MechanicsWorld world, Pos pos, Vec v) {
+        if (!isOnGround() || !v.isZero()) return false;
+        if (getAliveTicks() % 20 == 0) return false; // a periodic full pass catches a fluid placed around it
+        return !fluidAt(world, pos) && !fluidAt(world, pos.add(0, 1, 0));
+    }
+
+    private static boolean fluidAt(MechanicsWorld world, Pos pos) {
+        Block block = world.getBlock(pos, Block.Getter.Condition.TYPE);
+        return block.compare(Block.WATER) || block.compare(Block.LAVA);
     }
 
     // super.update's scan, minus its isPickable() gates: vanilla merges ignore the pickup delay

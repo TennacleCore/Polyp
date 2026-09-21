@@ -127,6 +127,12 @@ public final class HungerSystem extends ScopedSystem<HungerConfig> {
         if (cfg.exhaustionCost(source) != null) exhaust(player, cfg, source, quantity);
     }
 
+    /** Whether {@code source} costs this player anything: a caller does its own sampling only when it does. */
+    public boolean prices(Player player, Key source) {
+        if (!enabled(player)) return false;
+        return configFor(player).exhaustionCost(source) != null;
+    }
+
     public static float exhaustion(Player player) {
         Float v = player.getTag(EXHAUSTION);
         return v != null ? v : 0f;
