@@ -99,7 +99,9 @@ public final class Fx {
      * {@link FxHandler#NONE}, or a listener cancels.
      */
     public static void play(@NotNull Services services, @NotNull Key key, @NotNull FxContext ctx) {
-        FxRegistry registry = services.profiles().resolve(ctx.source(), MechanicsKeys.FX);
+        FxRegistry registry = ctx.source() != null
+                ? services.profiles().resolve(ctx.source(), MechanicsKeys.FX)
+                : services.profiles().resolveWorld(ctx.world(), MechanicsKeys.FX);
         if (registry == null) return;
         FxHandler fx = registry.get(key);
         if (fx == null) return;
