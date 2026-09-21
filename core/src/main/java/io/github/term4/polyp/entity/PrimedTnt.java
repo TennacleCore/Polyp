@@ -13,6 +13,7 @@ import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.tracking.motion.VelocityRule;
 import io.github.term4.polyp.tracking.motion.VelocityConfig;
 import io.github.term4.polyp.util.tick.TickScaler;
+import io.github.term4.polyp.world.EntitySync;
 import io.github.term4.polyp.world.MechanicsWorld;
 import net.kyori.adventure.nbt.BinaryTagTypes;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
@@ -133,13 +134,7 @@ public final class PrimedTnt extends MechanicsEntity {
         // sync is hand-sent in update(); Minestom's scheduled sync would re-send forever at rest and flip the
         // vel/pos wire order. setSynchronizationTicks does NOT reset the seeded tick-20 first sync - clear it too.
         setSynchronizationTicks(config.fuseTicks() + 20L);
-        try {
-            var latch = Entity.class.getDeclaredField("nextSynchronizationTick");
-            latch.setAccessible(true);
-            latch.setLong(this, Long.MAX_VALUE);
-        } catch (ReflectiveOperationException ex) {
-            throw new IllegalStateException(ex);
-        }
+        EntitySync.clearSeeded(this);
     }
 
     // data=1 + real velocity: a data-0 1.8 spawn can't carry velocity, so ViaRewind splits it into a scheduled
