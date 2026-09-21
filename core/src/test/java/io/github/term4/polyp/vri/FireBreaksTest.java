@@ -5,6 +5,7 @@ import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.BlockVec;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.event.EventDispatcher;
@@ -42,6 +43,7 @@ class FireBreaksTest extends HeadlessServerTest {
         instance.setBlock(pos, Block.FIRE);
         long before = fizzes();
         EventDispatcher.call(new PlayerBlockBreakEvent(miner.player, instance, Block.FIRE, Block.AIR, pos, BlockFace.TOP));
+        MinecraftServer.getSchedulerManager().processTickEnd();
         assertEquals(before + 1, fizzes(), "the modern instabreak path fizzes (BaseFireBlock.playerWillDestroy)");
         instance.setBlock(pos, Block.AIR);
     }
@@ -55,6 +57,7 @@ class FireBreaksTest extends HeadlessServerTest {
         long before = fizzes();
         instance.setBlock(base, Block.AIR); // the break event's world state: support already gone
         EventDispatcher.call(new PlayerBlockBreakEvent(miner.player, instance, Block.STONE, Block.AIR, base, BlockFace.NORTH));
+        MinecraftServer.getSchedulerManager().processTickEnd();
         assertTrue(instance.getBlock(base.add(0, 1, 0)).air(), "the floating fire is removed");
         assertEquals(before, fizzes(), "support-loss removal is silent");
     }
@@ -67,6 +70,7 @@ class FireBreaksTest extends HeadlessServerTest {
         instance.setBlock(base.add(0, 1, 0), Block.FIRE);
         instance.setBlock(base.add(1, 1, 0), Block.OAK_PLANKS); // beside the fire, not under it
         EventDispatcher.call(new PlayerBlockBreakEvent(miner.player, instance, Block.STONE, Block.AIR, base, BlockFace.NORTH));
+        MinecraftServer.getSchedulerManager().processTickEnd();
         assertTrue(instance.getBlock(base.add(0, 1, 0)).compare(Block.FIRE), "fire clings to the flammable neighbor");
     }
 
@@ -79,6 +83,7 @@ class FireBreaksTest extends HeadlessServerTest {
         instance.setBlock(fire, Block.FIRE);
         instance.setBlock(fire.add(0, -1, 0), Block.AIR); // nothing sturdy under the fire
         EventDispatcher.call(new PlayerBlockBreakEvent(miner.player, instance, Block.OAK_PLANKS, Block.AIR, wall, BlockFace.NORTH));
+        MinecraftServer.getSchedulerManager().processTickEnd();
         assertTrue(instance.getBlock(fire).air(), "the wall was the fire's only support");
     }
 
@@ -90,6 +95,7 @@ class FireBreaksTest extends HeadlessServerTest {
         instance.setBlock(base.add(0, 1, 0), Block.SOUL_FIRE);
         instance.setBlock(base.add(1, 1, 0), Block.OAK_PLANKS);
         EventDispatcher.call(new PlayerBlockBreakEvent(miner.player, instance, Block.SOUL_SAND, Block.AIR, base, BlockFace.NORTH));
+        MinecraftServer.getSchedulerManager().processTickEnd();
         assertTrue(instance.getBlock(base.add(0, 1, 0)).air(), "soul fire needs its soul base");
     }
 
@@ -103,6 +109,7 @@ class FireBreaksTest extends HeadlessServerTest {
         var breakEvent = new PlayerBlockBreakEvent(miner.player, instance, Block.STONE, Block.AIR, base, BlockFace.NORTH);
         breakEvent.setCancelled(true);
         EventDispatcher.call(breakEvent);
+        MinecraftServer.getSchedulerManager().processTickEnd();
         assertTrue(instance.getBlock(base.add(0, 1, 0)).compare(Block.FIRE), "cancelled break keeps the fire");
         assertEquals(before, fizzes());
     }

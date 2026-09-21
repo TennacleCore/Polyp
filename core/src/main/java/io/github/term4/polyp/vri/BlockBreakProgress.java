@@ -26,6 +26,8 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Broadcasts block-break progress (the crack overlay) - Minestom never sends {@link BlockBreakAnimationPacket}.
@@ -43,6 +45,8 @@ public final class BlockBreakProgress {
     private record Dig(Instance instance, BlockVec pos, long startTick, byte lastStage) {}
 
     private final Map<UUID, Dig> digs = new ConcurrentHashMap<>();
+    private static final AtomicBoolean TICK_HOOK = new AtomicBoolean();
+    private static final AtomicReference<BlockBreakProgress> LIVE = new AtomicReference<>();
 
     private BlockBreakProgress() {}
 
@@ -56,8 +60,15 @@ public final class BlockBreakProgress {
         node.addListener(PlayerCancelDiggingEvent.class, e -> feature.clear(e.getPlayer()));
         node.addListener(PlayerFinishDiggingEvent.class, e -> feature.clear(e.getPlayer()));
         node.addListener(PlayerDisconnectEvent.class, e -> feature.clear(e.getPlayer()));
-        // a dig follows its MINER's pass: it starts, ticks and clears on whichever thread owns the miner
-        TickSystem.register(TickPhase.DEFAULT, feature::tick);
+        // a dig follows its MINER's pass: it starts, ticks and clears on whichever thread owns the miner.
+        // Registered once for the JVM (TickSystem has no removal); the live feature is the installed one.
+        LIVE.set(feature);
+        if (TICK_HOOK.compareAndSet(false, true)) {
+            TickSystem.register(TickPhase.DEFAULT, ctx -> {
+                BlockBreakProgress live = LIVE.get();
+                if (live != null) live.tick(ctx);
+            });
+        }
     }
 
     /** Only fired for non-instant breaks, so every tracked dig needs the overlay. */
