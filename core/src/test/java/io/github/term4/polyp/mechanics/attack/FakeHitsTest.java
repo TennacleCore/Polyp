@@ -2,25 +2,34 @@ package io.github.term4.polyp.mechanics.attack;
 
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
+import io.github.term4.polyp.api.event.damage.DamageAppliedEvent;
 import io.github.term4.polyp.fx.Fx;
+import io.github.term4.polyp.mechanics.damage.DamageConfig;
+import io.github.term4.polyp.mechanics.damage.DamageSystem;
 import io.github.term4.polyp.mechanics.knockback.KnockbackSnapshot;
+import io.github.term4.polyp.presets.vanilla18.Damage;
 import io.github.term4.polyp.presets.vanilla18.Vanilla18;
 import io.github.term4.polyp.platform.compatibility.Compat18;
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import io.github.term4.polyp.util.tick.TickSystem;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.PlayerHand;
+import net.minestom.server.event.Event;
 import net.minestom.server.event.EventDispatcher;
+import net.minestom.server.event.EventNode;
+import net.minestom.server.event.entity.EntityAttackEvent;
 import net.minestom.server.coordinate.BlockVec;
 import net.minestom.server.event.item.ItemDropEvent;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerHandAnimationEvent;
 import net.minestom.server.event.player.PlayerMoveEvent;
+import net.minestom.server.event.player.PlayerTickEvent;
 import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockFace;
@@ -35,6 +44,7 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -148,6 +158,84 @@ class FakeHitsTest extends HeadlessServerTest {
         EventDispatcher.call(new PlayerHandAnimationEvent(attacker.player, PlayerHand.MAIN));
         EventDispatcher.call(new PlayerMoveEvent(attacker.player, attacker.player.getPosition(), true));
         assertEquals(20f, victim.getHealth(), "a windowed rule only fills at the i-frame boundary");
+    }
+
+    /** No i-frames (a combo preset), so a duplicate is not swallowed by the window. */
+    private static Instance noInvul() {
+        return flatInstance(MechanicsProfile.builder()
+                .set(MechanicsKeys.ATTACK, Vanilla18.attack().toBuilder().fakeHits(FakeHitConfig.ofReach(3.0)).build())
+                .set(MechanicsKeys.DAMAGE, DamageConfig.builder(Damage.config()).invulTicks(0).build())
+                .build());
+    }
+
+    /** Runs {@code click} and returns how many melee hits landed on {@code victim}. */
+    private static int hitsLanded(Player victim, Runnable click) {
+        AtomicInteger hits = new AtomicInteger();
+        EventNode<Event> node = EventNode.all("test:hits");
+        node.addListener(DamageAppliedEvent.class, e -> {
+            if (e.snapshot().target() == victim && e.outcome() == DamageSystem.DamageOutcome.FRESH_DAMAGE) hits.incrementAndGet();
+        });
+        MinecraftServer.getGlobalEventHandler().addChild(node);
+        try {
+            click.run();
+        } finally {
+            MinecraftServer.getGlobalEventHandler().removeChild(node);
+        }
+        return hits.get();
+    }
+
+    /** A modern client's click: the attack packet, then its swing, then the next tick's look. */
+    @Test
+    void attackThenSwingNeverFills() {
+        Instance inst = noInvul();
+        FakePlayer attacker = FakePlayer.connect(inst, new Pos(8.5, 64, 8.5, 0f, 0f), "OrderM");
+        Player victim = FakePlayer.connect(inst, new Pos(8.5, 64, 11.5), "VictimOM").player;
+        victim.setHealth(20f);
+        setCombatTick(inst, 0);
+        int hits = hitsLanded(victim, () -> {
+            EventDispatcher.call(new EntityAttackEvent(attacker.player, victim));
+            EventDispatcher.call(new PlayerHandAnimationEvent(attacker.player, PlayerHand.MAIN));
+            EventDispatcher.call(new PlayerTickEvent(attacker.player));
+            setCombatTick(inst, 1);
+            EventDispatcher.call(new PlayerMoveEvent(attacker.player, attacker.player.getPosition(), true));
+        });
+        assertEquals(1, hits);
+    }
+
+    /** A 1.8 client's click: the swing first, its attack packet and the look behind it in the same tick. */
+    @Test
+    void swingThenAttackNeverFills() {
+        Instance inst = noInvul();
+        // aimed into the head band: out of any window (always, with no i-frames) the fist fill covers only that
+        float pitch = (float) -Math.toDegrees(Math.atan2(0.23, 2.6));
+        FakePlayer attacker = FakePlayer.connect(inst, new Pos(8.5, 64, 8.5, 0f, pitch), "OrderL");
+        Player victim = FakePlayer.connect(inst, new Pos(8.5, 64, 11.5), "VictimOL").player;
+        ((OptimizedPlayer) attacker.player).compat().apply(Compat18.config(), attacker.player); // the windowless fist fill too
+        victim.setHealth(20f);
+        setCombatTick(inst, 0);
+        EventDispatcher.call(new EntityAttackEvent(attacker.player, victim)); // recorded combat
+        setCombatTick(inst, 20);
+        int hits = hitsLanded(victim, () -> {
+            EventDispatcher.call(new PlayerHandAnimationEvent(attacker.player, PlayerHand.MAIN));
+            EventDispatcher.call(new EntityAttackEvent(attacker.player, victim));
+            EventDispatcher.call(new PlayerMoveEvent(attacker.player, attacker.player.getPosition(), true));
+            EventDispatcher.call(new PlayerTickEvent(attacker.player));
+            setCombatTick(inst, 21);
+            EventDispatcher.call(new PlayerMoveEvent(attacker.player, attacker.player.getPosition(), true));
+        });
+        assertEquals(1, hits);
+    }
+
+    /** A stationary attacker's miss fills on the swing tick's own aim, once the tick's packets are in. */
+    @Test
+    void stationaryMissFillsAtTickEnd() {
+        Duo d = duo(8.85, "S");
+        ((OptimizedPlayer) d.attacker().player).compat().apply(Compat18.config(), d.attacker().player);
+        seedCombat(d, 10);
+        EventDispatcher.call(new PlayerHandAnimationEvent(d.attacker().player, PlayerHand.MAIN));
+        assertEquals(20f, d.victim().getHealth(), "the swing waits for the rest of its tick's packets");
+        EventDispatcher.call(new PlayerTickEvent(d.attacker().player));
+        assertTrue(d.victim().getHealth() < 20f);
     }
 
     @Test

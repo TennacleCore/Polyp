@@ -23,6 +23,7 @@ import net.minestom.server.event.player.PlayerFinishDiggingEvent;
 import net.minestom.server.event.player.PlayerHandAnimationEvent;
 import net.minestom.server.event.player.PlayerMoveEvent;
 import net.minestom.server.event.player.PlayerStartDiggingEvent;
+import net.minestom.server.event.player.PlayerTickEvent;
 import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.event.player.PlayerUseItemOnBlockEvent;
 import org.jetbrains.annotations.NotNull;
@@ -36,9 +37,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Swing fake-hits: an arm-swing whose attack packet missed still lands on the LAST player the attacker hit, if the
- * look ray (the swing tick's own, then {@code lookWindow} ticks of move/look packets) falls on the victim's
- * margin-padded box within reach. A granted hit runs the normal attack pipeline carrying the intersecting ray as its
- * {@code aim}, so knockback follows it and effects route to the fake-hit endpoints. Only a pure left-click swing arms.
+ * look ray (the swing tick's own once its packets are in, then {@code lookWindow} ticks of move/look packets) falls on
+ * the victim's margin-padded box within reach. A granted hit runs the normal attack pipeline carrying the intersecting
+ * ray as its {@code aim}, so knockback follows it and effects route to the fake-hit endpoints. Only a pure left-click
+ * swing arms; a swing whose tick also carries the client's own attack packet is that hit's swing, never a fill.
  *
  * <p>Two independent rule layers per attacker - a swing fills if either grants it: {@link AttackConfig#fakeHits} from
  * the attack scope chain (a preset's MineMen-style combo fill, {@link FakeHitConfig#windowed}), and a windowless
@@ -58,7 +60,7 @@ public final class FakeHits {
         volatile long lastPacketTick = Long.MIN_VALUE;    // the client's own attack packet - a real hit, no fill needed
         volatile long lastNonAttackTick = Long.MIN_VALUE;
     }
-    /** An entry exists only for armed attackers with recorded combat, so the listeners are inert for everyone else. */
+    /** An entry exists only for attackers a rule covers, so the listeners are inert for everyone else. */
     private static final Map<Player, Swing> swings = new ConcurrentHashMap<>();
     private static final AtomicBoolean CLOCK_RESET = new AtomicBoolean();
 
@@ -81,12 +83,13 @@ public final class FakeHits {
             s.lastVictim = victim;
             s.victimExpiryTick = TickSystem.tick(victim) + DamageSystem.remainingDamageInvul(victim);
         });
-        // the client's own attack packet this tick is the real hit; the fill only covers a miss
+        // the client's own attack packet is the real hit; a 1.8 client sends its swing BEFORE it, so disarm as well
         node.addListener(EntityAttackEvent.class, e -> {
-            if (e.getEntity() instanceof Player atk) {
-                Swing s = swings.get(atk);
-                if (s != null) s.lastPacketTick = TickSystem.tick(atk);
-            }
+            if (!(e.getEntity() instanceof Player atk) || rulesFor(polyp, atk).isEmpty()) return;
+            Swing s = swings.computeIfAbsent(atk, k -> new Swing());
+            long now = TickSystem.tick(atk);
+            s.lastPacketTick = now;
+            if (s.swingTick == now) s.swingTick = Long.MIN_VALUE;
         });
         // a drop's or right-click use's swing is never an attack; also disarms a same-tick window (either packet order)
         node.addListener(ItemDropEvent.class, e -> markNonAttack(e.getPlayer()));
@@ -99,6 +102,14 @@ public final class FakeHits {
         node.addListener(PlayerFinishDiggingEvent.class, e -> markDigTick(polyp, e.getPlayer()));
         node.addListener(PlayerBlockBreakEvent.class, e -> markDigTick(polyp, e.getPlayer()));
         node.addListener(PlayerHandAnimationEvent.class, e -> arm(polyp, e));
+        // the swing tick's own aim, read after the tick's packets: a stationary attacker sends no follow-up move/look
+        node.addListener(PlayerTickEvent.class, e -> {
+            Player atk = e.getPlayer();
+            Swing s = swings.get(atk);
+            if (s == null || s.swingTick != TickSystem.tick(atk)) return;
+            FakeHitConfig rule = s.armedRule;
+            if (rule != null && tryFill(polyp, atk, s, rule, atk.getPosition())) s.swingTick = Long.MIN_VALUE;
+        });
         // fires PRE-move: getNewPosition() carries the incoming look for the ray while the hit reads the attacker's normal state
         node.addListener(PlayerMoveEvent.class, e -> {
             Player atk = e.getPlayer();
@@ -144,7 +155,8 @@ public final class FakeHits {
         Player atk = e.getPlayer();
         Swing s = swings.get(atk);
         Player victim = s != null ? s.lastVictim : null;
-        if (victim == null || s.lastNonAttackTick == TickSystem.tick(atk)) return;
+        long now = TickSystem.tick(atk);
+        if (victim == null || s.lastNonAttackTick == now || s.lastPacketTick == now) return;
         // a modern client's break swings aren't attacks (the left-click drives the break); a 1.8 client's may be
         if (!polyp.clientInfo().isLegacy(atk) && AttackLog.digging(atk)) return;
         FakeHitConfig armed = null;
@@ -158,9 +170,7 @@ public final class FakeHits {
                 atk.getUsername(), victim.getUsername(), s.victimExpiryTick, TickSystem.tick(victim), armed);
         if (armed == null) return;
         s.armedRule = armed;
-        s.swingTick = TickSystem.tick(atk);
-        // the swing tick's own aim counts too: a stationary attacker sends no follow-up move/look to read the ray from
-        if (tryFill(polyp, atk, s, armed, atk.getPosition())) s.swingTick = Long.MIN_VALUE;
+        s.swingTick = now;
     }
 
     /** Whether the victim sits inside {@code rule}'s swing window around its i-frame expiry (compared on the VICTIM's clock, where the expiry was stamped). */
