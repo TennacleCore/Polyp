@@ -39,7 +39,7 @@ class GroundedStaleMotYTest extends HeadlessServerTest {
             if (y <= 64.0) y = 64.0;
             move(p, y, y == 64.0);
             tick(inst);
-            v = (v - 0.08) * 0.98;
+            v = (v - 0.08) * VelocityConfig.DRAG_V;
         }
         // post-landing: silence (close) vs every-tick grounded stream (far)
         for (int t = 0; t < 15; t++) {

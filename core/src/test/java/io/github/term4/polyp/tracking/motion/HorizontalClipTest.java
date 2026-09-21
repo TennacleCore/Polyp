@@ -33,7 +33,7 @@ class HorizontalClipTest extends HeadlessServerTest {
 
         MotionTracker.foldDelivered(p, new Vec(0, 0, 0.5));
         tick(inst);
-        assertEquals((ClimbModel.CLIMB_UP - 0.08) * 0.98, MotionTracker.serverMotY(p, 0, true), 1e-9,
+        assertEquals((ClimbModel.CLIMB_UP - 0.08) * VelocityConfig.DRAG_V, MotionTracker.serverMotY(p, 0, true), 1e-9,
                 "clip on the ladder must fire the vanilla 0.2 climb-up");
         p.remove();
     }

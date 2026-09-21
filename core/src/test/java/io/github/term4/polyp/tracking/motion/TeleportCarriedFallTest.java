@@ -70,7 +70,7 @@ class TeleportCarriedFallTest extends HeadlessServerTest {
 
         p.refreshOnGround(true);                  // the client's flying packet lands the flag, still no move
         tick(inst);
-        assertEquals(-0.08 * 0.98, MotionTracker.serverMotY(p, 0, true), 1e-12,
+        assertEquals(-0.08 * VelocityConfig.DRAG_V, MotionTracker.serverMotY(p, 0, true), 1e-12,
                 "the confirm step lands the fall at the grounded fixed point");
         p.remove();
     }

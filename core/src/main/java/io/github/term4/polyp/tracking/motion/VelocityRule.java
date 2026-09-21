@@ -90,6 +90,16 @@ public interface VelocityRule {
         return c != null ? c.climbModel(ctx) : ClimbModel.LEGACY;
     }
 
+    /** Read once per tick. */
+    static Aerodynamics aerodynamics(@Nullable VelocityRule rule, VelocityContext ctx) {
+        return configFor(rule).aerodynamics(ctx);
+    }
+
+    private static VelocityConfig configFor(@Nullable VelocityRule rule) {
+        VelocityConfig c = configOf(rule);
+        return c != null ? c : VelocityConfig.DEFAULTS;
+    }
+
     /** Off (1.8) without a config. */
     static boolean modernBlockPhysicsEnabled(@Nullable VelocityRule rule, VelocityContext ctx) {
         VelocityConfig c = configOf(rule);
@@ -191,7 +201,7 @@ public interface VelocityRule {
         int ticks = launched ? air + launchOffset : air + 1;
         double seedY = launched ? cfg.seed(ctx) : 0;
         // the entity's OWN airborne motion, so it steps at the entity's dilated rate
-        return steppedVy(ctx.entity(), TickScaler.aerodynamics(ctx.entity(), ctx.entity().getAerodynamics()),
+        return steppedVy(ctx.entity(), TickScaler.aerodynamics(ctx.entity(), cfg.aerodynamics(ctx)),
                 zeroBelowY, seedY, ticks);
     }
 

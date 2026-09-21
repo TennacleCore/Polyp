@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 class MotYMovePacketGateTest extends HeadlessServerTest {
 
-    private static final double G = 0.08, D = 0.98;
+    private static final double G = 0.08, D = VelocityConfig.DRAG_V;
     private static final double SEED = VelocityConfig.JUMP_VELOCITY;
 
 

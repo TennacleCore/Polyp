@@ -75,6 +75,7 @@ public final class MotionTracker implements Tracker {
     private static final Tag<Vec> FLOW_PUSH = Tag.Transient("polyp:flow-push");
     /** Read lazily by {@link #frictionPerTick} for the in-water horizontal friction. */
     private static final Tag<FluidFlow.Model> FLOW_MODEL = Tag.Transient("polyp:flow-model");
+    private static final Tag<Aerodynamics> AERO = Tag.Transient("polyp:aero");
 
     /**
      * Vanilla {@code motY}, forward-simulated per tick like {@code EntityLiving.m()}. Reproduces the emergent quirks
@@ -294,6 +295,12 @@ public final class MotionTracker implements Tracker {
         return new Vec(zeroBelow(decayed.x()), 0, zeroBelow(decayed.z()));
     }
 
+    /** The rule's constants for the running tick; the registry's until the tracker has ticked the player. */
+    static Aerodynamics aerodynamics(Player p) {
+        Aerodynamics a = p.getTag(AERO);
+        return a != null ? a : p.getAerodynamics();
+    }
+
     /** Both the {@code MOT_H} and entity-push residuals bleed by this. */
     static double frictionPerTick(Player p, boolean airborne) {
         // in a fluid the residual bleeds by the fluid's fixed friction; re-anchored on every env change so this holds
@@ -305,8 +312,10 @@ public final class MotionTracker implements Tracker {
         }
         if (env == Env.LAVA) return LAVA_FRICTION;
         if (env == Env.WEB) return 0.0;
-        double hDrag = p.getAerodynamics().horizontalAirResistance();
-        return (airborne ? hDrag : blockFriction(p) * hDrag) * blockSpeedFactor(p);
+        // vanilla multiplies the block's friction into the 0.91F drag as floats before widening, 1.8 and 26 alike
+        float hDrag = (float) aerodynamics(p).horizontalAirResistance();
+        float f = airborne ? hDrag : (float) blockFriction(p) * hDrag;
+        return (double) f * blockSpeedFactor(p);
     }
 
     /** Vanilla {@code getBlockSpeedFactor}; soul sand also slows in 1.8 (value approximated). */
@@ -354,6 +363,7 @@ public final class MotionTracker implements Tracker {
             boolean modernBlocks = VelocityRule.modernBlockPhysicsEnabled(rule, vctx);
             FluidFlow.Model flowModel = VelocityRule.flowModel(rule, vctx);
             p.setTag(FLOW_MODEL, flowModel);
+            p.setTag(AERO, VelocityRule.aerodynamics(rule, vctx));
             Integer moved = p.getTag(MOVE_PACKETS);
             if (moved != null) p.removeTag(MOVE_PACKETS);
             // 1.8 runs the whole living update once per flying packet (PlayerConnection.a -> l() -> m());
@@ -404,7 +414,7 @@ public final class MotionTracker implements Tracker {
             sim.collided = p.isOnGround();
             return;
         }
-        Aerodynamics aero = p.getAerodynamics();
+        Aerodynamics aero = aerodynamics(p);
         double g = aero.gravity(), s = aero.verticalAirResistance();
         double c = sim.zeroed[0], r = sim.raw[0];
 
@@ -815,7 +825,7 @@ public final class MotionTracker implements Tracker {
 
         if (simCollided(p)) return true;
 
-        Aerodynamics aero = entity.getAerodynamics();
+        Aerodynamics aero = aerodynamics(p);
         double g = aero.gravity();
         double s = aero.verticalAirResistance();
         double vy = serverSimMotY(p, g, s); // server arc, not the client delta

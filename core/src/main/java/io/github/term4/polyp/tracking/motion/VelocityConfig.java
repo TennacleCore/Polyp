@@ -2,6 +2,7 @@ package io.github.term4.polyp.tracking.motion;
 
 import io.github.term4.polyp.codegen.GenerateBuilder;
 import io.github.term4.polyp.config.FieldValue;
+import net.minestom.server.collision.Aerodynamics;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -13,8 +14,9 @@ import org.jetbrains.annotations.Nullable;
 public final class VelocityConfig {
 
     public static final double GRAVITY = 0.08;
-    public static final double DRAG_V = 0.98;
-    public static final double DRAG_H = 0.91;
+    // 0.98F / 0.91F widened: every version multiplies the float into a double
+    public static final double DRAG_V = 0.9800000190734863;
+    public static final double DRAG_H = 0.9100000262260437;
     public static final double JUMP_VELOCITY = 0.41999998688697815;
     public static final double ZERO_BELOW = 0.005;
     public static final int DEFAULT_LAUNCH_OFFSET = -1;
@@ -39,6 +41,10 @@ public final class VelocityConfig {
     public final @Nullable FieldValue<VelocityContext, Double> wireFloorX;
     public final @Nullable FieldValue<VelocityContext, Double> wireFloorY;
     public final @Nullable FieldValue<VelocityContext, Double> wireFloorZ;
+    /** Per-tick gravity and drags the sim steps by; unset = the entity's registry {@link Aerodynamics}, its drags widened from float. */
+    public final @Nullable FieldValue<VelocityContext, Double> gravity;
+    public final @Nullable FieldValue<VelocityContext, Double> dragH;
+    public final @Nullable FieldValue<VelocityContext, Double> dragV;
 
     private VelocityConfig(Builder b) {
         seed = b.seed;
@@ -61,6 +67,9 @@ public final class VelocityConfig {
         wireFloorX = b.wireFloorX;
         wireFloorY = b.wireFloorY;
         wireFloorZ = b.wireFloorZ;
+        gravity = b.gravity;
+        dragH = b.dragH;
+        dragV = b.dragV;
     }
 
     public double seed(VelocityContext ctx) { return FieldValue.resolve(seed, ctx, JUMP_VELOCITY); }
@@ -83,8 +92,17 @@ public final class VelocityConfig {
     public @Nullable Double wireFloorX(VelocityContext ctx) { return FieldValue.resolve(wireFloorX, ctx); }
     public @Nullable Double wireFloorY(VelocityContext ctx) { return FieldValue.resolve(wireFloorY, ctx); }
     public @Nullable Double wireFloorZ(VelocityContext ctx) { return FieldValue.resolve(wireFloorZ, ctx); }
+    public Aerodynamics aerodynamics(VelocityContext ctx) {
+        Aerodynamics base = ctx.entity().getAerodynamics();
+        Double g = FieldValue.resolve(gravity, ctx), h = FieldValue.resolve(dragH, ctx), v = FieldValue.resolve(dragV, ctx);
+        return new Aerodynamics(g != null ? g : base.gravity(),
+                h != null ? h : widen(base.horizontalAirResistance()), v != null ? v : widen(base.verticalAirResistance()));
+    }
+    /** {@code literal} as the float vanilla wrote it, widened back to a double. */
+    public static double widen(double literal) { return (float) literal; }
 
     public static VelocityConfig defaults() { return builder().build(); }
+    public static final VelocityConfig DEFAULTS = defaults();
 
     public VelocityConfig fromBase(VelocityConfig base) {
         Builder b = new Builder();
