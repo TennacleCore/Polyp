@@ -7,6 +7,7 @@ import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.tracking.ClientInfoTracker;
 import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.coordinate.Point;
+import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.GameMode;
@@ -35,38 +36,28 @@ public final class CompatPlacement {
 
     private CompatPlacement() {}
 
+    // 1.8's mutable stair bounds hold the last raytrace octant for good (BlockStairs.hasRaytraced never resets)
+    private static final BoundingBox STAIR_OCTANT = new BoundingBox(new Vec(0.5, 0.5, 0.5), new Vec(1, 1, 1));
+
     /**
-     * The per-body placement entity check for mixed-version play (shaped for a shard router's body-check hook).
-     * A LEGACY placer gets the 1.8 reference-server semantics, source-verified against Paper 1.8.8 + the 1.8.9
-     * client: the placer's own body NEVER blocks their placement (Paper passes the placer into
-     * {@code checkNoEntityCollision}, which excludes it), and no-collision-box blocks check nobody (1.8's
-     * null-AABB skip - the ladder clutch). The client gates its own body BEFORE sending
-     * ({@code canPlaceBlockOnSide}, entity null) against a position the server is a tick behind on, so re-checking
-     * here would refuse legal jump placements; what a vanilla 1.8 client never sends never arrives. A bare click
-     * on a chest or bed is sent WITHOUT that gate (a use), which the block's use rule consumes. A slab doubling in its
-     * own cell is 1.8's one exception: {@code ItemSlab} checks the merged cube through the excludes-nobody
-     * {@code checkNoEntityCollision}, so the placer standing on the half they click is what refuses it. Other
-     * bodies stay on the precise check; everyone else (Animatium included, for now) is precise throughout,
-     * matching their own client's prediction.
-     *
-     * <p>{@link CompatConfig#legacySelfPlace} scopes the self-exemption through the profile: a Hypixel-style
-     * world turns it off and a 1.8 client stops landing stairs in its own face, while the passable skip keeps
-     * the ladder clutch. Narrower policy still cancels {@code PlayerBlockPlaceEvent} - both placement paths
-     * fire it with the resolved target and resync on cancel - with {@link BlockContact#overlapsBody} as the
-     * condition, composed with {@link BlockContact#isFullCube}/{@link BlockContact#isPassable}.
+     * The per-body placement entity check (an app router's body-check hook). A LEGACY placer gets 1.8's own
+     * {@code canBlockBePlaced}, which excludes nobody: the client runs it before sending, on the position the
+     * server already holds, so a vanilla client only ever confirms and an ungated one gets Spigot's refusal. What
+     * differs from the modern shape is the box: none for a passable block (the ladder clutch), and for stairs
+     * the raytrace octant, which is why stairs land in your own face from the west or north edge of a cell and
+     * a chest never does. {@link CompatConfig#legacySelfPlace} off is the Hypixel bounce: the real stair shape.
      */
     public static boolean placementBodyCheck(@NotNull Player placer, @NotNull Entity body, @NotNull Block placing,
                                              @NotNull Point cellRelativeBody, @NotNull BoundingBox bodyBox) {
         if (placer instanceof OptimizedPlayer op && op.compat().legacyClient()) {
-            if (body == placer && op.compat().legacySelfPlace() && !doubling(placing)) return false;
             if (BlockContact.isPassable(placing)) return false;
+            if (op.compat().legacySelfPlace() && isStairs(placing)) return bodyBox.intersectBox(cellRelativeBody, STAIR_OCTANT); // the body moves, the box stays at the cell
         }
         return placing.collisionShape().intersectBox(cellRelativeBody, bodyBox);
     }
 
-    // the shaped result of a slab merge: no slab item places one otherwise
-    private static boolean doubling(Block placing) {
-        return "double".equals(placing.getProperty("type"));
+    private static boolean isStairs(Block placing) {
+        return placing.key().value().endsWith("_stairs");
     }
 
     public static void install(Polyp polyp) {

@@ -10,10 +10,9 @@ import org.jetbrains.annotations.NotNull;
 import java.util.function.BiConsumer;
 
 /**
- * 1.8 self-placement: the reference server (Paper 1.8.8) excludes the placer's own body from the placement
- * entity check outright, and the 1.8 client sends every attempt before its own prediction runs - so on 1.8,
- * self-overlapping placements land (stairs into your own face included). Minestom checks the placer like any
- * body, so a LEGACY client's placement desyncs. Arms {@link OptimizedPlayer#setSelfPlacing} per placement for
+ * Paper 1.8.8's placer exclusion for a plain-Minestom app: the placer's own body never blocks their placement.
+ * A vanilla 1.8 client gates on its own body before sending, so only an ungated client sees the difference;
+ * an Archipelago app runs 1.8's own check through {@code Shard.placementBodyCheck} instead. Arms {@link OptimizedPlayer#setSelfPlacing} per placement for
  * legacy placers (a modern client refuses these itself; server leniency would let it bury blocks in its own
  * body). An app refusing self-overlap as POLICY (Hypixel-style) cancels {@code PlayerBlockPlaceEvent} with
  * {@code BlockContact.overlapsBody} as the condition. Wraps the stock listener; shard worlds use

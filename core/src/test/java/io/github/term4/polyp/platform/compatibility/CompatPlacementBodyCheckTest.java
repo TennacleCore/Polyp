@@ -7,6 +7,7 @@ import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
+import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.instance.block.Block;
 import org.junit.jupiter.api.Test;
@@ -14,40 +15,43 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Source-verified 1.8 semantics: a legacy placer's own body never blocks (Paper excludes it) and passable
- *  blocks check nobody; other bodies - and modern placers throughout - stay on the precise check. */
+/**
+ * 1.8's own placement check for a legacy placer: nobody excluded, the block's 1.8 box - none for a passable block,
+ * the raytrace octant for stairs. Modern placers stay on the precise shape their client predicts.
+ */
 class CompatPlacementBodyCheckTest extends HeadlessServerTest {
 
+    private static final BoundingBox PLAYER = new BoundingBox(0.6, 1.8, 0.6);
+    private static final Vec CENTERED = new Vec(0.5, 0, 0.5);
+    private static final Vec WEST_EDGE = new Vec(0.15, 0, 0.5);
+
+    private static boolean blocks(OptimizedPlayer placer, Entity body, Block placing, Vec at) {
+        return CompatPlacement.placementBodyCheck(placer, body, placing, at, PLAYER);
+    }
+
     @Test
-    void legacySelfNeverBlocksModernStaysPrecise() {
+    void legacyChecksItsOwnBody() {
         FakePlayer fp = FakePlayer.connect(instance, new Pos(0.5, 65, 864.5), "BodyGate");
         OptimizedPlayer op = (OptimizedPlayer) fp.player;
         LivingEntity other = looseZombie();
-        BoundingBox player = new BoundingBox(0.6, 1.8, 0.6);
-        Vec centered = new Vec(0.5, 0, 0.5);
         try {
-            assertTrue(CompatPlacement.placementBodyCheck(op, op, Block.OAK_STAIRS, centered, player),
-                    "modern: even your own body blocks, like your client predicts");
-            assertTrue(CompatPlacement.placementBodyCheck(op, op, Block.STONE, centered, player));
+            assertTrue(blocks(op, op, Block.OAK_STAIRS, CENTERED), "modern: the stair shape, like the client predicts");
+            assertTrue(blocks(op, op, Block.STONE, CENTERED));
 
             op.compat().setLegacyClient(true);
-            assertFalse(CompatPlacement.placementBodyCheck(op, op, Block.OAK_STAIRS, centered, player),
-                    "legacy self: stairs into your own face land, as on Paper 1.8");
-            assertFalse(CompatPlacement.placementBodyCheck(op, op, Block.STONE, centered, player));
-            assertFalse(CompatPlacement.placementBodyCheck(op, other, Block.LADDER, centered, player),
-                    "no collision box: no check for anyone");
-            assertTrue(CompatPlacement.placementBodyCheck(op, other, Block.OAK_STAIRS, centered, player),
-                    "other bodies stay precise");
-            assertTrue(CompatPlacement.placementBodyCheck(op, other, Block.STONE, centered, player));
+            assertTrue(blocks(op, op, Block.STONE, CENTERED), "1.8 checks the placer too");
+            assertTrue(blocks(op, op, Block.CHEST, CENTERED), "a chest never lands in your own cell");
+            assertTrue(blocks(op, op, Block.OAK_STAIRS, CENTERED), "the octant (0.5,0.5,0.5)-(1,1,1) meets a centered body");
+            assertFalse(blocks(op, op, Block.OAK_STAIRS, WEST_EDGE), "from the west edge it clears: stairs into your own face");
+            assertFalse(blocks(op, other, Block.LADDER, CENTERED), "no collision box: no check for anyone");
+            assertTrue(blocks(op, other, Block.STONE, CENTERED));
+            assertFalse(blocks(op, other, Block.OAK_STAIRS, WEST_EDGE), "one box for every body");
 
             // the app-side veto condition (a Hypixel-style PlayerBlockPlaceEvent cancel), by fill level
             Vec feet = new Vec(fp.player.getPosition().blockX(), 65, fp.player.getPosition().blockZ());
-            assertTrue(BlockContact.overlapsBody(Block.OAK_STAIRS, feet, fp.player),
-                    "a stair in the placer's feet cell overlaps them");
-            assertFalse(BlockContact.overlapsBody(Block.LADDER, feet, fp.player),
-                    "no collision shape, no overlap");
+            assertTrue(BlockContact.overlapsBody(Block.OAK_STAIRS, feet, fp.player), "a stair in the placer's feet cell overlaps them");
+            assertFalse(BlockContact.overlapsBody(Block.LADDER, feet, fp.player), "no collision shape, no overlap");
             assertFalse(BlockContact.overlapsBody(Block.OAK_STAIRS, feet.add(3, 0, 0), fp.player));
-            // fill-level scoping is plain composition with the existing predicates
             assertFalse(BlockContact.isFullCube(Block.OAK_STAIRS) && BlockContact.overlapsBody(Block.OAK_STAIRS, feet, fp.player),
                     "a full-cube-only policy lets partial blocks through");
             assertTrue(BlockContact.isFullCube(Block.STONE) && BlockContact.overlapsBody(Block.STONE, feet, fp.player));
@@ -56,48 +60,36 @@ class CompatPlacementBodyCheckTest extends HeadlessServerTest {
         }
     }
 
-    /** 1.8 ItemSlab checks the merged cube against every body, the placer included - standing on the half you
-     *  click is what refuses the double. The single-slab path is still ItemBlock's, exempt as ever. */
+    /** ItemSlab's merge and ItemBlock's single are one rule: the placer counts on both. */
     @Test
-    void aMergedSlabBlocksItsPlacer() {
+    void aSlabBlocksItsPlacer() {
         FakePlayer fp = FakePlayer.connect(instance, new Pos(0.5, 64.5, 880.5), "SlabGate");
         OptimizedPlayer op = (OptimizedPlayer) fp.player;
-        BoundingBox player = new BoundingBox(0.6, 1.8, 0.6);
         Vec standing = new Vec(0.5, 0.5, 0.5); // feet on the top face of the half they clicked
         try {
             op.compat().setLegacyClient(true);
-            assertTrue(CompatPlacement.placementBodyCheck(op, op,
-                            Block.OAK_SLAB.withProperty("type", "double"), standing, player),
-                    "the double would engulf the placer");
-            assertFalse(CompatPlacement.placementBodyCheck(op, op,
-                            Block.OAK_SLAB.withProperty("type", "top"), standing, player),
-                    "a single slab into your own body is ItemBlock's exempt path");
-            assertFalse(CompatPlacement.placementBodyCheck(op, op,
-                            Block.OAK_SLAB.withProperty("type", "double"), standing.add(3, 0, 0), player),
+            assertTrue(blocks(op, op, Block.OAK_SLAB.withProperty("type", "double"), standing), "the double would engulf the placer");
+            assertTrue(blocks(op, op, Block.OAK_SLAB.withProperty("type", "top"), standing), "a single slab is a real box too");
+            assertFalse(blocks(op, op, Block.OAK_SLAB.withProperty("type", "double"), standing.add(3, 0, 0)),
                     "a cell clear of the body still merges");
         } finally {
             fp.player.remove();
         }
     }
 
-    /** legacySelfPlace(false) - the hypixel profile: self-overlap refused for legacy too, ladders still clutch. */
+    /** legacySelfPlace(false) - the hypixel bounce: the real stair shape, ladders still clutch. */
     @Test
-    void profileCanRefuseLegacySelfOverlapAndStillAllowLadders() {
+    void hypixelBounceIsTheRealShape() {
         FakePlayer fp = FakePlayer.connect(instance, new Pos(0.5, 65, 872.5), "StrictGate");
         OptimizedPlayer op = (OptimizedPlayer) fp.player;
-        BoundingBox player = new BoundingBox(0.6, 1.8, 0.6);
-        Vec centered = new Vec(0.5, 0, 0.5);
         try {
             op.compat().setLegacyClient(true);
             op.compat().apply(CompatConfig.builder().legacySelfPlace(false).build(), op);
 
-            assertTrue(CompatPlacement.placementBodyCheck(op, op, Block.OAK_STAIRS, centered, player),
-                    "stairs into your own face are refused, unlike vanilla 1.8");
-            assertTrue(CompatPlacement.placementBodyCheck(op, op, Block.STONE, centered, player));
-            assertFalse(CompatPlacement.placementBodyCheck(op, op, Block.LADDER, centered, player),
-                    "passable: the ladder clutch survives the refusal");
-            assertFalse(CompatPlacement.placementBodyCheck(op, op, Block.OAK_STAIRS, centered.add(3, 0, 0), player),
-                    "a cell clear of the body still places");
+            assertTrue(blocks(op, op, Block.OAK_STAIRS, WEST_EDGE), "no octant: the stair's base meets a body at the edge");
+            assertTrue(blocks(op, op, Block.STONE, CENTERED));
+            assertFalse(blocks(op, op, Block.LADDER, CENTERED), "passable: the ladder clutch survives the bounce");
+            assertFalse(blocks(op, op, Block.OAK_STAIRS, CENTERED.add(3, 0, 0)), "a cell clear of the body still places");
         } finally {
             fp.player.remove();
         }

@@ -42,7 +42,7 @@ public final class FixesConfig {
 
     public @Nullable VisualsConfig visuals() { return visuals; }
 
-    /** 1.8 self-placement (passable blocks into your own body, {@code LegacySelfPlacementFix}); wraps the server-wide placement listener - install-level, not per-scope. */
+    /** Paper's placer exclusion ({@code LegacySelfPlacementFix}); wraps the server-wide placement listener - install-level, not per-scope. */
     public @Nullable FixToggleConfig legacySelfPlacement() { return legacySelfPlacement; }
 
     /** Strips empty slots from outgoing equipment packets, vanilla parity for every version ({@code EquipmentSlotsFix}); install-level. */
