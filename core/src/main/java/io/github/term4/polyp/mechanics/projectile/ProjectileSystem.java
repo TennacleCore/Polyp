@@ -31,6 +31,7 @@ import io.github.term4.polyp.mechanics.attribute.catalog.enchant.Flame;
 import io.github.term4.polyp.mechanics.attribute.catalog.enchant.Power;
 import io.github.term4.polyp.mechanics.attribute.catalog.enchant.Punch;
 import io.github.term4.polyp.util.Directions;
+import io.github.term4.polyp.item.ItemNbt;
 import io.github.term4.polyp.item.Enchants;
 import io.github.term4.polyp.util.tick.TickScaler;
 import net.kyori.adventure.key.Key;
@@ -39,7 +40,6 @@ import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.nbt.DoubleBinaryTag;
 import net.kyori.adventure.nbt.ListBinaryTag;
 import net.minestom.server.MinecraftServer;
-import net.minestom.server.codec.Transcoder;
 import net.minestom.server.collision.Aerodynamics;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
@@ -178,7 +178,7 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
                             .add(DoubleBinaryTag.doubleBinaryTag(vel.x()))
                             .add(DoubleBinaryTag.doubleBinaryTag(vel.y()))
                             .add(DoubleBinaryTag.doubleBinaryTag(vel.z())).build());
-            if (working.item() != null) out.put("item", ItemStack.CODEC.encode(Transcoder.NBT, working.item()).orElseThrow());
+            if (working.item() != null) out.put("item", ItemNbt.encode(working.item()));
             if (shooter != null) out.putString("shooter", shooter.getUuid().toString());
             return out.build();
         });
@@ -194,8 +194,7 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
         String uuid = data.getString("shooter");
         Entity shooter = uuid.isEmpty() ? null
                 : MinecraftServer.getConnectionManager().getOnlinePlayerByUuid(UUID.fromString(uuid));
-        ItemStack item = data.get("item") != null
-                ? ItemStack.CODEC.decode(Transcoder.NBT, data.get("item")).orElseThrow() : null;
+        ItemStack item = data.get("item") != null ? ItemNbt.decode(data.get("item")) : null;
         ProjectileSnapshot snap = new ProjectileSnapshot(shooter, type, item, data.getDouble("power"),
                 null, null, configFor(shooter), null);
         ProjectileContext ctx = ProjectileContext.of(snap, services);

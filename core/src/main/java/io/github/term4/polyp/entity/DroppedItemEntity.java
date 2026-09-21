@@ -3,6 +3,7 @@ package io.github.term4.polyp.entity;
 import io.github.term4.polyp.util.tick.TickScaler;
 import io.github.term4.polyp.tracking.motion.VelocityRule;
 import io.github.term4.polyp.config.FieldFns;
+import io.github.term4.polyp.item.ItemNbt;
 import io.github.term4.polyp.world.ExternallyTickable;
 import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
 import io.github.term4.polyp.world.MechanicsWorld;
@@ -16,7 +17,6 @@ import net.kyori.adventure.nbt.DoubleBinaryTag;
 import net.kyori.adventure.nbt.ListBinaryTag;
 import net.kyori.adventure.sound.Sound;
 import net.minestom.server.ServerFlag;
-import net.minestom.server.codec.Transcoder;
 import net.minestom.server.collision.Aerodynamics;
 import net.minestom.server.collision.PhysicsResult;
 import net.minestom.server.coordinate.Pos;
@@ -135,7 +135,7 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
         setTag(MechanicsWorld.ENTITY_SAVE, () -> {
             Vec vel = getVelocity();
             CompoundBinaryTag.Builder out = CompoundBinaryTag.builder().putString("id", "polyp:item")
-                    .put("item", ItemStack.CODEC.encode(Transcoder.NBT, getItemStack()).orElseThrow())
+                    .put("item", ItemNbt.encode(getItemStack()))
                     .put("vel", ListBinaryTag.builder(BinaryTagTypes.DOUBLE)
                             .add(DoubleBinaryTag.doubleBinaryTag(vel.x()))
                             .add(DoubleBinaryTag.doubleBinaryTag(vel.y()))
@@ -150,7 +150,7 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
     public static @NotNull DroppedItemEntity fromSave(@NotNull CompoundBinaryTag data) {
         String model = data.getString("model");
         DroppedItemEntity item = new DroppedItemEntity(
-                ItemStack.CODEC.decode(Transcoder.NBT, data.get("item")).orElseThrow(),
+                ItemNbt.decode(data.get("item")),
                 model.isEmpty() ? null : FieldFns.parse(Model.class, model, "dropped item nbt"));
         ListBinaryTag vel = data.getList("vel", BinaryTagTypes.DOUBLE);
         if (vel.size() == 3) item.setVelocity(new Vec(vel.getDouble(0), vel.getDouble(1), vel.getDouble(2)));
