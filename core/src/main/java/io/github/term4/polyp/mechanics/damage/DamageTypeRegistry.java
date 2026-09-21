@@ -85,6 +85,11 @@ public final class DamageTypeRegistry {
         return e != null ? e.type.defaultConfig() : null;
     }
 
+    /** Every key whose producer is running. */
+    public java.util.List<Key> enabledKeys() {
+        return entries.entrySet().stream().filter(e -> e.getValue().enabled).map(java.util.Map.Entry::getKey).toList();
+    }
+
     public boolean contains(Key key) {
         return entries.containsKey(key);
     }

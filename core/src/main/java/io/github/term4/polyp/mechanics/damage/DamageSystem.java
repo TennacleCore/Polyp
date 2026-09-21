@@ -516,6 +516,12 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         return install(polyp, polyp.profiles().resolve(null, MechanicsKeys.DAMAGE), extraTypes);
     }
 
+    /** The enabled types run their own tick hooks and listeners, so a teardown has to stop them. */
+    @Override public void uninstall() {
+        for (Key key : registry.enabledKeys()) registry.disable(key);
+        EnvironmentalDamageTicker.instance().unbind(this);
+    }
+
     /** Installs from an explicit config (the modular path): enables its {@code typeConfigs} producers. */
     public static DamageSystem install(Polyp polyp, DamageConfig cfg, DamageType... extraTypes) {
         var system = new DamageSystem(polyp, cfg);

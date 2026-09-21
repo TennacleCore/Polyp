@@ -27,6 +27,12 @@ public final class LegacySelfPlacementFix {
         install(BlockPlacementListener::listener);
     }
 
+    /** Hands the slot back to Minestom's own listener. */
+    public static void uninstall() {
+        MinecraftServer.getPacketListenerManager().setPlayListener(ClientPlayerBlockPlacementPacket.class,
+                BlockPlacementListener::listener);
+    }
+
     /** Installs {@code delegate} wrapped with the exclusion - the composition seam for replaced placement listeners. */
     public static void install(@NotNull BiConsumer<ClientPlayerBlockPlacementPacket, Player> delegate) {
         MinecraftServer.getPacketListenerManager().setPlayListener(ClientPlayerBlockPlacementPacket.class,

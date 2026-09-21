@@ -59,6 +59,10 @@ public final class InventorySync {
     public static boolean enabled() { return enabled; }
 
     /** Arms the fix and registers the click-prediction listener; call once from {@code FixesSystem.install}. */
+    public static void disable() {
+        enabled = false;
+    }
+
     public static void install(EventNode<? super Event> node) {
         enabled = true;
         node.addListener(PlayerPacketEvent.class, e -> {

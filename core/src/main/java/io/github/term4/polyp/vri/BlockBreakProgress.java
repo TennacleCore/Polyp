@@ -63,6 +63,7 @@ public final class BlockBreakProgress {
         // a dig follows its MINER's pass: it starts, ticks and clears on whichever thread owns the miner.
         // Registered once for the JVM (TickSystem has no removal); the live feature is the installed one.
         LIVE.set(feature);
+        vri.onUninstall(() -> LIVE.compareAndSet(feature, null));
         if (TICK_HOOK.compareAndSet(false, true)) {
             TickSystem.register(TickPhase.DEFAULT, ctx -> {
                 BlockBreakProgress live = LIVE.get();

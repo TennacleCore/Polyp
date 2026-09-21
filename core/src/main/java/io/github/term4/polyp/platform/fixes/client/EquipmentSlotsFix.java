@@ -27,6 +27,12 @@ public final class EquipmentSlotsFix {
         enabled = true;
     }
 
+    public static boolean enabled() { return enabled; }
+
+    public static void disable() {
+        enabled = false;
+    }
+
     /** Strips empty equipment slots from an {@code EntityEquipmentPacket}; otherwise returns {@code packet} unchanged. */
     public static SendablePacket rewrite(SendablePacket packet) {
         if (!enabled) return packet;

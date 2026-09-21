@@ -28,6 +28,16 @@ public final class Vri extends ScopedSystem<VriConfig> {
 
     @Override public EventNode<@NotNull Event> node() { return node; }
 
+    private final java.util.List<Runnable> teardown = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    /** A feature's release for whatever it armed outside the node (a JVM-once tick hook's live reference). */
+    void onUninstall(@NotNull Runnable release) { teardown.add(release); }
+
+    @Override public void uninstall() {
+        teardown.forEach(Runnable::run);
+        teardown.clear();
+    }
+
     /** Every knob from the profile chain, unset = off; the presets' {@link VriConfig#all()} is where it usually comes from. */
     public static Vri install(@NotNull Polyp polyp) {
         return install(polyp, VriConfig.builder().build());

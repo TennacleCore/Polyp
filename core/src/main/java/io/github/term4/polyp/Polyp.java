@@ -106,7 +106,9 @@ public final class Polyp {
     /** Tears down an installed system (its node comes off the tree) so a fresh install may run. */
     public void unregister(Class<? extends MechanicsModule> type) {
         MechanicsModule previous = modules.remove(type);
-        if (previous != null && previous.node() != null) uninstall(previous.node());
+        if (previous == null) return;
+        previous.uninstall();
+        if (previous.node() != null) uninstall(previous.node());
     }
 
     /** {@link #unregister} for every installed system (full teardown; the test harness resets per class). */

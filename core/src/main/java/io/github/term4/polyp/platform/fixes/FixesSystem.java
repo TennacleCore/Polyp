@@ -32,6 +32,7 @@ import org.jetbrains.annotations.Nullable;
 public final class FixesSystem extends ScopedSystem<FixesConfig> {
 
     private final EventNode<@NotNull Event> node;
+    private volatile @Nullable FixesConfig installLevel;
     private final LegacyArrowVisibility legacyArrowVisibility;
 
     public FixesSystem(Polyp polyp, FixesConfig config) {
@@ -93,7 +94,21 @@ public final class FixesSystem extends ScopedSystem<FixesConfig> {
         if (enabled(cfg.legacyTabCompleteFix())) LegacyTabCompleteFix.install();
         if (enabled(cfg.inventorySync())) InventorySync.install(system.node);
         if (enabled(cfg.legacyInventorySlot())) LegacyInventorySlotFix.install();
+        system.installLevel = cfg;
         return polyp.installModule(system);
+    }
+
+    /** The install-level fixes arm server-wide state, so a swap has to hand it back. */
+    @Override public void uninstall() {
+        FixesConfig cfg = installLevel;
+        if (cfg == null) return;
+        installLevel = null;
+        if (enabled(cfg.legacySelfPlacement())) LegacySelfPlacementFix.uninstall();
+        if (enabled(cfg.equipmentFix())) EquipmentSlotsFix.disable();
+        if (enabled(cfg.effectResync())) EffectResyncFix.disable();
+        if (enabled(cfg.legacyTabCompleteFix())) LegacyTabCompleteFix.uninstall();
+        if (enabled(cfg.inventorySync())) InventorySync.disable();
+        if (enabled(cfg.legacyInventorySlot())) LegacyInventorySlotFix.disable();
     }
 
     private static boolean enabled(@Nullable FixToggleConfig cfg) {

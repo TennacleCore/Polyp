@@ -24,6 +24,12 @@ public final class LegacyInventorySlotFix {
         enabled = true;
     }
 
+    public static boolean enabled() { return enabled; }
+
+    public static void disable() {
+        enabled = false;
+    }
+
     public static SendablePacket rewrite(boolean legacyClient, SendablePacket packet) {
         if (!enabled || !legacyClient) return packet;
         final ServerPacket server = PacketShapes.unwrapStateless(packet);

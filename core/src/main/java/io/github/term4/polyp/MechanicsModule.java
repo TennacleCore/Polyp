@@ -13,4 +13,7 @@ public interface MechanicsModule {
 
     /** The system's installed event node; {@code unregister} detaches it, so a re-install never stacks listeners. */
     default @Nullable EventNode<? extends Event> node() { return null; }
+
+    /** Releases whatever the install armed OUTSIDE the node (global listeners, tick hooks, static flags). */
+    default void uninstall() {}
 }

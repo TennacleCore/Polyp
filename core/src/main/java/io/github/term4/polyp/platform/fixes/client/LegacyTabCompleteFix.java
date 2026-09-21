@@ -35,6 +35,12 @@ public final class LegacyTabCompleteFix {
 
     private LegacyTabCompleteFix() {}
 
+    /** Hands the slot back to Minestom's own listener. */
+    public static void uninstall() {
+        MinecraftServer.getPacketListenerManager().setPlayListener(ClientTabCompletePacket.class,
+                TabCompleteListener::listener);
+    }
+
     public static void install() {
         MinecraftServer.getPacketListenerManager().setPlayListener(ClientTabCompletePacket.class, (packet, player) -> {
             final String text = packet.text();

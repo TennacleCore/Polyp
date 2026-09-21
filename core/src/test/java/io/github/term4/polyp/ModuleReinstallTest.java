@@ -13,13 +13,19 @@ import io.github.term4.polyp.mechanics.projectile.ProjectileSystem;
 import io.github.term4.polyp.presets.vanilla18.Attributes;
 import io.github.term4.polyp.presets.vanilla18.Damage;
 import io.github.term4.polyp.presets.vanilla18.Knockback;
+import io.github.term4.polyp.platform.fixes.FixToggleConfig;
+import io.github.term4.polyp.platform.fixes.FixesConfig;
 import io.github.term4.polyp.platform.fixes.FixesSystem;
+import io.github.term4.polyp.platform.fixes.client.LegacyInventorySlotFix;
+import io.github.term4.polyp.platform.fixes.client.EquipmentSlotsFix;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.function.Supplier;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -56,5 +62,24 @@ class ModuleReinstallTest extends HeadlessServerTest {
             MechanicsModule second = c.install().get();
             assertNotNull(second.node().getParent(), c.name() + ": a fresh install works after unregister");
         }
+    }
+
+    /** The node is only half of it: these systems also arm producers, listeners and flags outside it. */
+    @Test
+    void unregisterReleasesWhatTheInstallArmedOutsideTheNode() {
+        polyp.unregister(DamageSystem.class);
+        DamageSystem damage = DamageSystem.install(polyp, Damage.config());
+        assertFalse(damage.registry().enabledKeys().isEmpty(), "the config's producers start with the install");
+        polyp.unregister(DamageSystem.class);
+        assertTrue(damage.registry().enabledKeys().isEmpty(), "and stop with it");
+
+        polyp.unregister(FixesSystem.class);
+        FixesSystem.install(polyp, FixesConfig.builder().equipmentFix(FixToggleConfig.on()).legacyInventorySlot(FixToggleConfig.on()).build());
+        assertTrue(EquipmentSlotsFix.enabled(), "an install-level fix arms server-wide");
+        polyp.unregister(FixesSystem.class);
+        assertFalse(EquipmentSlotsFix.enabled(), "and disarms on the way out");
+        assertFalse(LegacyInventorySlotFix.enabled(), "every install-level fix, not just the first");
+
+        DamageSystem.install(polyp, Damage.config()); // the harness's base trio, back as the other classes expect
     }
 }

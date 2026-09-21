@@ -37,6 +37,11 @@ public final class EnvironmentalDamageTicker {
         }
     }
 
+    /** Releases the binding when {@code system} is the bound one; the hook then idles. */
+    public void unbind(DamageSystem system) {
+        if (this.system == system) this.system = null;
+    }
+
     public void register(EnvironmentalTickProducer producer) { producers.add(producer); }
 
     public void unregister(EnvironmentalTickProducer producer) { producers.remove(producer); }

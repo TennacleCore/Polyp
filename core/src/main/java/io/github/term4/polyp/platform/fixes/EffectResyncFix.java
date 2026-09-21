@@ -25,6 +25,10 @@ public final class EffectResyncFix {
 
     private EffectResyncFix() {}
 
+    public static void disable() {
+        enabled = false;
+    }
+
     public static void install() {
         enabled = true;
     }

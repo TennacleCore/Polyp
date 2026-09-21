@@ -334,6 +334,11 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
         if (type != null && mounted.remove(key)) type.disable();
     }
 
+    /** The types are singletons holding THIS system's mount state, so a teardown unmounts them. */
+    @Override public void uninstall() {
+        for (Key key : java.util.List.copyOf(mounted)) disable(key);
+    }
+
     private void mount(ProjectileType type) {
         if (mounted.add(type.key())) type.enable(this, polyp);
     }
