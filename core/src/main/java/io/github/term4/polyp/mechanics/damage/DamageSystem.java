@@ -298,23 +298,35 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
             if (applied <= 0) return DamageOutcome.BLOCKED;
             Boolean odSilent = pick(typeCfg.overdamageSilent(typeCtx), resolved.overdamageSilent());
             boolean replacementSilent = odSilent != null ? odSilent : generalSilent;
-            living.setTag(LAST_DAMAGE, Math.max(event.stored(), amount));
-            living.setTag(LAST_DAMAGE_TYPE, type);
-            applyDamage(living, type, finalSnap, applied, replacementSilent, false);
-            // vanilla runs the post-hit enchant effects on ANY landed hit - an overdamage refresh included
-            // (EntityHuman.attack applies fire aspect whenever damageEntity returns true)
-            dispatchWeaponOnHit(living, finalSnap);
-            fireDamageApplied(finalSnap, applied, DamageOutcome.OVERDAMAGE, blocked);
+            boolean replaced = applyDamage(living, type, finalSnap, applied, replacementSilent, false);
+            if (replaced) {
+                living.setTag(LAST_DAMAGE, Math.max(event.stored(), amount));
+                living.setTag(LAST_DAMAGE_TYPE, type);
+                // vanilla runs the post-hit enchant effects on ANY landed hit - an overdamage refresh included
+                // (EntityHuman.attack applies fire aspect whenever damageEntity returns true)
+                dispatchWeaponOnHit(living, finalSnap);
+            }
+            fireDamageApplied(finalSnap, replaced ? applied : 0f, DamageOutcome.OVERDAMAGE, blocked);
             return DamageOutcome.OVERDAMAGE;
         }
 
         // fresh hit: a 0-damage hit still lands when its type triggers invul (snowball/egg); only negative or non-invul 0 is dropped
         if (amount < 0 || (amount == 0f && !triggersInvul)) return DamageOutcome.BLOCKED;
 
-        storeOpeningItem(living, finalSnap.item());
-        living.setTag(LAST_DAMAGE, amount);
-        living.setTag(LAST_DAMAGE_TYPE, type);
-        applyDamage(living, type, finalSnap, amount, generalSilent, true);
+        Integer invulTicks = pick(typeCfg.invulTicks(typeCtx), resolved.invulTicks());
+        int window = triggersInvul && invulTicks != null && invulTicks > 0
+                // a server-authoritative duration: the vanilla-tick count stretched to live TPS (identity at 20)
+                ? TickScaler.duration(invulTicks, polyp.profiles().resolve(living, MechanicsKeys.TICK_SCALING), KEY) : 0;
+        // claimed before the hit lands, as vanilla stamps hurtResistantTime ahead of damageEntity0: two attackers
+        // on different partition threads both read the gate above, only one opens the window
+        if (!claimWindow(living, window, bypassInvul)) return DamageOutcome.BLOCKED;
+
+        boolean landed = applyDamage(living, type, finalSnap, amount, generalSilent, true);
+        if (landed) {
+            storeOpeningItem(living, finalSnap.item());
+            living.setTag(LAST_DAMAGE, amount);
+            living.setTag(LAST_DAMAGE_TYPE, type);
+        }
         Boolean ownsFlag = typeCfg.ownsVelocityBroadcast(typeCtx);
         boolean ownsVelocity = ownsFlag != null ? ownsFlag : knockbackOwnsVelocity(type);
         if (Boolean.TRUE.equals(resolved.syncHurtVelocity())
@@ -322,13 +334,9 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
                 && !DROWN_KEY.equals(type.key())) {
             applyHurtKnockback(living, resolved.hurtKnockback());
         }
-        Integer invulTicks = pick(typeCfg.invulTicks(typeCtx), resolved.invulTicks());
-        if (triggersInvul && invulTicks != null && invulTicks > 0) {
-            // i-frame window is a server-authoritative duration: stretch the vanilla-tick count to live TPS (identity at 20)
-            setDamageInvulnerable(living, TickScaler.duration(invulTicks, polyp.profiles().resolve(living, MechanicsKeys.TICK_SCALING), KEY));
-        }
-        dispatchWeaponOnHit(living, finalSnap);
-        fireDamageApplied(finalSnap, amount, DamageOutcome.FRESH_DAMAGE, blocked);
+        // a cancelled kill took nothing: no enchant on-hit, and the feed says zero
+        if (landed) dispatchWeaponOnHit(living, finalSnap);
+        fireDamageApplied(finalSnap, landed ? amount : 0f, DamageOutcome.FRESH_DAMAGE, blocked);
         return DamageOutcome.FRESH_DAMAGE;
     }
 
@@ -421,8 +429,9 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         return target.getTag(OPENING_ITEM);
     }
 
-    private void applyDamage(LivingEntity living, DamageType type, DamageSnapshot snap, float amount, boolean silent,
-                             boolean fresh) {
+    /** {@code false} when a {@link FatalDamageEvent} listener kept them up: nothing was applied. */
+    private boolean applyDamage(LivingEntity living, DamageType type, DamageSnapshot snap, float amount, boolean silent,
+                                boolean fresh) {
         if (FATAL_DAMAGE.hasListener() && wouldKill(living, amount)) {
             FatalDamageEvent fatal = new FatalDamageEvent(snap, amount, services);
             FxContext at = FxContext.of(living); // a listener that respawns the victim moves them before the feedback
@@ -430,7 +439,7 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
             if (fatal.isCancelled()) {
                 // vanilla's replacement hit carries no hurt feedback, killing or not (attackEntityFrom's flag is false)
                 if (fresh && !silent) hurtEffectsOnly(living, type, snap, amount, at);
-                return;
+                return false;
             }
         }
         // lethal hits fall through to living.damage() so Minestom handles death
@@ -442,14 +451,14 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
             if (newHealth > 0) {
                 if (absorbed > 0) p.setAdditionalHearts(absorb - absorbed);
                 SilentDamage.setHealthWithoutHurtEffect(p, newHealth, polyp.clientInfo());
-                return;
+                return true;
             }
         }
         Entity source = snap.source();
         Damage damage = new Damage(type.minecraftType(), source, source, snap.point(), amount);
         if (fresh) {
             living.damage(damage);
-            return;
+            return true;
         }
         living.setTag(REPLACEMENT, true);
         try {
@@ -457,6 +466,7 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         } finally {
             living.removeTag(REPLACEMENT);
         }
+        return true;
     }
 
     /** Mirrors Minestom's {@code damage()}: absorption hearts absorb first, then health. */
@@ -581,6 +591,15 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         return e instanceof Player p && (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR);
     }
 
+    // tags only: a listener must never run under this monitor
+    private static boolean claimWindow(LivingEntity living, int ticks, boolean bypassInvul) {
+        synchronized (living) {
+            if (!bypassInvul && isInvulnerableToDamage(living)) return false;
+            if (ticks > 0) setDamageInvulnerable(living, ticks);
+            return true;
+        }
+    }
+
     /** Ticks left in the target's damage-invulnerability window ({@code 0} if none). */
     public static int remainingDamageInvul(LivingEntity le) {
         TickState s = getDamageInvul(le);
@@ -603,6 +622,7 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
      * on another). Fx are NOT touched - {@link DeathConfig#clearEffects} owns those.
      */
     public static void resetMechanicsState(@NotNull LivingEntity entity) {
+        clearDamageWindow(entity); // a respawn inside the killing blow's window would start blocked
         entity.setFireTicks(0);
         entity.setVelocity(Vec.ZERO);
         DrowningDamage.resetAir(entity);
