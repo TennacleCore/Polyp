@@ -360,11 +360,11 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
     public static ProjectileSystem install(Polyp polyp, ProjectileConfig cfg) {
         ProjectileSystem system = new ProjectileSystem(polyp, cfg);
         system.registerVanillaDefaults();
-        polyp.installModule(system);
-        for (ProjectileType type : system.types.values()) system.mount(type);
-        for (Key key : cfg.typeConfigs.keySet()) {
+        for (Key key : cfg.typeConfigs.keySet()) { // before the install: a refused config must leave nothing registered
             if (!system.types.containsKey(key)) throw new IllegalArgumentException("No projectile type registered for " + key.asString());
         }
+        polyp.installModule(system);
+        for (ProjectileType type : system.types.values()) system.mount(type);
         if (cfg.shootables().isEmpty()) {
             new Bow().install(system.node, system);
             new FishingRod().install(system.node, system);
