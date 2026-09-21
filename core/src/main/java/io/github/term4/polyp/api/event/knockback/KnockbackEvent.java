@@ -46,5 +46,5 @@ public final class KnockbackEvent extends CancellableMechanicsEvent<KnockbackSna
     public @Nullable Entity source() { return finalSnap().source(); }
     public @Nullable Entity target() { return finalSnap().target(); }
     /** The victim's gameplay world. */
-    public MechanicsWorld world() { return MechanicsWorld.of(target()); }
+    public @Nullable MechanicsWorld world() { return target() != null ? MechanicsWorld.of(target()) : null; }
 }

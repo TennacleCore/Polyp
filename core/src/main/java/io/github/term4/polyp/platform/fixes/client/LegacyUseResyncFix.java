@@ -26,7 +26,7 @@ public final class LegacyUseResyncFix {
         node.addListener(PlayerCancelItemUseEvent.class, e -> {
             Player player = e.getPlayer();
             if (!(player instanceof OptimizedPlayer op) || !op.compat().legacyClient()) return;
-            FixToggleConfig cfg = fixes.configFor(player).legacyUseResync();
+            FixToggleConfig cfg = fixes.forClient(player).legacyUseResync();
             if (cfg == null || !cfg.enabled(player)) return;
             MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
                 if (player.isOnline()) player.getInventory().update(player);

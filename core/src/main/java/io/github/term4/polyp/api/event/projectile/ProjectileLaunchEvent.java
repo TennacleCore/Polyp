@@ -43,7 +43,7 @@ public class ProjectileLaunchEvent implements CancellableEvent {
     /** The built entity, not yet in the world. */
     public @NotNull ProjectileEntity projectile() { return projectile; }
     /** The shooter's world - the one the projectile launches into. */
-    public MechanicsWorld world() { return MechanicsWorld.of(snapshot.shooter()); }
+    public MechanicsWorld world() { return MechanicsWorld.of(projectile()); } // the shooter is nullable; the projectile is not
 
     public @NotNull Pos spawnPos() { return spawnPos; }
     public void setSpawnPos(@NotNull Pos pos) { this.spawnPos = pos; }

@@ -34,5 +34,5 @@ public final class KnockbackAppliedEvent implements Event {
     public @Nullable Entity source() { return snapshot.source(); }
     public @Nullable Entity target() { return snapshot.target(); }
     /** The victim's gameplay world. */
-    public MechanicsWorld world() { return MechanicsWorld.of(target()); }
+    public @Nullable MechanicsWorld world() { return target() != null ? MechanicsWorld.of(target()) : null; }
 }

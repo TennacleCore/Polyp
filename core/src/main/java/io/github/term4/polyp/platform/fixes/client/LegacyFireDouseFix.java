@@ -45,7 +45,7 @@ public final class LegacyFireDouseFix {
     private static boolean douses(FixesSystem fixes, Player miner) {
         GameMode mode = miner.getGameMode();
         if (mode == GameMode.ADVENTURE || mode == GameMode.SPECTATOR) return false;
-        FixToggleConfig cfg = fixes.configFor(miner).legacyFireDouse();
+        FixToggleConfig cfg = fixes.forClient(miner).legacyFireDouse(); // LEGACY in the catalog: ask the client's own scope
         return cfg != null && cfg.enabled(miner);
     }
 
