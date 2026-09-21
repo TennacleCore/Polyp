@@ -2,6 +2,7 @@ package io.github.term4.polyp.mechanics.explosion;
 
 import io.github.term4.polyp.mechanics.explosion.ExplosionConfigResolver.ExplosionContext;
 import io.github.term4.polyp.Polyp;
+import io.github.term4.polyp.mechanics.containers.ContainerSystem;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.api.event.explosion.TntPrimeEvent;
 import io.github.term4.polyp.entity.PrimedTnt;
@@ -288,6 +289,8 @@ final class ExplosionBlocks {
             for (ItemStack stack : cfg.interaction().drops(BlockBreaking.dropsOf(block), power, rnd)) {
                 drop(world, pos, stack);
             }
+            ContainerSystem containers = Polyp.getInstance().module(ContainerSystem.class);
+            if (containers != null) containers.broken(world, pos, block, null);
             world.setBlock(pos, Block.AIR);
             world.applyPhysics(pos);
             broken.add(pos);

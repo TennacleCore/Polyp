@@ -4,6 +4,7 @@ import io.github.term4.polyp.mechanics.attack.AttackConfig;
 import io.github.term4.polyp.mechanics.attribute.AttributeConfig;
 import io.github.term4.polyp.mechanics.blocking.BlockingConfig;
 import io.github.term4.polyp.mechanics.blocks.BlocksConfig;
+import io.github.term4.polyp.mechanics.containers.ContainersConfig;
 import io.github.term4.polyp.mechanics.cooldown.CooldownConfig;
 import io.github.term4.polyp.mechanics.consumable.ConsumableConfig;
 import io.github.term4.polyp.mechanics.damage.DamageConfig;
@@ -47,6 +48,8 @@ public final class MechanicsKeys {
     public static final ConfigKey<BlockingConfig> BLOCKING = ConfigKey.of("polyp:blocking", BlockingConfig.class);
     /** Block placement that differs by era: which {@code BlockChest} pairs a chest. */
     public static final ConfigKey<BlocksConfig> BLOCKS = ConfigKey.of("polyp:blocks", BlocksConfig.class);
+    /** Which blocks open as containers, and how each keys, fills and spills. */
+    public static final ConfigKey<ContainersConfig> CONTAINERS = ConfigKey.of("polyp:containers", ContainersConfig.class);
     /** Server-authoritative item-use cooldowns. */
     public static final ConfigKey<CooldownConfig> COOLDOWNS = ConfigKey.of("polyp:item-cooldowns", CooldownConfig.class);
     /** Vanilla behaviors Minestom omits (crack overlay, block drops, item pickup/drop). */

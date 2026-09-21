@@ -168,9 +168,10 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
         return spawn(world, pos, velocity, stack, physics, pickupDelayTicks, ItemSpawnEvent.Cause.SERVER, null);
     }
 
-    private static @Nullable DroppedItemEntity spawn(MechanicsWorld world, Pos pos, Vec velocity, ItemStack stack,
-                                                     @Nullable Model physics, int pickupDelayTicks,
-                                                     ItemSpawnEvent.Cause cause, @Nullable Player player) {
+    /** {@link #spawn(MechanicsWorld, Pos, Vec, ItemStack, Model, int)} with its cause and dropper named. */
+    public static @Nullable DroppedItemEntity spawn(@NotNull MechanicsWorld world, @NotNull Pos pos, @NotNull Vec velocity,
+                                                    @NotNull ItemStack stack, @Nullable Model physics, int pickupDelayTicks,
+                                                    ItemSpawnEvent.@NotNull Cause cause, @Nullable Player player) {
         DroppedItemEntity item = new DroppedItemEntity(stack, physics);
         // armed BEFORE the async world spawn, so an instance-less item resolves no scope - use the dropper's
         Entity scope = player != null ? player : item;

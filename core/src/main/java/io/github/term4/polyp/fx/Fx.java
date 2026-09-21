@@ -89,6 +89,9 @@ public final class Fx {
     public static final Key BLOCK_PLACE_REFUSED = Key.key("polyp:block_place_refused");
     /** The big explosion flash; played for power &gt;= 2 (the 1.8 client's hugeexplosion-vs-explode gate). */
     public static final Key EXPLOSION_EMITTER = Key.key("polyp:explosion_emitter");
+    /** A container's lid going up or down; the block rides {@code detail}. */
+    public static final Key CONTAINER_OPEN = Key.key("polyp:container_open");
+    public static final Key CONTAINER_CLOSE = Key.key("polyp:container_close");
 
     /**
      * Plays the fx registered for {@code key} in {@code ctx.source()}'s scope, firing the cancellable
@@ -157,7 +160,27 @@ public final class Fx {
                 .register(BLOCK_PLACE, placeSound(ITEM_BLOCK_18))
                 .register(BLOCK_PLACE_REFUSED, placeSound(ITEM_BLOCK_18))
                 .register(BLOCK_BREAK, breakEffect())
-                .register(BLOCK_BREAK_REFUSED, breakEffect());
+                .register(BLOCK_BREAK_REFUSED, breakEffect())
+                .register(CONTAINER_OPEN, containerSound(true))
+                .register(CONTAINER_CLOSE, containerSound(false));
+    }
+
+    // 1.8 TileEntityChest.update: random.chestopen / chestclosed 0.5F, pitch rand*0.1+0.9, to everyone near; a
+    // 1.8 client plays its own copy off the block action too, as it did on a 1.8 server
+    private static @NotNull FxHandler containerSound(boolean opening) {
+        return ctx -> {
+            Block block = ctx.detail(Block.class);
+            if (block == null) return;
+            ctx.sound(containerSoundOf(block, opening), Sound.Source.BLOCK, 0.5f, ThreadLocalRandom.current().nextFloat() * 0.1f + 0.9f);
+        };
+    }
+
+    private static @NotNull SoundEvent containerSoundOf(Block block, boolean opening) {
+        String key = block.key().value();
+        if (key.equals("ender_chest")) return opening ? SoundEvent.BLOCK_ENDER_CHEST_OPEN : SoundEvent.BLOCK_ENDER_CHEST_CLOSE;
+        if (key.equals("barrel")) return opening ? SoundEvent.BLOCK_BARREL_OPEN : SoundEvent.BLOCK_BARREL_CLOSE;
+        if (key.endsWith("shulker_box")) return opening ? SoundEvent.BLOCK_SHULKER_BOX_OPEN : SoundEvent.BLOCK_SHULKER_BOX_CLOSE;
+        return opening ? SoundEvent.BLOCK_CHEST_OPEN : SoundEvent.BLOCK_CHEST_CLOSE;
     }
 
     // world event 2001: the client derives sound + particles from the block id. Block view minus the breaker: both
