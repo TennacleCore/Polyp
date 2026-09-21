@@ -18,6 +18,7 @@ public final class Vocabulary {
         synchronized (Vocabulary.class) {
             if (installed || installing) return;
             installing = true;
+            try {
             io.github.term4.polyp.mechanics.explosion.DamageModel.registerFactories();
             KeySet.registerFactories();
             io.github.term4.polyp.mechanics.projectile.shootables.DrawPower.registerFactories();
@@ -33,7 +34,10 @@ public final class Vocabulary {
             FieldFns.register(io.github.term4.polyp.tracking.motion.VelocityRule.class, "simulated",
                     "the server-tracked arc with its default knobs; velocity/<knob> edits them",
                     args -> io.github.term4.polyp.tracking.motion.VelocityRule.simulated());
-            installed = true;
+                installed = true;
+            } finally {
+                installing = false; // a throw must not wedge every later ensure()
+            }
         }
     }
 }

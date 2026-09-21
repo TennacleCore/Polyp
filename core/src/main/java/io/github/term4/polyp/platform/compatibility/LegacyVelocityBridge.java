@@ -63,7 +63,6 @@ public final class LegacyVelocityBridge {
         // ViaBridge path: drop the one tagged self LpVec3 echo (the exact short goes via the proxy RPC instead)
         if (Boolean.TRUE.equals(p.getTag(SUPPRESS_SELF_VELOCITY)) && vel.entityId() == p.getEntityId()) {
             e.setCancelled(true);
-            p.removeTag(SUPPRESS_SELF_VELOCITY);  // one-shot
         }
     }
 

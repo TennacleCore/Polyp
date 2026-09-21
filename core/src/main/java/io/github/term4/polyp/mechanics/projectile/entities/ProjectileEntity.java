@@ -75,6 +75,8 @@ public abstract class ProjectileEntity extends MechanicsEntity {
     protected int shooterImmunityTicks = DEFAULT_SHOOTER_IMMUNITY_TICKS;
     /** Alive-tick the shooter is immune until after a deflect; {@code <= 0} = none. */
     private long shooterImmuneUntilAlive;
+    private static final int UNLOADED_LIMIT = 100;
+    private int unloadedTicks;
     protected double entityHitGrow = DEFAULT_ENTITY_HIT_GROW;
     /** {@code <= 0} = never (vanilla arrow, the edge-slide fix). Gates {@link #sendPacketToViewers}. */
     protected int velocitySyncInterval;
@@ -568,8 +570,15 @@ public abstract class ProjectileEntity extends MechanicsEntity {
             }
         }
 
-        if (!world.isChunkLoaded(newPosition)) return;
+        if (!world.isChunkLoaded(newPosition)) {
+            // nothing can collide out there and the void check is Y-only: a throw past the built area would fly forever
+            if (++unloadedTicks > UNLOADED_LIMIT) pendingRemove = true;
+            return;
+        }
+        unloadedTicks = 0;
 
+        // a departed shooter is only a strong reference now: the scope walk already tolerates none
+        if (shooter != null && shooter.isRemoved()) shooter = null;
         this.justBecameStuck = false;
         if (blockContact) {
             this.impactPosition = newPosition;
@@ -867,14 +876,15 @@ public abstract class ProjectileEntity extends MechanicsEntity {
         // externally driven (a replay parks it: no gravity, zero own velocity - stuck included): the driver
         // moves it through refreshPosition, whose sends flow only while the base schedule is armed; the
         // interval-0 silent wire never rearms it, so without the super call every relative move swallows
+        // while stuck, resyncStuck() owns the broadcast; don't send on the stick tick (the resync's next teleport is the
+        // correction). Ahead of the parked branch: a stick zeroes velocity and gravity, and would match it
+        if (isStuck()) {
+            this.lastSyncedPosition = getPosition();
+            return;
+        }
         if (hasNoGravity() && velocityBt.isZero()) {
             if (getSynchronizationTicks() <= 1) setSynchronizationTicks(ServerFlag.ENTITY_SYNCHRONIZATION_TICKS);
             super.synchronizePosition();
-            return;
-        }
-        // while stuck, resyncStuck() owns the broadcast; don't send on the stick tick (the resync's next teleport is the correction)
-        if (isStuck()) {
-            this.lastSyncedPosition = getPosition();
             return;
         }
         if (getSynchronizationTicks() <= 0) return; // silent wire (syncInterval 0): spawn-predicted, event-driven broadcasts only

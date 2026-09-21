@@ -7,7 +7,7 @@ import net.minestom.server.entity.attribute.Attribute;
 /**
  * Applies health changes without the client-side hurt effect (camera shake / red flash). Legacy clients: suppress the
  * outgoing health packets (via {@link HurtSuppression}) and deliver health via entity metadata. Modern clients: the
- * max-health trick (raise MAX_HEALTH so the bar reads full, setHealth, restore).
+ * max-health trick (drop MAX_HEALTH to the new health so the client clamps before the health packet, then restore).
  */
 public final class SilentDamage {
 

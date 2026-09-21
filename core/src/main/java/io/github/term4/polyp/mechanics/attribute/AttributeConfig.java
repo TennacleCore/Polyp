@@ -89,6 +89,16 @@ public final class AttributeConfig extends Config<AttributeContext, AttributeCon
     public Tuning tuningFor(Key key) { return tunings.getOrDefault(key, IDENTITY); }
 
     /** Merges this config over base: this wins per key; tunings union with this overriding. */
+    // a scope naming one source keeps the base catalog; same key wins for the scope
+    private List<Source> mergedSources(AttributeConfig base) {
+        if (sources.isEmpty()) return base.sources;
+        if (base.sources.isEmpty()) return sources;
+        java.util.LinkedHashMap<net.kyori.adventure.key.Key, Source> merged = new java.util.LinkedHashMap<>();
+        for (Source s : base.sources) merged.put(s.key(), s);
+        for (Source s : sources) merged.put(s.key(), s);
+        return List.copyOf(merged.values());
+    }
+
     public AttributeConfig fromBase(AttributeConfig base) {
         Map<Key, Tuning> merged = new HashMap<>(base.tunings);
         merged.putAll(tunings);
@@ -96,7 +106,7 @@ public final class AttributeConfig extends Config<AttributeContext, AttributeCon
         b.mergeKnobs(this, base);
         return b
                 .subConfig(subConfig != null ? subConfig : base.subConfig)
-                .sources(!sources.isEmpty() ? sources : base.sources)
+                .sources(mergedSources(base)) // per key: a scope adding one source must not drop the base catalog
                 .tunings(merged)
                 .armor(armor != null ? (base.armor != null ? armor.fromBase(base.armor) : armor) : base.armor)
                 .protection(protection != null ? (base.protection != null ? protection.fromBase(base.protection) : protection) : base.protection)
