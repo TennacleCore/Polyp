@@ -161,23 +161,24 @@ public final class Fx {
                 .register(BLOCK_PLACE_REFUSED, placeSound(ITEM_BLOCK_18))
                 .register(BLOCK_BREAK, breakEffect())
                 .register(BLOCK_BREAK_REFUSED, breakEffect())
-                .register(CONTAINER_OPEN, containerSound(true))
-                .register(CONTAINER_CLOSE, containerSound(false));
+                .register(CONTAINER_OPEN, containerSound(true, false))
+                .register(CONTAINER_CLOSE, containerSound(false, false));
     }
 
     // 1.8 TileEntityChest.update: random.chestopen / chestclosed 0.5F, pitch rand*0.1+0.9, to everyone near; a
-    // 1.8 client plays its own copy off the block action too, as it did on a 1.8 server
-    private static @NotNull FxHandler containerSound(boolean opening) {
+    // 1.8 client plays its own copy off the block action too, as it did on a 1.8 server. The ender chest has the
+    // same two sounds in 1.8 (TileEntityEnderChest); its own are 1.9+, and the 1.8 wire has no name for them
+    private static @NotNull FxHandler containerSound(boolean opening, boolean modern) {
         return ctx -> {
             Block block = ctx.detail(Block.class);
             if (block == null) return;
-            ctx.sound(containerSoundOf(block, opening), Sound.Source.BLOCK, 0.5f, ThreadLocalRandom.current().nextFloat() * 0.1f + 0.9f);
+            ctx.sound(containerSoundOf(block, opening, modern), Sound.Source.BLOCK, 0.5f, ThreadLocalRandom.current().nextFloat() * 0.1f + 0.9f);
         };
     }
 
-    private static @NotNull SoundEvent containerSoundOf(Block block, boolean opening) {
+    private static @NotNull SoundEvent containerSoundOf(Block block, boolean opening, boolean modern) {
         String key = block.key().value();
-        if (key.equals("ender_chest")) return opening ? SoundEvent.BLOCK_ENDER_CHEST_OPEN : SoundEvent.BLOCK_ENDER_CHEST_CLOSE;
+        if (modern && key.equals("ender_chest")) return opening ? SoundEvent.BLOCK_ENDER_CHEST_OPEN : SoundEvent.BLOCK_ENDER_CHEST_CLOSE;
         if (key.equals("barrel")) return opening ? SoundEvent.BLOCK_BARREL_OPEN : SoundEvent.BLOCK_BARREL_CLOSE;
         if (key.endsWith("shulker_box")) return opening ? SoundEvent.BLOCK_SHULKER_BOX_OPEN : SoundEvent.BLOCK_SHULKER_BOX_CLOSE;
         return opening ? SoundEvent.BLOCK_CHEST_OPEN : SoundEvent.BLOCK_CHEST_CLOSE;
@@ -204,7 +205,9 @@ public final class Fx {
                 .register(BLOCK_PLACE, placeSound(block -> true))
                 .register(BLOCK_PLACE_REFUSED, placeSound(block -> true))
                 // ThrownEnderpearl.playSound: positional at the destination, PLAYERS category
-                .register(PEARL_TELEPORT, pearlTeleport());
+                .register(PEARL_TELEPORT, pearlTeleport())
+                .register(CONTAINER_OPEN, containerSound(true, true))
+                .register(CONTAINER_CLOSE, containerSound(false, true));
     }
 
     /** 1.8 placed a bed through ItemBed, never ItemBlock: no place sound, landed or refused. */

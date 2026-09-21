@@ -22,8 +22,16 @@ public final class ContainerTypeConfig extends Config<ContainerContext, Containe
     public final @Nullable FieldValue<ContainerContext, ContainerKey> key;
     public final @Nullable FieldValue<ContainerContext, ContainerFill> fill;
     public final @Nullable FieldValue<ContainerContext, Spill> spill;
-    /** Two side by side open as one window: the west or north half on top, as 1.8 orders it. */
-    public final @Nullable FieldValue<ContainerContext, Boolean> pairs;
+    public final @Nullable FieldValue<ContainerContext, Pairing> pairing;
+
+    /** Two side by side opening as one window, and which half takes the upper rows. */
+    public enum Pairing {
+        NONE,
+        /** 1.8 {@code InventoryLargeChest}: the west or north half on top, whichever way the pair faces. */
+        LEGACY,
+        /** Modern {@code ChestBlock}: the {@code right} half on top, so the viewer's left is always the upper rows. */
+        MODERN
+    }
 
     ContainerTypeConfig(Builder b) {
         super(b.subConfig);
@@ -32,7 +40,7 @@ public final class ContainerTypeConfig extends Config<ContainerContext, Containe
         this.key = b.key;
         this.fill = b.fill;
         this.spill = b.spill;
-        this.pairs = b.pairs;
+        this.pairing = b.pairing;
     }
 
     @Override

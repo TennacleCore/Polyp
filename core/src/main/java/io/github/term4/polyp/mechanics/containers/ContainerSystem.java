@@ -9,6 +9,8 @@ import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.fx.FxContext;
 import io.github.term4.polyp.mechanics.containers.ContainersConfigResolver.ContainerContext;
 import io.github.term4.polyp.mechanics.containers.ContainersConfigResolver.ResolvedContainer;
+import io.github.term4.polyp.mechanics.containers.ContainerTypeConfig.Pairing;
+import io.github.term4.polyp.platform.player.CreativeInventory;
 import io.github.term4.polyp.world.MechanicsWorld;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.MinecraftServer;
@@ -154,10 +156,11 @@ public final class ContainerSystem extends ScopedSystem<ContainersConfig> {
         List<String> keys = new ArrayList<>(2);
         int rows = kind.rows();
         Component title = kind.title();
-        BlockVec partner = kind.pairs() ? partnerOf(world, pos, block) : null;
+        BlockVec partner = kind.pairing() != Pairing.NONE ? partnerOf(world, pos, block) : null;
         if (partner != null) {
-            // 1.8 InventoryLargeChest: the west or north half is the upper rows
-            BlockVec first = partner.blockX() < pos.blockX() || partner.blockZ() < pos.blockZ() ? partner : pos;
+            BlockVec first = kind.pairing() == Pairing.MODERN
+                    ? ("right".equals(block.getProperty("type")) ? pos : partner)
+                    : (partner.blockX() < pos.blockX() || partner.blockZ() < pos.blockZ() ? partner : pos);
             BlockVec second = first == pos ? partner : pos;
             cells.add(first);
             cells.add(second);
@@ -172,7 +175,7 @@ public final class ContainerSystem extends ScopedSystem<ContainersConfig> {
         ContainerStore.Window window = null;
         for (String k : keys) window = window != null ? window : store.windows.get(k);
         if (window == null) {
-            Inventory inventory = new Inventory(rowsType(rows), title);
+            Inventory inventory = new CreativeInventory(rowsType(rows), title);
             window = new ContainerStore.Window(inventory, world, block, List.copyOf(cells), List.copyOf(keys));
             int half = window.half();
             for (int h = 0; h < keys.size(); h++) {

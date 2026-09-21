@@ -25,7 +25,7 @@ public final class ContainersConfigResolver {
     }
 
     public record ResolvedContainer(int rows, Component title, ContainerKey key, ContainerFill fill, Spill spill,
-                                    boolean pairs) {}
+                                    ContainerTypeConfig.Pairing pairing) {}
 
     /** {@code declared} (a position's own kind) over the config's entry for the block; {@code null} = not a container. */
     public static @Nullable ResolvedContainer resolve(@Nullable ContainersConfig cfg, @Nullable ContainerTypeConfig declared,
@@ -40,6 +40,6 @@ public final class ContainersConfigResolver {
                 FieldValue.resolve(tc.key, ctx, ContainerKey.BLOCK),
                 FieldValue.resolve(tc.fill, ctx, ContainerFill.EMPTY),
                 FieldValue.resolve(tc.spill, ctx, Spill.DROP),
-                FieldValue.resolve(tc.pairs, ctx, false));
+                FieldValue.resolve(tc.pairing, ctx, ContainerTypeConfig.Pairing.NONE));
     }
 }

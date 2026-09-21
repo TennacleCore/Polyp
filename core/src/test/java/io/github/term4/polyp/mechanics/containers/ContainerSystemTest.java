@@ -1,5 +1,7 @@
 package io.github.term4.polyp.mechanics.containers;
 
+import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
 import io.github.term4.polyp.presets.vanilla18.Containers;
 import io.github.term4.polyp.testsupport.FakePlayer;
@@ -9,6 +11,8 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.BlockVec;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
+import net.minestom.server.entity.Entity;
+import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventDispatcher;
@@ -16,6 +20,7 @@ import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerBlockInteractEvent;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.block.BlockFace;
 import net.minestom.server.inventory.Inventory;
 import net.minestom.server.item.ItemStack;
@@ -25,6 +30,7 @@ import net.minestom.server.network.packet.server.play.OpenWindowPacket;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -136,13 +142,81 @@ class ContainerSystemTest extends HeadlessServerTest {
         }
     }
 
+    /** The modern order: the right half on top, whichever way the pair faces. */
+    @Test
+    void modernPairPutsTheRightHalfOnTop() {
+        InstanceContainer modern = flatInstance(MechanicsProfile.builder()
+                .set(MechanicsKeys.CONTAINERS, io.github.term4.polyp.presets.vanilla.Containers.config()).build());
+        modern.loadChunk(1, Z >> 4).join();
+        BlockVec left = new BlockVec(24, Y, Z), right = new BlockVec(25, Y, Z);
+        FakePlayer p = FakePlayer.connect(modern, new Pos(24.5, Y, Z + 2.5), "ModernPair");
+        try {
+            modern.setBlock(left, Block.CHEST.withProperties(Map.of("facing", "north", "type", "left")));
+            modern.setBlock(right, Block.CHEST.withProperties(Map.of("facing", "north", "type", "right")));
+            var e = new PlayerBlockInteractEvent(p.player, PlayerHand.MAIN, modern, modern.getBlock(left), left,
+                    new Vec(0.5, 0.5, 0.5), BlockFace.NORTH);
+            EventDispatcher.call(e);
+            Inventory window = window(p);
+            window.setItemStack(0, ItemStack.of(Material.APPLE));
+            assertEquals(Material.APPLE, containers.contents(MechanicsWorld.of(modern), key(right))[0].material(),
+                    "the upper rows are the right half's");
+        } finally {
+            p.player.closeInventory();
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void creativeCloneTakesAFullStack() {
+        BlockVec pos = new BlockVec(60, Y, Z);
+        FakePlayer p = FakePlayer.connect(instance, new Pos(60.5, Y, Z + 2.5), "Cloner");
+        try {
+            p.player.setGameMode(GameMode.CREATIVE);
+            instance.setBlock(pos, Block.CHEST);
+            click(p, pos);
+            Inventory window = window(p);
+            window.setItemStack(4, ItemStack.of(Material.DIAMOND, 3));
+            assertTrue(window.middleClick(p.player, 4));
+            assertEquals(64, p.player.getInventory().getCursorItem().amount(), "a full stack, the slot untouched");
+            assertEquals(3, window.getItemStack(4).amount());
+            assertFalse(window.middleClick(p.player, 4), "a held cursor clones nothing");
+        } finally {
+            p.player.closeInventory();
+            instance.setBlock(pos, Block.AIR);
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void cloneDragFillsEachSlot() {
+        BlockVec pos = new BlockVec(64, Y, Z);
+        FakePlayer p = FakePlayer.connect(instance, new Pos(64.5, Y, Z + 2.5), "CloneDragger");
+        try {
+            p.player.setGameMode(GameMode.CREATIVE);
+            instance.setBlock(pos, Block.CHEST);
+            click(p, pos);
+            Inventory window = window(p);
+            window.setItemStack(2, ItemStack.of(Material.DIAMOND, 10));
+            p.player.getInventory().setCursorItem(ItemStack.of(Material.DIAMOND, 1));
+            assertTrue(window.dragging(p.player, List.of(1, 2, 3), 10));
+            assertEquals(64, window.getItemStack(1).amount());
+            assertEquals(64, window.getItemStack(2).amount(), "topped up, not stacked past a stack");
+            assertEquals(64, window.getItemStack(3).amount());
+            assertTrue(p.player.getInventory().getCursorItem().isAir(), "the clone drag spends the cursor");
+        } finally {
+            p.player.closeInventory();
+            instance.setBlock(pos, Block.AIR);
+            p.player.remove();
+        }
+    }
+
     @Test
     void breakingScattersAndForgets() {
         BlockVec pos = new BlockVec(30, Y, Z);
         FakePlayer p = FakePlayer.connect(instance, new Pos(30.5, Y, Z + 2.5), "ChestBreaker");
-        AtomicInteger spawned = new AtomicInteger();
+        List<Entity> spawned = new java.util.concurrent.CopyOnWriteArrayList<>();
         EventNode<Event> count = EventNode.all("count-drops");
-        count.addListener(ItemSpawnEvent.class, e -> spawned.incrementAndGet());
+        count.addListener(ItemSpawnEvent.class, e -> spawned.add(e.item()));
         MinecraftServer.getGlobalEventHandler().addChild(count);
         try {
             instance.setBlock(pos, Block.CHEST);
@@ -153,10 +227,11 @@ class ContainerSystemTest extends HeadlessServerTest {
 
             EventDispatcher.call(new PlayerBlockBreakEvent(p.player, instance, Block.CHEST, Block.AIR, pos, BlockFace.TOP));
             MinecraftServer.getSchedulerManager().processTickEnd();
-            assertEquals(2, spawned.get(), "each stack scatters");
+            assertEquals(2, spawned.size(), "each stack scatters");
             assertNull(containers.contents(world, key(pos)));
         } finally {
             MinecraftServer.getGlobalEventHandler().removeChild(count);
+            spawned.forEach(Entity::remove); // other classes count the shared instance's items
             instance.setBlock(pos, Block.AIR);
             p.player.remove();
         }

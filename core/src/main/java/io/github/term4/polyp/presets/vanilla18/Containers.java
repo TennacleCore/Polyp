@@ -16,7 +16,8 @@ public final class Containers {
     public static ContainersConfig config() {
         return ContainersConfig.builder()
                 .defaults(ContainerTypeConfig.builder()
-                        .rows(3).key(ContainerKey.BLOCK).fill(ContainerFill.EMPTY).spill(Spill.DROP).pairs(false)
+                        .rows(3).key(ContainerKey.BLOCK).fill(ContainerFill.EMPTY).spill(Spill.DROP)
+                        .pairing(ContainerTypeConfig.Pairing.NONE)
                         .build())
                 .block(Block.CHEST, chest())
                 .block(Block.TRAPPED_CHEST, chest())
@@ -28,6 +29,7 @@ public final class Containers {
     }
 
     public static ContainerTypeConfig chest() {
-        return ContainerTypeConfig.builder().title(Component.translatable("container.chest")).pairs(true).build();
+        return ContainerTypeConfig.builder().title(Component.translatable("container.chest"))
+                .pairing(ContainerTypeConfig.Pairing.LEGACY).build();
     }
 }
