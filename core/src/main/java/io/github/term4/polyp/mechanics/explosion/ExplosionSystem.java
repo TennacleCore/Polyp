@@ -83,10 +83,10 @@ public final class ExplosionSystem implements MechanicsModule {
             MechanicsWorld world = MechanicsWorld.of(p);
             PrimedTnt.Config tnt = resolveTnt(p, world, TntPrimeEvent.Cause.PLACEMENT);
             if (!tnt.igniteOnPlace()) return;
-            e.setCancelled(true);
             PrimedTnt primed = PrimedTnt.spawn(this, world, e.getBlockPosition(), tnt, p,
                     TntPrimeEvent.Cause.PLACEMENT);
-            if (primed == null) return;
+            if (primed == null) return; // a refused prime leaves the block placed, as vanilla
+            e.setCancelled(true);
             HeldItems.consumeOne(p, e.getHand());
         });
     }
