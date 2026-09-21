@@ -109,7 +109,10 @@ public final class Attack {
     // deadline-based: a window re-armed in between (fall damage, fire) must not hold the hit for whole extra windows
     private static boolean flushPending(LivingEntity le) {
         PendingHit p = pendingHit.get(le);
-        if (p == null || TickSystem.tick(le) < p.deadline()) return false;
+        if (p == null) return false;
+        Entity attacker = p.event().attacker();
+        if (attacker != null && attacker.isRemoved()) { pendingHit.remove(le, p); return false; }
+        if (TickSystem.tick(le) < p.deadline()) return false;
         if (!pendingHit.remove(le, p)) return false; // claimed elsewhere
         // non-sprint iff the most recent damage is still the projectile that opened the window
         if (DamageSystem.lastDamageType(le) instanceof ProjectileDamage) {
