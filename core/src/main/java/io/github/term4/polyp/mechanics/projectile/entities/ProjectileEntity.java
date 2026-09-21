@@ -544,7 +544,7 @@ public abstract class ProjectileEntity extends MechanicsEntity {
             Collection<EntityCollisionResult> hits = world.sweepEntities(
                     collisionBox().growSymmetrically(margin, margin, margin), position, velocityBt, 3,
                     e -> e != this && !(shooterImmune && e == shooter) && canHit(e), physics);
-            hits = hits.stream().filter(h -> contacts(h.entity(), position, velocityBt)).toList();
+            if (!hits.isEmpty()) hits = hits.stream().filter(h -> contacts(h.entity(), position, velocityBt)).toList();
             if (!hits.isEmpty()) {
                 EntityCollisionResult hit = hits.iterator().next();
                 var event = new ProjectileCollideWithEntityEvent(this, hit.collisionPoint().asPos(), hit.entity());
@@ -623,7 +623,10 @@ public abstract class ProjectileEntity extends MechanicsEntity {
         if (gravityTickCount == 1 && velocitySyncInterval > 0 && !isStuck()) {
             broadcastWireVelocity();
         }
-        if (!isStuck() && !pendingRemove && !isRemoved()) predictedContact = nextContact(world, place, velocityBt);
+        // the prediction only feeds respawnForViewers: a projectile nobody sees needs no second sweep
+        if (!isStuck() && !pendingRemove && !isRemoved() && !getViewers().isEmpty()) {
+            predictedContact = nextContact(world, place, velocityBt);
+        }
         if (phantom && !pendingRemove && !isRemoved()) respawnForViewers();
     }
 
