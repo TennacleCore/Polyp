@@ -37,10 +37,10 @@ class LegacyHealthRoundingFixTest {
             FakePlayer p = FakePlayer.connect(instance, new Pos(0.5, 64, 900.5), "HpRound");
             try {
                 UpdateHealthPacket raw = new UpdateHealthPacket(14.01f, 20, 5f);
-                assertSame(raw, LegacyHealthRoundingFix.rewrite(p.player, false, raw), "modern or toggled off: untouched");
-                SendablePacket out = LegacyHealthRoundingFix.rewrite(p.player, true, raw);
+                assertSame(raw, LegacyHealthRoundingFix.rewrite(p.player, () -> false, raw), "modern or toggled off: untouched");
+                SendablePacket out = LegacyHealthRoundingFix.rewrite(p.player, () -> true, raw);
                 assertEquals(14f, assertInstanceOf(UpdateHealthPacket.class, out).health());
-                SendablePacket again = LegacyHealthRoundingFix.rewrite(p.player, true, new UpdateHealthPacket(13.6f, 20, 5f));
+                SendablePacket again = LegacyHealthRoundingFix.rewrite(p.player, () -> true, new UpdateHealthPacket(13.6f, 20, 5f));
                 float sent = assertInstanceOf(UpdateHealthPacket.class, again).health();
                 assertTrue(sent < 14f && sent > 13.99f, "the same heart after a hit: " + sent);
             } finally {

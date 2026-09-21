@@ -27,7 +27,8 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Attack-geometry hub: the reach guard plus queries a consumer can GET about a melee attack.
+ * Attack-geometry hub: the queries a consumer can GET about a melee attack, plus an opt-in reach guard
+ * ({@link #install}) no shipped preset wires - an app installs it if it wants hits cancelled on geometry.
  *
  * <p><b>Reach guard.</b> Cancels a {@link PreAttackEvent} whose {@link #optimalReach} exceeds {@code maxReach}, mirroring
  * vanilla's server check ({@code Player.isWithinEntityInteractionRange} = {@code box.distanceToSqr(eyePosition)} vs
