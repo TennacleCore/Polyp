@@ -301,6 +301,11 @@ public final class MotionTracker implements Tracker {
         return a != null ? a : p.getAerodynamics();
     }
 
+    // CollisionUtils collides against the BACKING instance: in a shard a placed block is not there at all
+    private static PhysicsResult probe(Entity entity, Vec velocity) {
+        return MechanicsWorld.viewed(entity).sweep(entity.getBoundingBox(), entity.getPosition(), velocity, null, false);
+    }
+
     /** Both the {@code MOT_H} and entity-push residuals bleed by this. */
     static double frictionPerTick(Player p, boolean airborne) {
         // in a fluid the residual bleeds by the fluid's fixed friction; re-anchored on every env change so this holds
@@ -431,15 +436,15 @@ public final class MotionTracker implements Tracker {
         // the client's grounded flag lands a descent probe-free: the swept probe misses from flush-on-floor
         // positions, and without the flag a move-streaming grounded client sawtooths into false free-fall
         boolean grounded = p.isOnGround();
-        PhysicsResult colC = c < 0 && !grounded ? CollisionUtils.handlePhysics(p, new Vec(0, c, 0)) : null;
+        PhysicsResult colC = c < 0 && !grounded ? probe(p, new Vec(0, c, 0)) : null;
         boolean collidedC = c < 0 && grounded || colC != null && colC.isOnGround();
-        PhysicsResult colR = r < 0 && !grounded ? (r == c ? colC : CollisionUtils.handlePhysics(p, new Vec(0, r, 0))) : null;
+        PhysicsResult colR = r < 0 && !grounded ? (r == c ? colC : probe(p, new Vec(0, r, 0))) : null;
         boolean collidedR = r < 0 && grounded || colR != null && colR.isOnGround();
         if (collidedC) c = landMotY(p, colC != null ? colC.newPosition() : p.getPosition(), c, modernBlocks);
         if (collidedR) r = landMotY(p, colR != null ? colR.newPosition() : p.getPosition(), r, modernBlocks);
         // vanilla move() zeroes motY on ANY vertical clip - ceilings too (Block.a default)
-        PhysicsResult upC = c > 0 ? CollisionUtils.handlePhysics(p, new Vec(0, c, 0)) : null;
-        PhysicsResult upR = r > 0 ? (r == c ? upC : CollisionUtils.handlePhysics(p, new Vec(0, r, 0))) : null;
+        PhysicsResult upC = c > 0 ? probe(p, new Vec(0, c, 0)) : null;
+        PhysicsResult upR = r > 0 ? (r == c ? upC : probe(p, new Vec(0, r, 0))) : null;
         if (upC != null && upC.collisionY()) c = 0;
         if (upR != null && upR.collisionY()) r = 0;
         if (env == Env.LADDER) {
@@ -473,7 +478,7 @@ public final class MotionTracker implements Tracker {
      */
     private static boolean edgeBump(Player p, boolean clipped) {
         if (!clipped || p.getInstance() == null) return false;
-        if (CollisionUtils.handlePhysics(p, new Vec(0, 0.6, 0)).collisionY()) return false;
+        if (probe(p, new Vec(0, 0.6, 0)).collisionY()) return false;
         return !BlockContact.scanCells(MechanicsWorld.viewed(p), p.getPosition().add(0, 0.6, 0),
                 p.getBoundingBox(), 0, IS_WATER.or(IS_LAVA));
     }
@@ -483,7 +488,7 @@ public final class MotionTracker implements Tracker {
         if (p.getInstance() == null) return false;
         Vec h = trackedHorizontal(p);
         if (h.isZero()) return false;
-        PhysicsResult r = CollisionUtils.handlePhysics(p, new Vec(h.x(), 0, h.z()));
+        PhysicsResult r = probe(p, new Vec(h.x(), 0, h.z()));
         return r.collisionX() || r.collisionZ();
     }
 
@@ -611,6 +616,8 @@ public final class MotionTracker implements Tracker {
      */
     public static void foldDelivered(Entity entity, Vec bt) {
         if (!(entity instanceof Player p)) return;
+        // before the seeds: the victim's own rising move packet reads this to leave them alone
+        if (bt.y() > 0) p.setTag(LAUNCHED, true);
         p.setTag(MOT_H, new MotState(new Vec(bt.x(), 0, bt.z()), physTicks(p), !p.isOnGround()));
         p.removeTag(ENTITY_PUSH);
         p.removeTag(FLOW_PUSH);
@@ -619,7 +626,6 @@ public final class MotionTracker implements Tracker {
         sim.zeroed[0] = bt.y();
         sim.raw[0] = bt.y();
         sim.collided = false;
-        if (bt.y() > 0) p.setTag(LAUNCHED, true);
     }
 
     /** Vanilla collision {@code onGround}: fires before a laggy client's landing packet, so fall damage ends in sync with the combat ground checks. */
@@ -744,7 +750,7 @@ public final class MotionTracker implements Tracker {
      */
     public static Vec zeroBlockedAxes(Entity entity, Vec acc) {
         if (acc.isZero() || !(entity instanceof Player p) || p.getInstance() == null) return acc;
-        PhysicsResult r = CollisionUtils.handlePhysics(p, new Vec(acc.x(), 0, acc.z()));
+        PhysicsResult r = probe(p, new Vec(acc.x(), 0, acc.z()));
         return new Vec(r.collisionX() ? 0.0 : acc.x(), acc.y(), r.collisionZ() ? 0.0 : acc.z());
     }
 
@@ -830,12 +836,12 @@ public final class MotionTracker implements Tracker {
         double s = aero.verticalAirResistance();
         double vy = serverSimMotY(p, g, s); // server arc, not the client delta
         if (vy >= 0) return false;
-        double probe = 0;
+        double drop = 0;
         for (int i = 0; i < ticks; i++) {
-            probe += vy;
+            drop += vy;
             vy = (vy - g) * s;
         }
-        PhysicsResult r = CollisionUtils.handlePhysics(entity, new Vec(0, probe, 0));
+        PhysicsResult r = probe(entity, new Vec(0, drop, 0));
         return r.isOnGround();
     }
 
