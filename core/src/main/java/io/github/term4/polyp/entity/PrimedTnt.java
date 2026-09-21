@@ -11,6 +11,7 @@ import io.github.term4.polyp.mechanics.explosion.ExplosionSystem;
 import io.github.term4.polyp.mechanics.projectile.entities.ProjectileEntity;
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.tracking.motion.VelocityRule;
+import io.github.term4.polyp.tracking.motion.VelocityConfig;
 import io.github.term4.polyp.util.tick.TickScaler;
 import io.github.term4.polyp.world.MechanicsWorld;
 import net.kyori.adventure.nbt.BinaryTagTypes;
@@ -215,7 +216,11 @@ public final class PrimedTnt extends MechanicsEntity {
         PrimedTnt tnt = new PrimedTnt(explosion, config);
         tnt.igniter = igniter;
         double angle = ThreadLocalRandom.current().nextDouble() * Math.PI * 2.0;
-        tnt.setVelocity(new Vec(-Math.sin(angle) * 0.02, 0.2, -Math.cos(angle) * 0.02).mul(TPS));
+        // motY is 0.2F in every version; 1.8 takes the sine and the 0.02 kick in float, modern in double
+        boolean floats = VelocityRule.floatLiterals(world, tnt);
+        double kickX = floats ? (double) (-(float) Math.sin(angle) * 0.02f) : -Math.sin(angle) * 0.02;
+        double kickZ = floats ? (double) (-(float) Math.cos(angle) * 0.02f) : -Math.cos(angle) * 0.02;
+        tnt.setVelocity(new Vec(kickX, VelocityConfig.widen(0.2), kickZ).mul(TPS));
         TntPrimeEvent event = new TntPrimeEvent(tnt, world, clearPos, igniter, cause);
         EventDispatcher.call(event);
         if (event.isCancelled()) return null;
@@ -272,9 +277,9 @@ public final class PrimedTnt extends MechanicsEntity {
     @Override
     public void update(long time) {
         // 1.8 TNT tick on our own motion: gravity before the move, drag, then the grounded ×0.7 friction + bounce.
-        Aerodynamics aero = TickScaler.aerodynamics(this, getAerodynamics());
+        Aerodynamics aero = TickScaler.aerodynamics(this, VelocityRule.aerodynamicsOf(this));
         double vy = (motion.y() - aero.gravity()) * aero.verticalAirResistance();
-        double friction = isOnGround() ? TickScaler.dragPerTick(this, 0.7) : 1.0;
+        double friction = isOnGround() ? TickScaler.dragPerTick(this, VelocityRule.literal(this, 0.7)) : 1.0;
         if (isOnGround()) vy = groundVy(vy);
         flipPending = false;
         double hDrag = aero.horizontalAirResistance() * friction;

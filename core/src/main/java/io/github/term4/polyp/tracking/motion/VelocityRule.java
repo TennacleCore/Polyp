@@ -2,6 +2,7 @@ package io.github.term4.polyp.tracking.motion;
 
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.Polyp;
+import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.util.tick.TickScaler;
 import net.minestom.server.collision.Aerodynamics;
 import net.minestom.server.collision.PhysicsUtils;
@@ -93,6 +94,28 @@ public interface VelocityRule {
     /** Read once per tick. */
     static Aerodynamics aerodynamics(@Nullable VelocityRule rule, VelocityContext ctx) {
         return configFor(rule).aerodynamics(ctx);
+    }
+
+    /** {@link VelocityConfig#aerodynamics} for {@code entity} under its resolved rule. */
+    static Aerodynamics aerodynamicsOf(Entity entity) {
+        return configFor(resolvedRule(entity)).aerodynamics(VelocityContext.of(entity));
+    }
+
+    /** {@link VelocityConfig#floatLiterals} for {@code entity} under {@code world}'s rule, for an entity not yet spawned. */
+    static boolean floatLiterals(@Nullable MechanicsWorld world, Entity entity) {
+        Polyp polyp = Polyp.getInstance();
+        VelocityRule rule = polyp.isInitialized() ? polyp.profiles().resolveWorld(world, MechanicsKeys.VELOCITY) : null;
+        return configFor(rule).floatLiterals(VelocityContext.of(entity));
+    }
+
+    /** {@code literal} widened from float when {@code entity}'s rule says 1.8 wrote it as one. */
+    static double literal(Entity entity, double literal) {
+        return configFor(resolvedRule(entity)).floatLiterals(VelocityContext.of(entity)) ? VelocityConfig.widen(literal) : literal;
+    }
+
+    private static @Nullable VelocityRule resolvedRule(Entity entity) {
+        Polyp polyp = Polyp.getInstance();
+        return polyp.isInitialized() ? polyp.profiles().resolve(entity, MechanicsKeys.VELOCITY) : null;
     }
 
     private static VelocityConfig configFor(@Nullable VelocityRule rule) {

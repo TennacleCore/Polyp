@@ -16,6 +16,7 @@ import net.minestom.server.network.packet.server.play.SpawnEntityPacket;
 import org.junit.jupiter.api.Test;
 import io.github.term4.polyp.presets.mmc18.Explosion;
 import io.github.term4.polyp.entity.PrimedTnt;
+import io.github.term4.polyp.tracking.motion.VelocityConfig;
 import io.github.term4.polyp.presets.mmc18.Tnt;
 
 import java.util.ArrayList;
@@ -66,7 +67,7 @@ class Mmc18TntWireTest extends HeadlessServerTest {
                 .filter(p -> p instanceof SpawnEntityPacket s && s.entityId() == tnt.getEntityId())
                 .map(p -> (SpawnEntityPacket) p).findFirst().orElseThrow();
         assertEquals(1, spawn.data(), "data=1 so the 1.8 spawn carries the velocity (ViaRewind passthrough branch)");
-        assertEquals(0.2, spawn.velocity().y(), 1e-9, "spawn packet embeds the vanilla kick");
+        assertEquals(VelocityConfig.widen(0.2), spawn.velocity().y(), 1e-9, "spawn packet embeds the vanilla kick");
 
         assertTrue(velocityTicks.stream().anyMatch(t -> t >= 10 && t <= 12), "moving sync near tick 11: " + velocityTicks);
         assertTrue(velocityTicks.stream().noneMatch(t -> t >= 35), "resting TNT goes silent: " + velocityTicks);

@@ -1,6 +1,7 @@
 package io.github.term4.polyp.entity;
 
 import io.github.term4.polyp.util.tick.TickScaler;
+import io.github.term4.polyp.tracking.motion.VelocityRule;
 import io.github.term4.polyp.world.MechanicsWorld;
 import net.kyori.adventure.nbt.BinaryTagTypes;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
@@ -98,7 +99,7 @@ public final class FallingBlockEntity extends MechanicsEntity {
                 return;
             }
         }
-        Aerodynamics aero = TickScaler.aerodynamics(this, getAerodynamics());
+        Aerodynamics aero = TickScaler.aerodynamics(this, VelocityRule.aerodynamicsOf(this));
         double drag = aero.verticalAirResistance();
         motion = new Vec(motion.x() * aero.horizontalAirResistance(),
                 (motion.y() - aero.gravity()) * drag,

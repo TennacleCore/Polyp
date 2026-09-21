@@ -15,6 +15,6 @@ public final class Movement {
     public static VelocityRule velocity() {
         // per-packet motY: 1.8 runs the player's living tick (travel gravity included) from the flying-packet
         // handler (PlayerConnection.a(PacketPlayInFlying) -> l(), its only caller); 1.9+ moved it to the server tick
-        return VelocityRule.simulated(VelocityConfig.builder().motYOnMovePacket(true).build());
+        return VelocityRule.simulated(VelocityConfig.builder().motYOnMovePacket(true).floatLiterals(true).build());
     }
 }

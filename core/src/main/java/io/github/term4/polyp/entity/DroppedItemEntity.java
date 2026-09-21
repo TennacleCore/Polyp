@@ -1,6 +1,7 @@
 package io.github.term4.polyp.entity;
 
 import io.github.term4.polyp.util.tick.TickScaler;
+import io.github.term4.polyp.tracking.motion.VelocityRule;
 import io.github.term4.polyp.config.FieldFns;
 import io.github.term4.polyp.world.ExternallyTickable;
 import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
@@ -118,6 +119,7 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
     private int cellX = Integer.MIN_VALUE, cellY, cellZ;
     // last tick's sample chose fluid motion - vanilla skips gravity that tick; Minestom applied it anyway
     private boolean fluidMotion;
+    private boolean ruleAerodynamicsApplied;
 
     /** {@code model} null = resolve from the profile ({@code MechanicsKeys.ITEM_PHYSICS}), falling back to LEGACY. */
     public DroppedItemEntity(@NotNull ItemStack itemStack, @Nullable Model model) {
@@ -207,6 +209,10 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
     public void update(long time) {
         Instance instance = getInstance();
         if (instance == null || isRemoved()) return;
+        if (!ruleAerodynamicsApplied) {
+            setAerodynamics(VelocityRule.aerodynamicsOf(this)); // once; profile swaps don't retarget live items
+            ruleAerodynamicsApplied = true;
+        }
         mergeScan(time);
         Pos pos = getPosition();
         Vec v0 = getVelocity().div(TPS); // b/t; Minestom already applied gravity + drag this tick
