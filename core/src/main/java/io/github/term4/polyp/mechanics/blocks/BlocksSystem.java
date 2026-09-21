@@ -20,10 +20,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * Era-variant block placement, resolved per WORLD ({@link MechanicsKeys#BLOCKS}). Install after the app's own
- * placement rules: the chest rule registered by then is what {@link ChestPlacement#MODERN} runs, and 1.8's takes
- * the slot for {@link ChestPlacement#LEGACY}. What 1.8 refuses outright cancels {@code PlayerBlockPlaceEvent},
- * which both placement pipelines roll back.
+ * Block placement by era, resolved per WORLD. Install after the app's own placement rules: the chest rule
+ * registered by then is what {@link ChestPlacement#MODERN} runs; {@link ChestPlacement#LEGACY} takes the slot.
  */
 public final class BlocksSystem extends ScopedSystem<BlocksConfig> {
 

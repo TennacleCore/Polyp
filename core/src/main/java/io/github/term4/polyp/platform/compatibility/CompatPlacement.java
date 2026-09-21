@@ -7,7 +7,6 @@ import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.tracking.ClientInfoTracker;
 import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.coordinate.Point;
-import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.GameMode;
@@ -36,22 +35,19 @@ public final class CompatPlacement {
 
     private CompatPlacement() {}
 
-    // 1.8's mutable stair bounds hold the last raytrace octant for good (BlockStairs.hasRaytraced never resets)
-    private static final BoundingBox STAIR_OCTANT = new BoundingBox(new Vec(0.5, 0.5, 0.5), new Vec(1, 1, 1));
-
     /**
-     * The per-body placement entity check (an app router's body-check hook). A LEGACY placer gets 1.8's own
-     * {@code canBlockBePlaced}, which excludes nobody: the client runs it before sending, on the position the
-     * server already holds, so a vanilla client only ever confirms and an ungated one gets Spigot's refusal. What
-     * differs from the modern shape is the box: none for a passable block (the ladder clutch), and for stairs
-     * the raytrace octant, which is why stairs land in your own face from the west or north edge of a cell and
-     * a chest never does. {@link CompatConfig#legacySelfPlace} off is the Hypixel bounce: the real stair shape.
+     * The per-body placement entity check (an app router's body-check hook). A LEGACY placer gets what a 1.8
+     * client on Paper gets: no check for a block without a collision box (1.8's null AABB, the ladder clutch),
+     * and stairs land in the placer's own body - the client's stair bounds are whatever the last raytrace or
+     * collision left ({@code BlockStairs.hasRaytraced} never resets) and Paper never checks the placer.
+     * Anything else, a chest included, checks the placer like the client does before sending.
+     * {@link CompatConfig#legacySelfPlace} off is the Hypixel refusal: stairs bounce too.
      */
     public static boolean placementBodyCheck(@NotNull Player placer, @NotNull Entity body, @NotNull Block placing,
                                              @NotNull Point cellRelativeBody, @NotNull BoundingBox bodyBox) {
         if (placer instanceof OptimizedPlayer op && op.compat().legacyClient()) {
             if (BlockContact.isPassable(placing)) return false;
-            if (op.compat().legacySelfPlace() && isStairs(placing)) return bodyBox.intersectBox(cellRelativeBody, STAIR_OCTANT); // the body moves, the box stays at the cell
+            if (body == placer && op.compat().legacySelfPlace() && isStairs(placing)) return false;
         }
         return placing.collisionShape().intersectBox(cellRelativeBody, bodyBox);
     }

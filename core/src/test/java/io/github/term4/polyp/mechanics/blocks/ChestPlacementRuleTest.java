@@ -56,13 +56,13 @@ class ChestPlacementRuleTest extends HeadlessServerTest {
     }
 
     @Test
-    void aModernWorldRunsTheAppsRule() {
+    void modernRunsAppRule() {
         assertSame(APP_RULE, ((ChestPlacementRule) MinecraftServer.getBlockManager().getBlockPlacementRule(Block.CHEST)).modern);
         assertEquals("east", place(modern, 10, 180f).getProperty("facing"), "the app's rule, whatever the look");
     }
 
     @Test
-    void aLegacyWorldRunsBlockChest() {
+    void legacyRunsBlockChest() {
         try {
             Block landed = place(legacy, 20, 180f); // looking north: the chest faces the placer, south
             assertEquals("south", landed.getProperty("facing"));
@@ -79,7 +79,7 @@ class ChestPlacementRuleTest extends HeadlessServerTest {
     }
 
     @Test
-    void aModernWorldRefusesNothing() {
+    void modernRefusesNothing() {
         FakePlayer placer = FakePlayer.connect(modern, new Pos(0.5, Y, Z + 5.5), "ModernPlacer");
         try {
             modern.setBlock(31, Y, Z, Block.CHEST);

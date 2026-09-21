@@ -34,7 +34,7 @@ class LegacyChestPlacementTest extends HeadlessServerTest {
         BlocksSystem.install(polyp);
         legacy = flatInstance(MechanicsProfile.builder().set(MechanicsKeys.BLOCKS, Blocks.config()).build());
         // the rule reads around a cell before anything is set in it; the tie-break reads one chunk north as well
-        for (int cx = 0; cx <= 2; cx++) {
+        for (int cx = -1; cx <= 2; cx++) {
             legacy.loadChunk(cx, Z >> 4).join();
             legacy.loadChunk(cx, (Z - 1) >> 4).join();
         }
@@ -48,7 +48,7 @@ class LegacyChestPlacementTest extends HeadlessServerTest {
     }
 
     @Test
-    void besideOneNeverBesideAPair() {
+    void besideOneNotAPair() {
         try {
             assertTrue(LegacyChestPlacement.canPlace(legacy, new BlockVec(10, Y, Z), Block.CHEST), "alone");
             legacy.setBlock(10, Y, Z, Block.CHEST);
@@ -68,7 +68,7 @@ class LegacyChestPlacementTest extends HeadlessServerTest {
     /** The look ran along the join, so postPlace writes nothing at all: checkForSurroundingChests' answer stands
      *  for BOTH halves, and the pair reads across the join - never along it, which is what a chest cannot do. */
     @Test
-    void aLookAlongTheJoinLeavesItToTheSurroundings() {
+    void lookAlongTheJoin() {
         try {
             legacy.setBlock(30, Y, Z, Block.CHEST.withProperty("facing", "south"));
             Block mine = place(29, Z, Direction.WEST); // placed from the east, looking west along the join
@@ -86,7 +86,7 @@ class LegacyChestPlacementTest extends HeadlessServerTest {
     /** checkForSurroundingChests' tie-break: a FULL block against one side of either half turns the pair away -
      *  1.8 reads isFullBlock (isOpaqueCube, taken once in the constructor), so a slab or a pane is none. */
     @Test
-    void aBlockedSideTurnsThePair() {
+    void blockedSideTurnsPair() {
         try {
             legacy.setBlock(34, Y, Z, Block.CHEST.withProperty("facing", "west"));
             legacy.setBlock(35, Y, Z + 1, Block.STONE);
@@ -108,7 +108,7 @@ class LegacyChestPlacementTest extends HeadlessServerTest {
 
     /** 1.8's postPlace is the last word: the chest you just set turns the one already there, not the other way. */
     @Test
-    void theNewChestTurnsTheOldOne() {
+    void newChestTurnsOld() {
         try {
             legacy.setBlock(40, Y, Z, Block.CHEST.withProperty("facing", "east")); // stood here facing east
             Block mine = place(40, Z + 1, Direction.EAST);                        // placed from the other side
@@ -124,7 +124,7 @@ class LegacyChestPlacementTest extends HeadlessServerTest {
     }
 
     @Test
-    void thePlacementIsRefused() {
+    void refusedShapes() {
         FakePlayer placer = FakePlayer.connect(legacy, new Pos(0.5, Y, Z + 5.5), "ChestPlacer");
         try {
             legacy.setBlock(21, Y, Z, Block.CHEST);

@@ -15,37 +15,33 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * 1.8's own placement check for a legacy placer: nobody excluded, the block's 1.8 box - none for a passable block,
- * the raytrace octant for stairs. Modern placers stay on the precise shape their client predicts.
- */
+/** A legacy placer lands stairs in their own body and nothing else; passable blocks check nobody; other bodies and
+ *  modern placers stay on the precise shape. */
 class CompatPlacementBodyCheckTest extends HeadlessServerTest {
 
     private static final BoundingBox PLAYER = new BoundingBox(0.6, 1.8, 0.6);
     private static final Vec CENTERED = new Vec(0.5, 0, 0.5);
-    private static final Vec WEST_EDGE = new Vec(0.15, 0, 0.5);
 
     private static boolean blocks(OptimizedPlayer placer, Entity body, Block placing, Vec at) {
         return CompatPlacement.placementBodyCheck(placer, body, placing, at, PLAYER);
     }
 
     @Test
-    void legacyChecksItsOwnBody() {
+    void legacySelfLandsStairsOnly() {
         FakePlayer fp = FakePlayer.connect(instance, new Pos(0.5, 65, 864.5), "BodyGate");
         OptimizedPlayer op = (OptimizedPlayer) fp.player;
         LivingEntity other = looseZombie();
         try {
-            assertTrue(blocks(op, op, Block.OAK_STAIRS, CENTERED), "modern: the stair shape, like the client predicts");
+            assertTrue(blocks(op, op, Block.OAK_STAIRS, CENTERED), "modern: even your own body blocks, like your client predicts");
             assertTrue(blocks(op, op, Block.STONE, CENTERED));
 
             op.compat().setLegacyClient(true);
-            assertTrue(blocks(op, op, Block.STONE, CENTERED), "1.8 checks the placer too");
-            assertTrue(blocks(op, op, Block.CHEST, CENTERED), "a chest never lands in your own cell");
-            assertTrue(blocks(op, op, Block.OAK_STAIRS, CENTERED), "the octant (0.5,0.5,0.5)-(1,1,1) meets a centered body");
-            assertFalse(blocks(op, op, Block.OAK_STAIRS, WEST_EDGE), "from the west edge it clears: stairs into your own face");
+            assertFalse(blocks(op, op, Block.OAK_STAIRS, CENTERED), "stairs into your own face land, as on Paper 1.8");
+            assertTrue(blocks(op, op, Block.STONE, CENTERED), "a stone never does");
+            assertTrue(blocks(op, op, Block.CHEST, CENTERED), "nor a chest: the client refuses it before sending");
             assertFalse(blocks(op, other, Block.LADDER, CENTERED), "no collision box: no check for anyone");
+            assertTrue(blocks(op, other, Block.OAK_STAIRS, CENTERED), "other bodies stay precise");
             assertTrue(blocks(op, other, Block.STONE, CENTERED));
-            assertFalse(blocks(op, other, Block.OAK_STAIRS, WEST_EDGE), "one box for every body");
 
             // the app-side veto condition (a Hypixel-style PlayerBlockPlaceEvent cancel), by fill level
             Vec feet = new Vec(fp.player.getPosition().blockX(), 65, fp.player.getPosition().blockZ());
@@ -69,7 +65,7 @@ class CompatPlacementBodyCheckTest extends HeadlessServerTest {
         try {
             op.compat().setLegacyClient(true);
             assertTrue(blocks(op, op, Block.OAK_SLAB.withProperty("type", "double"), standing), "the double would engulf the placer");
-            assertTrue(blocks(op, op, Block.OAK_SLAB.withProperty("type", "top"), standing), "a single slab is a real box too");
+            assertTrue(blocks(op, op, Block.OAK_SLAB.withProperty("type", "top"), standing), "a slab is no stair");
             assertFalse(blocks(op, op, Block.OAK_SLAB.withProperty("type", "double"), standing.add(3, 0, 0)),
                     "a cell clear of the body still merges");
         } finally {
@@ -77,18 +73,18 @@ class CompatPlacementBodyCheckTest extends HeadlessServerTest {
         }
     }
 
-    /** legacySelfPlace(false) - the hypixel bounce: the real stair shape, ladders still clutch. */
+    /** legacySelfPlace(false) - the hypixel profile: stairs bounce too, ladders still clutch. */
     @Test
-    void hypixelBounceIsTheRealShape() {
+    void hypixelRefusal() {
         FakePlayer fp = FakePlayer.connect(instance, new Pos(0.5, 65, 872.5), "StrictGate");
         OptimizedPlayer op = (OptimizedPlayer) fp.player;
         try {
             op.compat().setLegacyClient(true);
             op.compat().apply(CompatConfig.builder().legacySelfPlace(false).build(), op);
 
-            assertTrue(blocks(op, op, Block.OAK_STAIRS, WEST_EDGE), "no octant: the stair's base meets a body at the edge");
+            assertTrue(blocks(op, op, Block.OAK_STAIRS, CENTERED), "stairs into your own face are refused, unlike Paper");
             assertTrue(blocks(op, op, Block.STONE, CENTERED));
-            assertFalse(blocks(op, op, Block.LADDER, CENTERED), "passable: the ladder clutch survives the bounce");
+            assertFalse(blocks(op, op, Block.LADDER, CENTERED), "passable: the ladder clutch survives the refusal");
             assertFalse(blocks(op, op, Block.OAK_STAIRS, CENTERED.add(3, 0, 0)), "a cell clear of the body still places");
         } finally {
             fp.player.remove();

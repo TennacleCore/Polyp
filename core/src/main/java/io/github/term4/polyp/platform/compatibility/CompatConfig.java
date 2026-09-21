@@ -58,8 +58,8 @@ public final class CompatConfig {
     public final @Nullable FieldValue<CompatContext, Double> blockPlaceReach;
     /** No placing against an air cell. Enforced client-side (Animatium) AND server-side ({@code CompatPlacement}, any client). */
     public final @Nullable FieldValue<CompatContext, Boolean> oldPlacement;
-    /** A LEGACY placer's placement box is 1.8's own: none for a passable block, the raytrace octant for stairs,
-     *  the block's shape otherwise; {@code null} = on. {@code false} = the hypixel bounce: the real stair shape. */
+    /** A LEGACY placer lands stairs in their own body, as a 1.8 client on Paper does; {@code null} = on.
+     *  {@code false} = the hypixel refusal: they bounce. Nothing else lands there either way. */
     public final @Nullable FieldValue<CompatContext, Boolean> legacySelfPlace;
     /** Remove the modern attack cooldown + crosshair indicator (huge {@code ATTACK_SPEED}). Server-side, any client. */
     public final @Nullable FieldValue<CompatContext, Boolean> removeAttackCooldown;

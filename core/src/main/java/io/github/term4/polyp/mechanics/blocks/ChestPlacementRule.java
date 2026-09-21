@@ -7,7 +7,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
 
-/** The chest slot on the block manager: MODERN runs the rule this one replaced, LEGACY runs 1.8's. */
+/** The chest slot: MODERN runs the rule this one replaced, LEGACY runs 1.8's. */
 final class ChestPlacementRule extends BlockPlacementRule {
 
     final @Nullable BlockPlacementRule modern;

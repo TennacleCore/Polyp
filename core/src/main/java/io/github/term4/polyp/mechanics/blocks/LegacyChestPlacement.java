@@ -9,12 +9,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Locale;
 
 /**
- * 1.8's {@code BlockChest}, the placement half. {@link #canPlace} is {@code canPlaceBlockAt}: beside two chests,
- * or beside one already paired, nothing lands - the 1.8 client pairs by adjacency and would draw a half where no
- * block is. {@link #place} is the sequence after it: the block lands carrying the LOOK, {@code onPlace} runs
- * {@code checkForSurroundingChests} on it and then on its chest neighbour, and {@code postPlace} lands last with the
- * look's opposite - on both halves when the join crosses it, on neither otherwise. The modern {@code type} is set
- * alongside, so a modern viewer draws the same pair.
+ * 1.8's {@code BlockChest} at placement: {@code canPlaceBlockAt} (beside two, or beside a pair, nothing lands), then
+ * {@code checkForSurroundingChests} on the new chest and its neighbour, then {@code postPlace} with the look's
+ * opposite on both halves when the join crosses it, on neither otherwise. Writes the modern {@code type} too.
  */
 public final class LegacyChestPlacement {
 
@@ -24,7 +21,6 @@ public final class LegacyChestPlacement {
         return block.compare(Block.CHEST) || block.compare(Block.TRAPPED_CHEST);
     }
 
-    /** Trapped and plain never count for each other. */
     static boolean canPlace(Block.Getter world, Point at, Block placing) {
         int beside = 0;
         for (Direction side : Direction.HORIZONTAL) {
@@ -39,8 +35,7 @@ public final class LegacyChestPlacement {
         return beside <= 1;
     }
 
-    /** The state {@code placing} lands in at {@code at} for a placer looking along {@code yaw}; a chest beside it is
-     *  rewritten through {@code setter} to the other half. */
+    /** What lands at {@code at} for a placer looking along {@code yaw}; the chest beside it is rewritten as the other half. */
     static Block place(Block.Getter world, Block.Setter setter, Point at, Block placing, float yaw) {
         Direction placed = horizontal(yaw).opposite();
         Block mine = half(placing, placed, "single");
@@ -76,11 +71,8 @@ public final class LegacyChestPlacement {
         return chest.withProperty("facing", facing.name().toLowerCase(Locale.ROOT)).withProperty("type", type);
     }
 
-    /**
-     * {@code checkForSurroundingChests}: the join's axis picks the default - SOUTH for a pair joined along x, EAST
-     * along z - the partner's facing can pull it to the other side, and a full block against one side with open air
-     * against the other overrides both. Never reads the chest's own facing.
-     */
+    // checkForSurroundingChests: SOUTH for an x-join, EAST for a z-join, the partner's facing pulls it the other way,
+    // a full block on one side with air on the other overrides both; the chest's own facing is never read
     private static Direction surrounding(Block.Getter world, Point at, Direction toPartner, @Nullable Direction partnerFacing) {
         boolean alongZ = toPartner.normalZ() != 0;
         Direction positive = alongZ ? Direction.EAST : Direction.SOUTH;

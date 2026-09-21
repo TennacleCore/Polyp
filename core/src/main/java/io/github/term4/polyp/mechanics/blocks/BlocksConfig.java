@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
 
-/** Immutable block-placement config, per scope via {@code MechanicsProfile}; unset knobs resolve modern. */
+/** Block placement per scope; unset knobs resolve modern. */
 @GenerateBuilder
 public final class BlocksConfig extends Config<BlocksContext, BlocksConfig> {
 

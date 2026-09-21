@@ -110,7 +110,7 @@ public final class CompatState {
     public @Nullable Double blockPlaceReach() { return policy.blockPlaceReach(ctx); }
     public boolean oldPlacement() { return on(policy.oldPlacement(ctx)); }
 
-    /** 1.8's placement boxes for a legacy placer (the stair octant); {@code false} = the hypixel bounce. */
+    /** Stairs land in a legacy placer's own body; {@code false} = the hypixel refusal. */
     public boolean legacySelfPlace() { return !Boolean.FALSE.equals(policy.legacySelfPlace(ctx)); }
 
     /** Whether this subject's modern attack cooldown (and its crosshair indicator) is off. */
