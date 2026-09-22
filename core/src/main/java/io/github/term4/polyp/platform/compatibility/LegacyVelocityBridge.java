@@ -10,11 +10,14 @@ import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
+import net.minestom.server.event.player.PlayerDisconnectEvent;
 import net.minestom.server.event.player.PlayerPacketOutEvent;
 import net.minestom.server.event.trait.PlayerEvent;
 import net.minestom.server.network.packet.server.play.EntityVelocityPacket;
 import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 
 /**
@@ -35,13 +38,40 @@ public final class LegacyVelocityBridge {
 
     private static volatile Polyp polyp;
 
+    // A velocity packet about ANOTHER entity reaches a viewer through a grouped send, which never passes any
+    // player's own sendPacket - so this one rewrite has to ride PlayerPacketOutEvent. Minestom pays an extract,
+    // an allocation and a dispatch for every outgoing packet on the server while ANY listener sits there, so the
+    // node is attached only while a player actually needs it: an Animatium shorts client for their whole stay, a
+    // ViaBridge knockback for its one tick. With neither, nothing is listening.
+    private static final EventNode<@NotNull PlayerEvent> NODE =
+            EventNode.type("polyp:legacy-velocity-bridge", EventFilter.PLAYER);
+    private static final AtomicInteger armed = new AtomicInteger();
+
+    static {
+        NODE.addListener(PlayerPacketOutEvent.class, LegacyVelocityBridge::onVelocityOut);
+    }
+
     private LegacyVelocityBridge() {}
 
     public static void install(@NotNull Polyp instance) {
         polyp = instance;
-        EventNode<@NotNull PlayerEvent> node = EventNode.type("polyp:legacy-velocity-bridge", EventFilter.PLAYER);
-        node.addListener(PlayerPacketOutEvent.class, LegacyVelocityBridge::onVelocityOut);
-        polyp.install(node);
+        EventNode<@NotNull PlayerEvent> cleanup = EventNode.type("polyp:legacy-velocity-bridge-cleanup", EventFilter.PLAYER);
+        cleanup.addListener(PlayerDisconnectEvent.class, e -> {
+            if (e.getPlayer() instanceof OptimizedPlayer op) op.compat().releaseArmed();
+        });
+        instance.install(cleanup);
+    }
+
+    /** Attaches the rewrite while {@code player} needs it; the handle detaches it. Idempotent per handle. */
+    public static @NotNull Runnable arm() {
+        Polyp instance = polyp;
+        if (instance == null) return () -> {};
+        if (armed.getAndIncrement() == 0) instance.install(NODE);
+        AtomicBoolean released = new AtomicBoolean();
+        return () -> {
+            if (!released.compareAndSet(false, true)) return;
+            if (armed.decrementAndGet() == 0) instance.uninstall(NODE);
+        };
     }
 
     private static void onVelocityOut(PlayerPacketOutEvent e) {
@@ -76,6 +106,7 @@ public final class LegacyVelocityBridge {
         if (!polyp.clientInfo().isLegacy(player) || !LegacyVelocity.exceedsLpExactBand(rawBps)) return false;
 
         short[] s = LegacyVelocity.wireShorts(rawBps, capBt);
+        Runnable disarm = arm(); // the echo to suppress is this tick's; nothing listens outside the window
         player.setTag(SUPPRESS_SELF_VELOCITY, true);
         target.setVelocity(snappedBps); // viewers get the (imperceptible) LP value; the self echo is suppressed above
         ViaBridgeRpc.get()
@@ -86,6 +117,7 @@ public final class LegacyVelocityBridge {
                         player.scheduleNextTick(en -> { en.removeTag(SUPPRESS_SELF_VELOCITY); en.setVelocity(snappedBps); });
                     }
                 });
+        player.scheduleNextTick(en -> disarm.run());
         return true;
     }
 }

@@ -16,6 +16,8 @@ import io.github.term4.polyp.platform.fixes.client.LegacyInventorySlotFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyHealthRoundingFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyPlacementHalfFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyTabGridFix;
+import io.github.term4.polyp.mechanics.damage.silent.HurtSuppression;
+import io.github.term4.polyp.platform.fixes.client.UseItemInterruptFix;
 import io.github.term4.polyp.platform.fixes.client.EquipmentSlotsFix;
 import io.github.term4.polyp.platform.fixes.client.SelfMetaFilter;
 import io.github.term4.polyp.util.tick.TickScaler;
@@ -158,6 +160,9 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
 
     @Override
     public void sendPacket(@NotNull SendablePacket packet) {
+        // a silent hit swallows its own health echo here rather than from PlayerPacketOutEvent: one listener on
+        // that event costs the server an extract, an allocation and a dispatch for EVERY outgoing packet
+        if (HurtSuppression.swallows(this, packet)) return;
         // holds the client's food gate shut against ANY server re-send (eat, regen, exhaustion) while the fix is engaged
         if (compat.activeSwimFix() == CompatConfig.SwimSuppression.FOOD
                 && packet instanceof UpdateHealthPacket uh && uh.food() > 6) {
@@ -173,6 +178,7 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         p = LegacyHealthRoundingFix.rewrite(this, healthRounding, p);
         // not gated on the client: join lands before the protocol is known, and 1.8+ ignores the field
         if (p instanceof JoinGamePacket) p = LegacyTabGridFix.rewrite(p, tabSlots());
+        UseItemInterruptFix.onOutgoing(this, p); // a slot rewrite under the using hand ends the use, as vanilla does
         super.sendPacket(p);
         EffectResyncFix.afterSpawn(this, p); // a spawn owes this viewer the effects that entity already carries
         // a respawn or join carries the real game mode; the spoof follows it

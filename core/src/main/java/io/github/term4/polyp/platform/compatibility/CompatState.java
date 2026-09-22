@@ -164,14 +164,43 @@ public final class CompatState {
     }
 
     /** The Animatium features this client applies natively (empty for non-Animatium clients); the enforcers gate the matching hack off via {@link #handlesNatively}. */
-    public void setNativeFeatures(@NotNull Set<AnimatiumFeature> features) { this.nativeFeatures = features; }
+    public void setNativeFeatures(@NotNull Set<AnimatiumFeature> features) {
+        this.nativeFeatures = features;
+        syncVelocityBridge();
+    }
     public @NotNull Set<AnimatiumFeature> nativeFeatures() { return nativeFeatures; }
 
     /** Whether the {@code animatium:info} handshake arrived - distinguishes a feature-less Animatium client from a non-Animatium one (both have empty {@link #nativeFeatures}). */
     public boolean isAnimatiumClient() { return animatiumClient; }
     public void setAnimatiumClient(boolean v) { this.animatiumClient = v; }
 
-    public void setSupportedFeatures(@NotNull Set<AnimatiumFeature> features) { this.supportedFeatures = features; }
+    public void setSupportedFeatures(@NotNull Set<AnimatiumFeature> features) {
+        this.supportedFeatures = features;
+        syncVelocityBridge();
+    }
+
+    private @Nullable Runnable velocityBridge;
+
+    // the outgoing-velocity rewrite is a listener on every packet the server sends, so it stays attached for
+    // exactly as long as this client is one that decodes the 1.8 shorts natively
+    private synchronized void syncVelocityBridge() {
+        boolean needs = handlesNatively(AnimatiumFeature.SHORTS_VELOCITY) && supports(AnimatiumFeature.SHORTS_VELOCITY);
+        if (needs == (velocityBridge != null)) return;
+        if (needs) {
+            velocityBridge = LegacyVelocityBridge.arm();
+        } else {
+            velocityBridge.run();
+            velocityBridge = null;
+        }
+    }
+
+    /** Detaches whatever this client armed; the disconnect path calls it. */
+    public synchronized void releaseArmed() {
+        if (velocityBridge != null) {
+            velocityBridge.run();
+            velocityBridge = null;
+        }
+    }
     /** Whether the client advertised a decoder for {@code feature} - required before sending a wire-format one like {@link AnimatiumFeature#SHORTS_VELOCITY}. */
     public boolean supports(@NotNull AnimatiumFeature feature) { return supportedFeatures.contains(feature); }
 

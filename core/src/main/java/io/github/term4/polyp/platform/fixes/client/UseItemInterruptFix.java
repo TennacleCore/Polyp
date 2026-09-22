@@ -4,8 +4,8 @@ import net.minestom.server.utils.inventory.PlayerInventoryUtils;
 import net.minestom.server.network.packet.server.play.WindowItemsPacket;
 import net.minestom.server.network.packet.server.play.SetSlotPacket;
 import net.minestom.server.network.packet.server.play.SetPlayerInventorySlotPacket;
-import net.minestom.server.network.packet.server.ServerPacket;
-import net.minestom.server.event.player.PlayerPacketOutEvent;
+import net.minestom.server.network.packet.server.SendablePacket;
+import org.jetbrains.annotations.NotNull;
 import net.minestom.server.event.entity.EntityAttackEvent;
 import io.github.term4.polyp.Polyp;
 import net.minestom.server.entity.Player;
@@ -46,14 +46,17 @@ public final class UseItemInterruptFix {
             if (!slotMoved && p.getItemInHand(hand).material() == start.material()) return;
             interrupt(p, hand);
         });
-        node.addListener(PlayerPacketOutEvent.class, e -> {
-            Player p = e.getPlayer();
-            if (p.getItemUseHand() != PlayerHand.MAIN || !Polyp.getInstance().clientInfo().isLegacy(p)) return;
-            if (rewritesHand(e.getPacket(), p.getHeldSlot())) interrupt(p, PlayerHand.MAIN);
-        });
+
         node.addListener(EntityAttackEvent.class, e -> {
             if (e.getEntity() instanceof Player p && p.getItemUseHand() != null) interrupt(p, p.getItemUseHand());
         });
+    }
+
+    /** A slot rewrite the client reads as "the item you are using changed": called from the send path, because a
+     *  listener on {@code PlayerPacketOutEvent} taxes every outgoing packet server-wide. */
+    public static void onOutgoing(@NotNull Player p, @NotNull SendablePacket packet) {
+        if (p.getItemUseHand() != PlayerHand.MAIN || !Polyp.getInstance().clientInfo().isLegacy(p)) return;
+        if (rewritesHand(packet, p.getHeldSlot())) interrupt(p, PlayerHand.MAIN);
     }
 
     private static void interrupt(Player p, PlayerHand hand) {
@@ -63,7 +66,7 @@ public final class UseItemInterruptFix {
     }
 
     // 1.8 slot 36+held is the hotbar; a container's contents carry the player half too
-    private static boolean rewritesHand(ServerPacket packet, byte held) {
+    private static boolean rewritesHand(SendablePacket packet, byte held) {
         return switch (packet) {
             case SetPlayerInventorySlotPacket p -> p.slot() == held;
             case SetSlotPacket p -> p.windowId() == 0 && p.slot() == PlayerInventoryUtils.convertMinestomSlotToWindowSlot(held);
