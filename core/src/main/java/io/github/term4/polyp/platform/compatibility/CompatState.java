@@ -87,7 +87,7 @@ public final class CompatState {
      *  order every other gate in this class reads, so a hand-set flag scopes the knobs with it. */
     private int scopeProtocol() {
         Polyp polyp = Polyp.getInstance();
-        if (ctx.subject() instanceof Player player && polyp.isInitialized() && polyp.clientInfo() != null) {
+        if (ctx.subject() instanceof Player player && polyp.isInitialized()) {
             int known = polyp.clientInfo().getProtocol(player);
             if (known != ClientVersion.UNKNOWN_PROTOCOL) return known;
         }

@@ -28,7 +28,7 @@ public final class LegacyPlacementGhostFix {
             if (!(e.getPacket() instanceof ClientPlayerBlockPlacementPacket packet)) return;
             Player p = e.getPlayer();
             Polyp polyp = Polyp.getInstance();
-            if (polyp.clientInfo() == null || !polyp.clientInfo().isLegacy(p)) return;
+            if (!polyp.clientInfo().isLegacy(p)) return;
             // end of tick: the placement (or its rejection) has been processed on every route
             MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
                 if (!p.isOnline()) return;

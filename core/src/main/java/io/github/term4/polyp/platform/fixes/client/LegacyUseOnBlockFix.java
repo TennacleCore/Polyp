@@ -31,7 +31,7 @@ public final class LegacyUseOnBlockFix {
         node.addListener(PlayerUseItemOnBlockEvent.class, e -> {
             Player p = e.getPlayer();
             Polyp polyp = Polyp.getInstance();
-            if (polyp.clientInfo() == null || !polyp.clientInfo().isLegacy(p)) return;
+            if (!polyp.clientInfo().isLegacy(p)) return;
             if (p.getItemUseHand() != null) {
                 // a drawing 1.8 client never re-sends C08: a repeat press means ITS draw restarted and the
                 // release was lost - restart, never span (vanilla's reference no-op would bank the lost gap)

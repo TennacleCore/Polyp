@@ -80,7 +80,7 @@ public final class Polyp {
     private final EventNode<@NotNull Event> apiEvents = EventNode.all("polyp:api-events");
     private EventNode<@NotNull Event> trackersNode;
 
-    private ClientInfoTracker clientInfo;
+    private ClientInfoTracker clientInfo; // built first in doInit, so no call site guards it
     private final MechanicsProfiles profiles = new MechanicsProfiles();
 
     private @Nullable SprintTracker sprintTracker;
@@ -145,6 +145,8 @@ public final class Polyp {
     }
 
     private void doInit() {
+        // first: every install below may read it, and a null window nobody can reach is still a guard in six places
+        clientInfo = new ClientInfoTracker(viaConnectionDetails);
         TickSystem.start();
 
         if (metaFix && !installPlayerProvider) {
@@ -194,7 +196,6 @@ public final class Polyp {
         trackersNode = EventNode.all("polyp:trackers");
         root.addChild(trackersNode);
 
-        clientInfo = new ClientInfoTracker(viaConnectionDetails);
         if (installSprintTracker) mountTracker(sprintTracker = new SprintTracker());
         if (installMotionTracker) mountTracker(motionTracker = new MotionTracker(profiles));
         // the client-info hub also routes Animatium handshakes
@@ -218,7 +219,8 @@ public final class Polyp {
         return new Services(this);
     }
 
-    public ClientInfoTracker clientInfo() {
+    /** Never null once {@link #init} has run - it is the first thing built. */
+    public @NotNull ClientInfoTracker clientInfo() {
         ensureInitialized();
         return clientInfo;
     }

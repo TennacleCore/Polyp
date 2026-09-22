@@ -45,7 +45,7 @@ public final class SpectatorHud {
     }
 
     private static boolean legacy(Player player) {
-        return Polyp.getInstance().clientInfo() != null && Polyp.getInstance().clientInfo().isLegacy(player);
+        return Polyp.getInstance().clientInfo().isLegacy(player);
     }
 
     /** The outgoing game-mode change, re-told as the spoof while hidden. */
