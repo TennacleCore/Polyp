@@ -42,10 +42,9 @@ public final class Compat18 {
     }
 
     /**
-     * The inverse of {@link #config()} - every cross-version knob OFF (vanilla 26.1), for a {@code /compat} toggle. Each
-     * boolean knob is {@code false} and the pose set is empty so {@code PlayerConfigApplier} actively resets them (it only
-     * writes non-null fields). {@code attackHitboxMargin}/{@code blockPlaceReach} stay null - the layered apply can't null
-     * them, so a caller clears those (and restores {@code ATTACK_SPEED}) directly.
+     * The inverse of {@link #config()} - every cross-version knob OFF (vanilla 26.1), for a {@code /compat} toggle.
+     * Every boolean is {@code false} and the pose set is empty; the nullable reaches stay null, which is what
+     * unmanaged means.
      */
     public static CompatConfig off() {
         return CompatConfig.builder()

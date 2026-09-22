@@ -67,11 +67,11 @@ public final class CompatState {
     private CompatConfig configured = OFF;
 
     /**
-     * Swaps the whole policy; {@code null} = all off (modern). Operational/identity state is left untouched; the
-     * {@code attackHitboxMargin} re-send + attack-cooldown attribute are the caller's job (they touch the player).
+     * Adopts {@code config} for {@code subject} ({@code null} = all off, modern): every knob resolves against
+     * that player from here on, scoped to what their client can take ({@link CompatCatalog}). Operational and
+     * identity state is untouched, and the {@code attackHitboxMargin} re-send and attack-cooldown attribute stay
+     * the caller's job - they touch the player.
      */
-    /** Adopts {@code config} for {@code subject}: every knob resolves against that player from here on, scoped to
-     *  what their client can take ({@link CompatCatalog}). */
     public void apply(@Nullable CompatConfig config, @Nullable Entity subject) {
         this.configured = config != null ? config : OFF;
         this.ctx = new CompatConfig.CompatContext(subject);

@@ -36,15 +36,6 @@ public final class CompatOffhand {
         return player instanceof OptimizedPlayer op && op.compat().disableOffhand();
     }
 
-    // TODO(legacy-offhand-emulation) STUB - the inverse of disableOffhand: give a 1.8 client (which has no native offhand)
-    // a usable one. Mechanism undecided (per user). Design space, to fill in once chosen:
-    //   (a) server-tracked virtual offhand item + a swap trigger 1.8 can actually send - a /offhand command, or a hotbar-slot
-    //       convention (1.8 can't send SWAP_ITEM_WITH_OFFHAND), reconciled here;
-    //   (b) render the emulated offhand item to the 1.8 client via an equipment slot it shows;
-    //   (c) auto-apply the offhand item on the action it backs (totem-on-lethal, shield-on-block) without a real slot.
-    // Gate with a new CompatConfig.emulateOffhand knob -> CompatState, enforced from this listener (a legacy-protocol check
-    // via ClientInfoTracker, since this only applies to clients without a native offhand). Wire once the mechanism is picked.
-
     private static boolean targetsOffhand(InventoryPreClickEvent e) {
         Click click = e.getClick();
         if (click instanceof Click.OffhandSwap) return true; // F in any inventory - always swaps with the offhand
