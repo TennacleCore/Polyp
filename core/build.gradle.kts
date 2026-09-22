@@ -67,9 +67,9 @@ dependencies {
     testImplementation("net.minestom:minestom:$minestomVersion")
     // headless server harness (Env/@EnvTest) for entity-backed golden tests; test-only, never shipped
     testImplementation("net.minestom:testing:$minestomVersion")
-    testImplementation("org.tinylog:tinylog-api:2.8.0-M2")
-    testImplementation("org.tinylog:tinylog-impl:2.8.0-M2")
-    testImplementation("org.tinylog:slf4j-tinylog:2.8.0-M2")
+    testImplementation("org.tinylog:tinylog-api:2.8.0")
+    testImplementation("org.tinylog:tinylog-impl:2.8.0")
+    testImplementation("org.tinylog:slf4j-tinylog:2.8.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
