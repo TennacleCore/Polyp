@@ -62,11 +62,14 @@ public abstract class ProjectileType {
         return new ManagedProjectile(shooter, entityType, snap, effectiveConfig);
     }
 
-    /** Wires this type's launch trigger (item use, etc.) and emits snapshots through {@code system}. No-op by default. */
-    public void enable(ProjectileSystem system, Polyp polyp) {}
-
-    /** Tears down anything registered in {@link #enable}. No-op by default. */
-    public void disable() {}
+    /**
+     * Wires this type's launch trigger (item use, etc.) and emits snapshots through {@code system}, returning
+     * the teardown for whatever it registered. Types are singletons shared by every system, so the mount
+     * belongs in the returned handle, never in a field here. No-op by default.
+     */
+    public @Nullable Runnable enable(ProjectileSystem system, Polyp polyp) {
+        return null;
+    }
 
     @Override public String toString() { return "ProjectileType(" + key.asString() + ")"; }
 }

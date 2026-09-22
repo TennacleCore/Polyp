@@ -488,7 +488,7 @@ public abstract class ProjectileEntity extends MechanicsEntity {
             return;
         }
         boolean phantom = predictedContact != null
-                && !world.getBlock(predictedContact, Block.Getter.Condition.TYPE).isSolid();
+                && !world.getBlock(predictedContact, Block.Getter.Condition.TYPE).solid();
         predictedContact = null;
 
         // water sensing runs BEFORE the motion step (both eras). The box is the VANILLA entity box - the physics

@@ -36,9 +36,6 @@ public abstract class ThrowableItemType extends ProjectileType {
 
     private final Material material;
     private final boolean blockAction;
-    private @Nullable EventNode<@NotNull PlayerEvent> node;
-    private @Nullable ProjectileSystem system;
-    private @Nullable Polyp polyp;
 
     /** Launch-sound effect key ({@link Fx#THROW_SNOWBALL} etc.), or null for none. */
     protected @Nullable Key throwSound() { return null; }
@@ -56,21 +53,20 @@ public abstract class ThrowableItemType extends ProjectileType {
     }
 
     @Override
-    public void enable(ProjectileSystem system, Polyp polyp) {
-        this.system = system;
-        this.polyp = polyp;
+    public Runnable enable(ProjectileSystem system, Polyp polyp) {
         EventNode<@NotNull PlayerEvent> n = EventNode.type("polyp:" + key().value(), EventFilter.PLAYER);
         // use_item ONLY for a plain throwable: aimed at a block in reach, the client sends use_item_on_block FOLLOWED
         // by use_item (its useOn passes client-side), and vanilla throws from the latter alone - handling both threw twice
-        n.addListener(PlayerUseItemEvent.class, e -> throwItem(e.getPlayer(), e.getHand(), e.getItemStack()));
+        n.addListener(PlayerUseItemEvent.class, e -> throwItem(system, polyp, e.getPlayer(), e.getHand(), e.getItemStack()));
         // a block action (fire charge) consumes the click client-side: use_item_on_block is then the only signal
-        if (blockAction) n.addListener(PlayerUseItemOnBlockEvent.class, e -> throwItem(e.getPlayer(), e.getHand(), e.getItemStack()));
+        if (blockAction) n.addListener(PlayerUseItemOnBlockEvent.class,
+                e -> throwItem(system, polyp, e.getPlayer(), e.getHand(), e.getItemStack()));
         system.node().addChild(n);
-        node = n;
+        return () -> system.node().removeChild(n);
     }
 
-    private void throwItem(Player p, PlayerHand hand, ItemStack item) {
-        if (item.material() != material || system == null) return;
+    private void throwItem(ProjectileSystem system, Polyp polyp, Player p, PlayerHand hand, ItemStack item) {
+        if (item.material() != material) return;
         if (!system.armed(key(), p)) return;
         Instance instance = p.getInstance();
         long age = instance != null ? MechanicsWorld.of(p).worldAge() : 0;
@@ -89,9 +85,4 @@ public abstract class ThrowableItemType extends ProjectileType {
         system.firstStep(proj);
     }
 
-    @Override
-    public void disable() {
-        if (system != null && node != null) system.node().removeChild(node);
-        node = null;
-    }
 }

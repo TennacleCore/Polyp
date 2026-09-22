@@ -30,15 +30,42 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
 
     private record Knob(String type, String name) {}
 
-    /** AST scan for a {@code super(...)} / {@code copyKnobs} / {@code mergeKnobs} call - parsed identifiers, so comments can't satisfy it. */
+    /**
+     * AST scan for a call that actually carries {@code param} across: a bare {@code super()}, or a copy call
+     * naming something else, is the very regression these checks exist to catch.
+     */
     private static final class CopyCallScanner extends com.sun.source.util.TreeScanner<Boolean, Void> {
+        private final String param;
+        private final boolean superCounts;
+
+        CopyCallScanner(String param, boolean superCounts) {
+            this.param = param;
+            this.superCounts = superCounts;
+        }
+
         @Override public Boolean visitMethodInvocation(com.sun.source.tree.MethodInvocationTree node, Void p) {
             String select = node.getMethodSelect().toString();
-            if (select.equals("super") || select.endsWith("copyKnobs") || select.endsWith("mergeKnobs")
-                    || select.endsWith("fromBase")) return true;
+            boolean carrier = (superCounts && select.equals("super"))
+                    || select.endsWith("copyKnobs") || select.endsWith("mergeKnobs")
+                    || select.equals("super.fromBase");
+            if (carrier && passes(node)) return true;
             return super.visitMethodInvocation(node, p);
         }
+
+        // the parameter has to appear as an argument, not merely somewhere in the body
+        private boolean passes(com.sun.source.tree.MethodInvocationTree node) {
+            if (node.getArguments().isEmpty()) return false;
+            for (var arg : node.getArguments()) {
+                if (arg.toString().equals(param)) return true;
+            }
+            return false;
+        }
+
         @Override public Boolean reduce(Boolean a, Boolean b) { return Boolean.TRUE.equals(a) || Boolean.TRUE.equals(b); }
+    }
+
+    private static String soleParam(ExecutableElement method) {
+        return method.getParameters().isEmpty() ? "" : method.getParameters().getFirst().getSimpleName().toString();
     }
 
     private Trees trees; // javac-only AST access for the copy-ctor check; null under other compilers
@@ -73,11 +100,13 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
         if (trees == null) return;
         for (Element member : config.getEnclosedElements()) {
             if (member.getKind() != ElementKind.METHOD || !member.getSimpleName().contentEquals("fromBase")) continue;
-            var tree = trees.getTree((ExecutableElement) member);
-            if (tree != null && tree.getBody() != null
-                    && !Boolean.TRUE.equals(new CopyCallScanner().scan(tree.getBody(), null))) {
+            ExecutableElement method = (ExecutableElement) member;
+            var tree = trees.getTree(method);
+            String base = soleParam(method);
+            if (tree != null && tree.getBody() != null && !base.isEmpty()
+                    && !Boolean.TRUE.equals(new CopyCallScanner(base, false).scan(tree.getBody(), null))) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
-                        "fromBase must merge the generated knobs (mergeKnobs, or super.fromBase)", member);
+                        "fromBase must merge the generated knobs of " + base + " (mergeKnobs, or super.fromBase)", member);
             }
         }
     }
@@ -144,10 +173,13 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
                         .anyMatch(p -> processingEnv.getTypeUtils().isSameType(p.asType(), config.asType()));
                 if (!takesConfig) continue;
                 var tree = trees.getTree(ex);
+                String arg = ex.getParameters().stream()
+                        .filter(p -> processingEnv.getTypeUtils().isSameType(p.asType(), config.asType()))
+                        .findFirst().orElseThrow().getSimpleName().toString();
                 if (tree != null && tree.getBody() != null
-                        && !Boolean.TRUE.equals(new CopyCallScanner().scan(tree.getBody(), null))) {
+                        && !Boolean.TRUE.equals(new CopyCallScanner(arg, true).scan(tree.getBody(), null))) {
                     processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
-                            "Builder copy-constructor must call super(c) - the generated knobs reset to defaults otherwise", ctor);
+                            "Builder copy-constructor must call super(" + arg + ") - the generated knobs reset to defaults otherwise", ctor);
                 }
             }
         }

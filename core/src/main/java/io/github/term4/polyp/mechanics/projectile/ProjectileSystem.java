@@ -74,7 +74,7 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
     private final Services services;
     private final EventNode<@NotNull Event> node;
     private final Map<Key, ProjectileType> types = new ConcurrentHashMap<>();
-    private final Set<Key> mounted = ConcurrentHashMap.newKeySet();
+    private final Map<Key, Runnable> mounted = new ConcurrentHashMap<>(); // key -> that mount's teardown
     private final Set<Key> enabled = ConcurrentHashMap.newKeySet();
 
     public ProjectileSystem(Polyp polyp, ProjectileConfig config) {
@@ -333,16 +333,20 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
     public void disable(Key key) {
         ProjectileType type = types.get(key);
         enabled.remove(key);
-        if (type != null && mounted.remove(key)) type.disable();
+        Runnable unmount = mounted.remove(key);
+        if (unmount != null) unmount.run();
     }
 
-    /** The types are singletons holding THIS system's mount state, so a teardown unmounts them. */
+    /** The types are singletons; the mounts are this system's, so a teardown unmounts them. */
     @Override public void uninstall() {
-        for (Key key : java.util.List.copyOf(mounted)) disable(key);
+        for (Key key : java.util.List.copyOf(mounted.keySet())) disable(key);
     }
 
     private void mount(ProjectileType type) {
-        if (mounted.add(type.key())) type.enable(this, polyp);
+        mounted.computeIfAbsent(type.key(), key -> {
+            Runnable unmount = type.enable(this, polyp);
+            return unmount != null ? unmount : () -> {};
+        });
     }
 
     /** Registers the built-in vanilla projectile types (data only; not enabled). */
