@@ -33,13 +33,25 @@ public final class DurabilitySystem extends ScopedSystem<DurabilityConfig> {
         return !Boolean.FALSE.equals(FieldValue.resolve(configFor(subject).enabled, new DurabilityConfig.DurabilityContext(subject)));
     }
 
+    /** Whether {@link #damage} does anything at all. False for now: callers that price a charge can say so. */
+    public boolean consumes() {
+        return false;
+    }
+
     /**
-     * The combat/mining/Thorns entry point. <b>Stub:</b> a no-op until the durability logic lands.
+     * The combat/mining/Thorns entry point. <b>Stub:</b> a no-op until the durability logic lands, so every
+     * charge billed through it is silently free - {@link #consumes} is how a caller finds that out.
      */
     public void damage(LivingEntity holder, EquipmentSlot slot, int amount) {
         if (!enabled(holder)) return;
+        if (STUB_WARNED.compareAndSet(false, true)) {
+            LOGGER.warn("durability is a stub: the {} charge on {} and every later one are free", amount, slot);
+        }
         // TODO(durability): consume Unbreaking, decrement the stack's damage component, break + emit the item on overflow.
     }
+
+    private static final java.util.concurrent.atomic.AtomicBoolean STUB_WARNED = new java.util.concurrent.atomic.AtomicBoolean();
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(DurabilitySystem.class);
 
     /** Installs the system active (a per-scope {@code MechanicsProfile.durability} config can disable it). */
     public static DurabilitySystem install(Polyp polyp) {

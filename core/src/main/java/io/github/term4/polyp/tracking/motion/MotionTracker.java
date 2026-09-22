@@ -135,6 +135,7 @@ public final class MotionTracker implements Tracker {
      * Ticked {@code motY} state. {@code zeroed} = vanilla (0.005 apex reseed); {@code raw} = no reseed ({@code zeroBelowY(0)}
      * presets). Index {@code [0]} = latest end-of-tick; older slots back the {@code launchOffset} lookback.
      */
+    /** Every field here is read and written under the player's own monitor - see {@code tickVertSim}. */
     private static final class VertSim {
         static final int HISTORY = 4;
         final double[] zeroed = new double[HISTORY];
@@ -182,11 +183,13 @@ public final class MotionTracker implements Tracker {
             // 26 zeroes an absolute teleport's delta (teleportSetPosition); 1.8 freezes at the teleport
             // (checkMovement=false gates l()) and carries mot into the confirming packet's step
             if (!VelocityRule.motYOnMovePacketEnabled(profiles.resolve(p, MechanicsKeys.VELOCITY), VelocityContext.of(p))) {
-                VertSim sim = p.getTag(VERT_SIM);
-                if (sim != null) {
-                    Arrays.fill(sim.zeroed, 0);
-                    Arrays.fill(sim.raw, 0);
-                    sim.collided = false;
+                synchronized (p) {
+                    VertSim sim = p.getTag(VERT_SIM);
+                    if (sim != null) {
+                        Arrays.fill(sim.zeroed, 0);
+                        Arrays.fill(sim.raw, 0);
+                        sim.collided = false;
+                    }
                 }
                 p.removeTag(MOT_H);
                 p.removeTag(ENTITY_PUSH);
@@ -211,7 +214,9 @@ public final class MotionTracker implements Tracker {
         p.removeTag(ENTITY_PUSH);
         p.removeTag(FLOW_PUSH);
         p.removeTag(FLOW_MODEL);
-        p.removeTag(VERT_SIM);
+        synchronized (p) {
+            p.removeTag(VERT_SIM);
+        }
         p.removeTag(ENV);
     }
 
@@ -263,12 +268,14 @@ public final class MotionTracker implements Tracker {
         p.setTag(LAUNCHED, true);
         p.setTag(LAUNCH_STAMP, new LaunchStamp(now, yaw, sprinting, residual, seedH));
         // a rising departure seeds motY (jumps + ground KB alike), like bF() firing after m()
-        VertSim sim = p.getTag(VERT_SIM);
-        if (sim != null) {
-            double seedY = jumpSeed(VelocityConfig.JUMP_VELOCITY, p.getEffectLevel(PotionEffect.JUMP_BOOST));
-            sim.zeroed[0] = seedY;
-            sim.raw[0] = seedY;
-            sim.collided = false;
+        synchronized (p) {
+            VertSim sim = p.getTag(VERT_SIM);
+            if (sim != null) {
+                double seedY = jumpSeed(VelocityConfig.JUMP_VELOCITY, p.getEffectLevel(PotionEffect.JUMP_BOOST));
+                sim.zeroed[0] = seedY;
+                sim.raw[0] = seedY;
+                sim.collided = false;
+            }
         }
     }
 
@@ -411,6 +418,14 @@ public final class MotionTracker implements Tracker {
     /** One vanilla {@code m()} travel step for the ticked motY: clamp, {@code move()} collide-zero, gravity - or the
      *  fluid / web / ladder vertical law when {@code env} is not {@link Env#NORMAL}. */
     private static void tickVertSim(Player p, Env env, ClimbModel climbModel, boolean modernBlocks, FluidFlow.Model flowModel) {
+        // read-modify-write on state a knockback fold, a move packet and this tick all reach; the victim's own
+        // monitor is the lock DamageSystem.claimWindow already takes
+        synchronized (p) {
+            tickVertSimLocked(p, env, climbModel, modernBlocks, flowModel);
+        }
+    }
+
+    private static void tickVertSimLocked(Player p, Env env, ClimbModel climbModel, boolean modernBlocks, FluidFlow.Model flowModel) {
         VertSim sim = p.getTag(VERT_SIM);
         if (sim == null) p.setTag(VERT_SIM, sim = new VertSim());
         if (p.isFlying() || p.getInstance() == null) {
@@ -621,27 +636,33 @@ public final class MotionTracker implements Tracker {
         p.setTag(MOT_H, new MotState(new Vec(bt.x(), 0, bt.z()), physTicks(p), !p.isOnGround()));
         p.removeTag(ENTITY_PUSH);
         p.removeTag(FLOW_PUSH);
-        VertSim sim = p.getTag(VERT_SIM);
-        if (sim == null) p.setTag(VERT_SIM, sim = new VertSim());
-        sim.zeroed[0] = bt.y();
-        sim.raw[0] = bt.y();
-        sim.collided = false;
+        synchronized (p) {
+            VertSim sim = p.getTag(VERT_SIM);
+            if (sim == null) p.setTag(VERT_SIM, sim = new VertSim());
+            sim.zeroed[0] = bt.y();
+            sim.raw[0] = bt.y();
+            sim.collided = false;
+        }
     }
 
     /** Vanilla collision {@code onGround}: fires before a laggy client's landing packet, so fall damage ends in sync with the combat ground checks. */
     public static boolean simCollided(Entity entity) {
         if (!(entity instanceof Player p)) return false;
-        VertSim sim = p.getTag(VERT_SIM);
-        return sim != null && sim.collided;
+        synchronized (p) {
+            VertSim sim = p.getTag(VERT_SIM);
+            return sim != null && sim.collided;
+        }
     }
 
     /** {@code lookback} reads that many end-of-tick values back; {@code zeroed} picks the apex-reseed variant. */
     public static @Nullable Double serverMotY(Entity entity, int lookback, boolean zeroed) {
         if (!(entity instanceof Player p)) return null;
-        VertSim sim = p.getTag(VERT_SIM);
-        if (sim == null) return null;
-        int i = Math.min(Math.max(lookback, 0), VertSim.HISTORY - 1);
-        return zeroed ? sim.zeroed[i] : sim.raw[i];
+        synchronized (p) {
+            VertSim sim = p.getTag(VERT_SIM);
+            if (sim == null) return null;
+            int i = Math.min(Math.max(lookback, 0), VertSim.HISTORY - 1);
+            return zeroed ? sim.zeroed[i] : sim.raw[i];
+        }
     }
 
     // entity push residual

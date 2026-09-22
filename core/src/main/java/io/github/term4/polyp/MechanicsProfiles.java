@@ -7,6 +7,7 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.tag.Tag;
 import net.minestom.server.tag.Taggable;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -73,9 +74,24 @@ public final class MechanicsProfiles {
     }
     public @Nullable MechanicsProfile player(Player player) { return player.getTag(PROFILE); }
 
+    private final java.util.Map<ConfigKey<?>, Consumer<Object>> validators = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * A system's own check on a value written into any scope. It runs on the WRITE, never on a resolve, so it
+     * can say what a resolve cannot: that a scoped config asks for something the install never turned on.
+     */
+    @SuppressWarnings("unchecked")
+    public <C> void validator(@NotNull ConfigKey<C> key, @NotNull Consumer<C> check) {
+        validators.put(key, (Consumer<Object>) check);
+    }
+
     // single-member assignment: merges into the scope's existing profile instead of replacing it
 
-    private static MechanicsProfile with(@Nullable MechanicsProfile base, ConfigKey<?> key, @Nullable Object value) {
+    private MechanicsProfile with(@Nullable MechanicsProfile base, ConfigKey<?> key, @Nullable Object value) {
+        if (value != null) {
+            Consumer<Object> check = validators.get(key);
+            if (check != null) check.accept(value);
+        }
         MechanicsProfile.Builder b = base != null ? base.toBuilder() : MechanicsProfile.builder();
         @SuppressWarnings("unchecked")
         ConfigKey<Object> typed = (ConfigKey<Object>) key;

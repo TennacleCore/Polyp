@@ -552,8 +552,20 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
             }
         }
         for (DamageType type : extraTypes) system.registry.enable(type.key());
+        // producers start from the INSTALL config alone, so a scoped one naming another type is inert forever
+        polyp.profiles().validator(MechanicsKeys.DAMAGE, scoped -> {
+            for (Key key : scoped.typeConfigs.keySet()) {
+                if (!system.registry.isEnabled(key) && INERT_WARNED.add(key)) {
+                    LOGGER.warn("a scoped damage config names {}, which the install config never started - "
+                            + "the producer stays off and the scoped tuning is inert", key);
+                }
+            }
+        });
         return system;
     }
+
+    private static final java.util.Set<Key> INERT_WARNED = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(DamageSystem.class);
 
     /**
      * Pre-event early-out: while the target's window is active, an attempt that can't beat the stored highwater is

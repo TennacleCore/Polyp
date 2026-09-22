@@ -73,14 +73,24 @@ public final class CompatState {
      * the caller's job - they touch the player.
      */
     public void apply(@Nullable CompatConfig config, @Nullable Entity subject) {
-        this.configured = config != null ? config : OFF;
-        this.ctx = new CompatConfig.CompatContext(subject);
+        CompatConfig next = config != null ? config : OFF;
+        // a player with no provider re-applies on EVERY move packet, so the steady state must allocate nothing
+        if (next != configured || ctx.subject() != subject) {
+            this.configured = next;
+            this.ctx = new CompatConfig.CompatContext(subject);
+            scopedProtocol = Integer.MIN_VALUE;
+        }
         rescope();
     }
 
+    private int scopedProtocol = Integer.MIN_VALUE;
+
     /** The knobs this client can take, re-read whenever the config or the known protocol changes. */
     private void rescope() {
-        this.policy = configured.scopedTo(scopeProtocol());
+        int protocol = scopeProtocol();
+        if (protocol == scopedProtocol) return;
+        scopedProtocol = protocol;
+        this.policy = configured.scopedTo(protocol);
     }
 
     /** The client's real protocol where it is known, else what {@link #legacyClient} says, else modern - the same

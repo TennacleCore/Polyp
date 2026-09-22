@@ -48,6 +48,7 @@ import java.util.concurrent.TimeUnit;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.utils.time.Cooldown;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -66,6 +67,12 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
     private final CompatState compat = new CompatState();
     private final UseItemAimSync aimSync = new UseItemAimSync();
     private final AttackAimSync attackSync = new AttackAimSync();
+    // addPacketToQueue runs on the read thread for every inbound packet: the gates and the tail are built once
+    private final BooleanSupplier placementHalfGate = () -> compat.legacyClient() && fixEnabled(FixesConfig::legacyPlacementHalf);
+    private final BooleanSupplier attackSyncGate = this::attackAimSyncEnabled;
+    private final BooleanSupplier aimSyncGate = this::useItemAimSyncEnabled;
+    private final Consumer<ClientPacket> queueTail = super::addPacketToQueue;
+    private final Consumer<ClientPacket> aimSyncStage = p -> aimSync.intercept(p, aimSyncGate, queueTail);
     private final InventorySync inventorySync = new InventorySync();
     private final BooleanSupplier healthRounding =
             () -> compat.legacyClient() && fixEnabled(FixesConfig::legacyHealthRounding);
@@ -278,9 +285,8 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
     // (a client can't use-item and attack in one tick), so chaining is order-free.
     @Override
     public void addPacketToQueue(ClientPacket packet) {
-        packet = LegacyPlacementHalfFix.rewrite(packet, this, () -> compat.legacyClient() && fixEnabled(FixesConfig::legacyPlacementHalf));
-        attackSync.intercept(packet, this::attackAimSyncEnabled,
-                p -> aimSync.intercept(p, this::useItemAimSyncEnabled, super::addPacketToQueue));
+        packet = LegacyPlacementHalfFix.rewrite(packet, this, placementHalfGate);
+        attackSync.intercept(packet, attackSyncGate, aimSyncStage);
     }
 
     /** {@link FixesConfig#legacyTabSlots} from this player's scope chain, or null before the module is up. */
