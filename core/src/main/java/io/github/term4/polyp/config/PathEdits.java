@@ -566,7 +566,10 @@ public final class PathEdits {
         return map.isEmpty() ? null : map;
     }
 
-    // -------------------------------------------------------------- builder plumbing (cached reflection)
+    // ------------------------------------------------------- builder plumbing (cached, compiler-enforced)
+    // This layer edits ANY generated config, so it reaches the builder by name rather than by type. The names
+    // are the codegen's own and ConfigBuilderProcessor.checkPathEditShape refuses to compile a config missing
+    // builder(), toBuilder() or Builder.build(), so a lookup here cannot fail on a config that built.
 
     private static final Map<Class<?>, Method> BUILDER_FACTORIES = new ConcurrentHashMap<>();
 

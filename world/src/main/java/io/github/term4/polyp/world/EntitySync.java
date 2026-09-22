@@ -11,6 +11,13 @@ import java.lang.invoke.VarHandle;
 /**
  * Minestom seeds a first scheduled position sync around tick 20 that {@code setSynchronizationTicks} does NOT reset.
  * On a hand-driven entity (a TNT, a replay twin) that absolute lands mid-flight as a catch-up snap.
+ *
+ * <p><b>The one reflection in the stack, and why it stays.</b> The public way to move the seed is
+ * {@code synchronizeNextTick()} plus a far interval, which reseeds on the entity's first tick - but the tick
+ * that reseeds also SENDS a position sync and a velocity packet, and every caller here is an entity whose wire
+ * is captured parity (a 1.8 TNT spawn, a replay twin's track). Paying two packets on the first tick to avoid a
+ * VarHandle is the wrong trade. The real fix is upstream: {@code Entity.setSynchronizationTicks} should move
+ * {@code nextSynchronizationTick} with the interval it sets, which is one line and makes this class unnecessary.
  */
 public final class EntitySync {
 

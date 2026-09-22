@@ -87,6 +87,7 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
                 generate(config);
                 checkCopyConstructors(config);
                 checkFromBase(config);
+                checkPathEditShape(config);
             }
         }
         for (Element e : round.getElementsAnnotatedWith(CheckResolveOrder.class)) {
@@ -183,6 +184,48 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
                 }
             }
         }
+    }
+
+    /**
+     * {@code PathEdits} reaches a config's builder by name - {@code builder()}, {@code build()},
+     * {@code toBuilder()} - because it works over any generated config, not one known type. The names are this
+     * processor's own, so the only way they can drift is a config that does not carry them: caught here, at the
+     * config, rather than at a {@code /rules} edit months later.
+     */
+    private void checkPathEditShape(TypeElement config) {
+        String cfg = config.getSimpleName().toString();
+        boolean builder = false, toBuilder = false;
+        for (Element member : config.getEnclosedElements()) {
+            if (member.getKind() != ElementKind.METHOD) continue;
+            ExecutableElement method = (ExecutableElement) member;
+            String name = method.getSimpleName().toString();
+            boolean isStatic = method.getModifiers().contains(javax.lang.model.element.Modifier.STATIC);
+            if (name.equals("builder") && isStatic) builder = true;
+            if (name.equals("toBuilder") && !isStatic && method.getParameters().isEmpty()) toBuilder = true;
+        }
+        if (!builder) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                    cfg + " needs a static builder() - PathEdits builds every scoped edit through it", config);
+        }
+        if (!toBuilder) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                    cfg + " needs a no-argument toBuilder() - an edit over an existing config copies through it", config);
+        }
+        for (Element member : config.getEnclosedElements()) {
+            if (member.getKind() != ElementKind.CLASS || !member.getSimpleName().contentEquals("Builder")) continue;
+            boolean build = false;
+            for (Element inner : member.getEnclosedElements()) {
+                if (inner.getKind() == ElementKind.METHOD && inner.getSimpleName().contentEquals("build")
+                        && ((ExecutableElement) inner).getParameters().isEmpty()) build = true;
+            }
+            if (!build) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                        cfg + ".Builder needs a no-argument build() - PathEdits closes every edit with it", member);
+            }
+            return;
+        }
+        processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                cfg + " needs a nested Builder class", config);
     }
 
     private void generate(TypeElement config) {
