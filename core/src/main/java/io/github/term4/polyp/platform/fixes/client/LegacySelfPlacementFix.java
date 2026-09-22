@@ -1,11 +1,12 @@
 package io.github.term4.polyp.platform.fixes.client;
 
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
-import net.minestom.server.MinecraftServer;
+import io.github.term4.polyp.platform.player.PlayListeners;
 import net.minestom.server.entity.Player;
 import net.minestom.server.listener.BlockPlacementListener;
 import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.BiConsumer;
 
@@ -22,21 +23,26 @@ public final class LegacySelfPlacementFix {
 
     private LegacySelfPlacementFix() {}
 
-    /** Installs the stock placement listener wrapped with the 1.8 self-placement exclusion. */
+    private static volatile @Nullable Runnable handle;
+
+    /** Adds the 1.8 self-placement exclusion over whatever else holds the placement slot. */
     public static void install() {
-        install(BlockPlacementListener::listener);
+        if (handle != null) return;
+        handle = PlayListeners.wrap(ClientPlayerBlockPlacementPacket.class, BlockPlacementListener::listener,
+                (packet, player, next) -> wrapped(next::accept, packet, player));
     }
 
-    /** Hands the slot back to Minestom's own listener. */
+    /** Removes this fix's link; whatever else holds the slot stays. */
     public static void uninstall() {
-        MinecraftServer.getPacketListenerManager().setPlayListener(ClientPlayerBlockPlacementPacket.class,
-                BlockPlacementListener::listener);
+        Runnable installed = handle;
+        handle = null;
+        if (installed != null) installed.run();
     }
 
     /** Installs {@code delegate} wrapped with the exclusion - the composition seam for replaced placement listeners. */
     public static void install(@NotNull BiConsumer<ClientPlayerBlockPlacementPacket, Player> delegate) {
-        MinecraftServer.getPacketListenerManager().setPlayListener(ClientPlayerBlockPlacementPacket.class,
-                wrap(delegate)::accept);
+        PlayListeners.wrap(ClientPlayerBlockPlacementPacket.class, delegate::accept,
+                (packet, player, next) -> wrapped(next::accept, packet, player));
     }
 
     /** {@code delegate} wrapped with the exclusion but NOT installed - for hosts that own the listener slot, where

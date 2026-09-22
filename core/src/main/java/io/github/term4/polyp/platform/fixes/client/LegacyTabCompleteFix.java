@@ -1,5 +1,8 @@
 package io.github.term4.polyp.platform.fixes.client;
 
+import io.github.term4.polyp.platform.player.PlayListeners;
+import org.jetbrains.annotations.Nullable;
+
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.command.CommandSender;
 import net.minestom.server.command.builder.Command;
@@ -35,14 +38,18 @@ public final class LegacyTabCompleteFix {
 
     private LegacyTabCompleteFix() {}
 
-    /** Hands the slot back to Minestom's own listener. */
+    private static volatile @Nullable Runnable handle;
+
+    /** Removes this fix's link; whatever else holds the slot stays. */
     public static void uninstall() {
-        MinecraftServer.getPacketListenerManager().setPlayListener(ClientTabCompletePacket.class,
-                TabCompleteListener::listener);
+        Runnable installed = handle;
+        handle = null;
+        if (installed != null) installed.run();
     }
 
     public static void install() {
-        MinecraftServer.getPacketListenerManager().setPlayListener(ClientTabCompletePacket.class, (packet, player) -> {
+        if (handle != null) return;
+        handle = PlayListeners.wrap(ClientTabCompletePacket.class, TabCompleteListener::listener, (packet, player, next) -> {
             final String text = packet.text();
             final String line = text.startsWith("/") ? text.substring(1) : text;
             final int lastSpace = line.lastIndexOf(' ');
@@ -53,7 +60,7 @@ public final class LegacyTabCompleteFix {
                     .map(name -> new TabCompletePacket.Match(name, null))
                     .toList();
             if (matches.isEmpty()) {
-                TabCompleteListener.listener(packet, player); // an argument's own callback, or nothing
+                next.accept(packet, player); // an argument's own callback, or nothing
                 return;
             }
             // start counts the leading '/': the stock listener's lastSpace + 2

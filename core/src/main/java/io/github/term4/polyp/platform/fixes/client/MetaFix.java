@@ -1,7 +1,7 @@
 package io.github.term4.polyp.platform.fixes.client;
 
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
-import net.minestom.server.MinecraftServer;
+import io.github.term4.polyp.platform.player.PlayListeners;
 import net.minestom.server.listener.EntityActionListener;
 import net.minestom.server.listener.PlayerActionListener;
 import net.minestom.server.listener.PlayerInputListener;
@@ -46,10 +46,10 @@ public final class MetaFix {
      */
     public static <T extends ClientPacket> void wrapListener(
             Class<T> packetClass, PacketPlayListenerConsumer<@NotNull T> consumer) {
-        MinecraftServer.getPacketListenerManager().setPlayListener(packetClass, (packet, player) -> {
+        PlayListeners.wrap(packetClass, consumer, (packet, player, next) -> {
             if (player instanceof OptimizedPlayer op) op.setProcessingClientInput(true);
             try {
-                consumer.accept(packet, player);
+                next.accept(packet, player);
             } finally {
                 if (player instanceof OptimizedPlayer op) op.setProcessingClientInput(false);
             }
