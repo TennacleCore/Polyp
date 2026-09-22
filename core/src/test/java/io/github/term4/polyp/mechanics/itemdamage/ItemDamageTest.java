@@ -151,6 +151,47 @@ class ItemDamageTest extends HeadlessServerTest {
         }
     }
 
+    /**
+     * MineMen's duel captures price ground loot at 3 fireballs / 2 TNT, but its Emerald Rush clears a stack in
+     * ONE blast. That is a per-game mutation of the same preset, not a different mechanic, and this pins the
+     * lever it will use: an instance profile raising {@code itemDamage} over the item's health, with the
+     * server-wide preset still taking two.
+     */
+    @Test
+    void aScopedPriceClearsInOneBlast() {
+        ExplosionSystem explosions = explosions();
+        MechanicsProfile duels = MechanicsProfile.builder()
+                .set(MechanicsKeys.ITEM_DAMAGE, Items.damage())
+                .set(MechanicsKeys.EXPLOSION, io.github.term4.polyp.presets.mmc18.Explosion.config())
+                .build();
+        MechanicsProfile rush = MechanicsProfile.builder()
+                .set(MechanicsKeys.ITEM_DAMAGE, Items.damage())
+                .set(MechanicsKeys.EXPLOSION, io.github.term4.polyp.presets.mmc18.Explosion.config()
+                        .toBuilder().itemDamage(ctx -> 5.0).build())
+                .build();
+
+        Instance duelWorld = flatInstance(duels);
+        Instance rushWorld = flatInstance(rush);
+        ItemEntity duelLoot = drop(duelWorld, Material.DIAMOND, new Pos(60.5, 66, 60.5));
+        ItemEntity rushLoot = drop(rushWorld, Material.DIAMOND, new Pos(60.5, 66, 60.5));
+        // the explosion config resolves off the SOURCE's chain, so each blast needs a source in its own world
+        Entity duelTnt = new Entity(EntityType.TNT);
+        Entity rushTnt = new Entity(EntityType.TNT);
+        duelTnt.setInstance(duelWorld, new Pos(60.5, 66, 64.5)).join();
+        rushTnt.setInstance(rushWorld, new Pos(60.5, 66, 64.5)).join();
+        try {
+            explosions.explode(duelWorld, new Pos(60.5, 66, 60.5), 4.0f, duelTnt);
+            explosions.explode(rushWorld, new Pos(60.5, 66, 60.5), 4.0f, rushTnt);
+            assertFalse(duelLoot.isRemoved(), "the duel preset still takes two");
+            assertTrue(rushLoot.isRemoved(), "the scoped price clears it in one");
+        } finally {
+            if (!duelLoot.isRemoved()) duelLoot.remove();
+            if (!rushLoot.isRemoved()) rushLoot.remove();
+            duelTnt.remove();
+            rushTnt.remove();
+        }
+    }
+
     /** A SOURCELESS blast still belongs to a world, so it must resolve that world's preset - not silently
      *  fall back to the install config and one-shot the loot the preset says survives. */
     @Test
