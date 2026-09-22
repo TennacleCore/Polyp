@@ -192,6 +192,35 @@ class ItemDamageTest extends HeadlessServerTest {
         }
     }
 
+    /**
+     * With no {@code itemDamage} override the loot takes the raw curve, which falls off with distance: near the
+     * blast that is far above an item's 5 health, at the rim it is under it. This is the shape that separates
+     * "the mode dropped MineMen's duel pricing" from "the mode raised the price": a flat price kills every
+     * stack in the radius, the curve spares the far ones.
+     */
+    @Test
+    void theRawCurvePricesLootByDistance() {
+        ExplosionSystem explosions = explosions();
+        Instance inst = flatInstance(MechanicsProfile.builder()
+                .set(MechanicsKeys.ITEM_DAMAGE, Items.damage())
+                .set(MechanicsKeys.EXPLOSION, io.github.term4.polyp.presets.vanilla18.Explosion.config())
+                .build());
+        Pos center = new Pos(70.5, 66, 70.5);
+        ItemEntity near = drop(inst, Material.DIAMOND, center);
+        ItemEntity far = drop(inst, Material.DIAMOND, new Pos(70.5, 66, 78.0)); // 7.5 of the power-4 radius 8
+        Entity source = new Entity(EntityType.TNT);
+        source.setInstance(inst, new Pos(70.5, 66, 66.5)).join();
+        try {
+            explosions.explode(inst, center, 4.0f, source);
+            assertTrue(near.isRemoved(), "the curve at the center is far above 5 health");
+            assertFalse(far.isRemoved(), "and under it at the rim");
+        } finally {
+            if (!near.isRemoved()) near.remove();
+            if (!far.isRemoved()) far.remove();
+            source.remove();
+        }
+    }
+
     /** A SOURCELESS blast still belongs to a world, so it must resolve that world's preset - not silently
      *  fall back to the install config and one-shot the loot the preset says survives. */
     @Test
