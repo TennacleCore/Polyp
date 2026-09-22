@@ -3,104 +3,81 @@ package io.github.term4.polyp.platform.fixes;
 import io.github.term4.polyp.platform.fixes.visuals.VisualsConfig;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * Top-level config for the lib's client/protocol behavior <b>fixes</b> - both cross-version compatibility (the 1.8
  * arrow-visibility fix) and single-version client smoothing (the self-meta echo fix). Assigned per scope via the
  * {@link io.github.term4.polyp.MechanicsProfile} {@code fixes} member.
+ *
+ * <p>The toggles are held by name, from {@link FixCatalog}, so the merge, the per-client scoping and the by-name
+ * accessors have no per-toggle code at all: a new fix is a catalog entry, one accessor and one builder setter.
  */
 public final class FixesConfig {
 
     private final @Nullable VisualsConfig visuals;
-    private final @Nullable FixToggleConfig legacySelfPlacement;
-    private final @Nullable FixToggleConfig equipmentFix;
-    private final @Nullable FixToggleConfig legacyTabCompleteFix;
-    private final @Nullable FixToggleConfig legacyConsume;
-    private final @Nullable FixToggleConfig legacyFireDouse;
-    private final @Nullable FixToggleConfig inventorySync;
-    private final @Nullable FixToggleConfig legacyInventorySlot;
-    private final @Nullable FixToggleConfig effectResync;
-    private final @Nullable FixToggleConfig legacyUseResync;
-    private final @Nullable FixToggleConfig legacyPlacementHalf;
-    private final @Nullable FixToggleConfig legacyHealthRounding;
+    private final Map<String, FixToggleConfig> toggles;
     private final @Nullable Integer legacyTabSlots;
 
     private FixesConfig(Builder b) {
         this.visuals = b.visuals;
-        this.legacySelfPlacement = b.legacySelfPlacement;
-        this.equipmentFix = b.equipmentFix;
-        this.legacyTabCompleteFix = b.legacyTabCompleteFix;
-        this.legacyConsume = b.legacyConsume;
-        this.legacyFireDouse = b.legacyFireDouse;
-        this.inventorySync = b.inventorySync;
-        this.legacyInventorySlot = b.legacyInventorySlot;
-        this.effectResync = b.effectResync;
-        this.legacyUseResync = b.legacyUseResync;
-        this.legacyPlacementHalf = b.legacyPlacementHalf;
-        this.legacyHealthRounding = b.legacyHealthRounding;
+        this.toggles = Map.copyOf(b.toggles);
         this.legacyTabSlots = b.legacyTabSlots;
     }
 
     public @Nullable VisualsConfig visuals() { return visuals; }
 
     /** Paper's placer exclusion ({@code LegacySelfPlacementFix}); wraps the server-wide placement listener - install-level, not per-scope. */
-    public @Nullable FixToggleConfig legacySelfPlacement() { return legacySelfPlacement; }
+    public @Nullable FixToggleConfig legacySelfPlacement() { return toggles.get("legacySelfPlacement"); }
 
     /** Strips empty slots from outgoing equipment packets, vanilla parity for every version ({@code EquipmentSlotsFix}); install-level. */
-    public @Nullable FixToggleConfig equipmentFix() { return equipmentFix; }
+    public @Nullable FixToggleConfig equipmentFix() { return toggles.get("equipmentFix"); }
 
     /** Command-name tab completion for legacy clients ({@code LegacyTabCompleteFix}); replaces the packet listener - install-level. */
-    public @Nullable FixToggleConfig legacyTabCompleteFix() { return legacyTabCompleteFix; }
+    public @Nullable FixToggleConfig legacyTabCompleteFix() { return toggles.get("legacyTabCompleteFix"); }
 
     /**
      * The legacy 1.8/Via consume fix (eating under lag): a 1.8 client neither gates its own consumption nor learns
      * the eaten count, so {@code ConsumableSystem} refuses a re-use mid-use, decrements the held slot silently, and
      * confirms each finish. Per-scope; legacy clients only.
      */
-    public @Nullable FixToggleConfig legacyConsume() { return legacyConsume; }
+    public @Nullable FixToggleConfig legacyConsume() { return toggles.get("legacyConsume"); }
 
-    /** 1.8 face douse - dig-starts extinguish fire on the clicked face ({@code LegacyFireDouseFix}). Per-scope. */
-    public @Nullable FixToggleConfig legacyFireDouse() { return legacyFireDouse; }
+    /** 1.8 douses fire on the dig START, not on the break ({@code LegacyFireDouseFix}); legacy clients only. */
+    public @Nullable FixToggleConfig legacyFireDouse() { return toggles.get("legacyFireDouse"); }
 
-    /** Remote-slot echo suppression ({@code InventorySync}); EXPERIMENTAL; server-wide - install config only. */
-    public @Nullable FixToggleConfig inventorySync() { return inventorySync; }
+    /** EXPERIMENTAL: suppresses the server's echo of a slot the client already shows ({@code InventorySync}); install-level. */
+    public @Nullable FixToggleConfig inventorySync() { return toggles.get("inventorySync"); }
 
-    /** Player-inventory slot updates as window 0 for legacy clients ({@code LegacyInventorySlotFix}); install-level. */
-    public @Nullable FixToggleConfig legacyInventorySlot() { return legacyInventorySlot; }
+    /** The player window arrives as {@code -2} through ViaRewind ({@code LegacyInventorySlotFix}); legacy clients only. */
+    public @Nullable FixToggleConfig legacyInventorySlot() { return toggles.get("legacyInventorySlot"); }
 
-    /** Whether a new viewer is told the effects an entity already carries ({@link EffectResyncFix}). */
-    public @Nullable FixToggleConfig effectResync() { return effectResync; }
+    /** A new viewer is owed the effects an entity already carries ({@code EffectResyncFix}); any client. */
+    public @Nullable FixToggleConfig effectResync() { return toggles.get("effectResync"); }
 
-    /** Re-baselines a 1.8 client's inventory after a draw that fired nothing, which leaves it stuck drawing. */
-    public @Nullable FixToggleConfig legacyUseResync() { return legacyUseResync; }
+    /** A 1.8 client draws on after a refused use until its inventory is re-sent ({@code LegacyUseResyncFix}). */
+    public @Nullable FixToggleConfig legacyUseResync() { return toggles.get("legacyUseResync"); }
 
-    /** A 1.8 byte cursor of exactly 0.5 on a side face lands the upper half of a slab, stair or trapdoor. */
-    public @Nullable FixToggleConfig legacyPlacementHalf() { return legacyPlacementHalf; }
+    /** A byte cursor cannot say 9/16, so a hit above a side face's middle arrives as {@code 0.5} ({@code LegacyPlacementHalfFix}). */
+    public @Nullable FixToggleConfig legacyPlacementHalf() { return toggles.get("legacyPlacementHalf"); }
 
-    /** Whole-point health for the 1.8 heart bar. Off by default: captured networks send fractions. */
-    public @Nullable FixToggleConfig legacyHealthRounding() { return legacyHealthRounding; }
+    /** The 1.8 heart bar ceils; off by default, since captured networks send fractions ({@code LegacyHealthRoundingFix}). */
+    public @Nullable FixToggleConfig legacyHealthRounding() { return toggles.get("legacyHealthRounding"); }
 
-    /** Join Game's max players when the server sends none, which is the slot count a 1.7 client draws its whole
-     *  tab grid from. Reaches every client (1.8+ ignores the field); unset leaves the packet alone. */
+    /** 1.7's whole tab grid is Join Game's max players; {@code null} leaves Minestom's own. */
     public @Nullable Integer legacyTabSlots() { return legacyTabSlots; }
 
-    /** Merges this config over {@code base} (each member: this if set, else base; both set -&gt; member-merged). */
+    /** This config over {@code base}: every toggle either side sets, each merged onto the other. */
     public FixesConfig fromBase(FixesConfig base) {
-        VisualsConfig v = visuals == null ? base.visuals
-                : base.visuals == null ? visuals : visuals.fromBase(base.visuals);
-        return new Builder().visuals(v)
-                .legacySelfPlacement(merge(legacySelfPlacement, base.legacySelfPlacement))
-                .equipmentFix(merge(equipmentFix, base.equipmentFix))
-                .legacyTabCompleteFix(merge(legacyTabCompleteFix, base.legacyTabCompleteFix))
-                .legacyConsume(merge(legacyConsume, base.legacyConsume))
-                .legacyFireDouse(merge(legacyFireDouse, base.legacyFireDouse))
-                .inventorySync(merge(inventorySync, base.inventorySync))
-                .legacyInventorySlot(merge(legacyInventorySlot, base.legacyInventorySlot))
-                .effectResync(merge(effectResync, base.effectResync))
-                .legacyUseResync(merge(legacyUseResync, base.legacyUseResync))
-                .legacyPlacementHalf(merge(legacyPlacementHalf, base.legacyPlacementHalf))
-                .legacyHealthRounding(merge(legacyHealthRounding, base.legacyHealthRounding))
-                .legacyTabSlots(legacyTabSlots != null ? legacyTabSlots : base.legacyTabSlots)
-                .build();
+        VisualsConfig v = visuals == null ? base.visuals : visuals.fromBase(base.visuals);
+        Builder b = new Builder().visuals(v)
+                .legacyTabSlots(legacyTabSlots != null ? legacyTabSlots : base.legacyTabSlots);
+        for (String name : TOGGLES) {
+            b.toggle(name, merge(toggles.get(name), base.toggles.get(name)));
+        }
+        return b.build();
     }
 
     private static @Nullable FixToggleConfig merge(@Nullable FixToggleConfig over, @Nullable FixToggleConfig base) {
@@ -108,7 +85,7 @@ public final class FixesConfig {
     }
 
     /** The toggle names the {@code fixes/<toggle>/enabled} path addresses, from {@link FixCatalog}. */
-    public static final java.util.List<String> TOGGLES =
+    public static final List<String> TOGGLES =
             FixCatalog.fixes().stream().map(FixCatalog.Fix::name).filter(n -> !"legacyTabSlots".equals(n)).toList();
 
     /**
@@ -117,51 +94,34 @@ public final class FixesConfig {
      * gated at once - a fix cannot forget to ask.
      */
     public FixesConfig scopedTo(int protocol) {
-        FixesConfig out = this;
-        for (String name : TOGGLES) {
-            if (out.toggle(name) != null && !FixCatalog.applies(name).covers(protocol)) out = withToggle(out, name, null);
+        Builder b = null;
+        for (Map.Entry<String, FixToggleConfig> set : toggles.entrySet()) {
+            if (FixCatalog.applies(set.getKey()).covers(protocol)) continue;
+            if (b == null) b = toBuilder();
+            b.toggle(set.getKey(), null);
         }
-        if (out.legacyTabSlots != null && !FixCatalog.applies("legacyTabSlots").covers(protocol)) {
-            out = out.toBuilder().legacyTabSlots(null).build();
+        if (legacyTabSlots != null && !FixCatalog.applies("legacyTabSlots").covers(protocol)) {
+            if (b == null) b = toBuilder();
+            b.legacyTabSlots(null);
         }
-        return out;
+        return b == null ? this : b.build();
     }
 
     public @Nullable FixToggleConfig toggle(String name) {
-        return switch (name) {
-            case "legacySelfPlacement" -> legacySelfPlacement;
-            case "equipmentFix" -> equipmentFix;
-            case "legacyTabCompleteFix" -> legacyTabCompleteFix;
-            case "legacyConsume" -> legacyConsume;
-            case "legacyFireDouse" -> legacyFireDouse;
-            case "inventorySync" -> inventorySync;
-            case "legacyInventorySlot" -> legacyInventorySlot;
-            case "effectResync" -> effectResync;
-            case "legacyUseResync" -> legacyUseResync;
-            case "legacyPlacementHalf" -> legacyPlacementHalf;
-            case "legacyHealthRounding" -> legacyHealthRounding;
-            default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
-        };
+        requireKnown(name);
+        return toggles.get(name);
     }
 
     /** {@code base} (or an empty config) with one toggle replaced. */
     public static FixesConfig withToggle(@Nullable FixesConfig base, String name, FixToggleConfig toggle) {
-        Builder b = base != null ? base.toBuilder() : builder();
-        switch (name) {
-            case "legacySelfPlacement" -> b.legacySelfPlacement(toggle);
-            case "equipmentFix" -> b.equipmentFix(toggle);
-            case "legacyTabCompleteFix" -> b.legacyTabCompleteFix(toggle);
-            case "legacyConsume" -> b.legacyConsume(toggle);
-            case "legacyFireDouse" -> b.legacyFireDouse(toggle);
-            case "inventorySync" -> b.inventorySync(toggle);
-            case "legacyInventorySlot" -> b.legacyInventorySlot(toggle);
-            case "effectResync" -> b.effectResync(toggle);
-            case "legacyUseResync" -> b.legacyUseResync(toggle);
-            case "legacyPlacementHalf" -> b.legacyPlacementHalf(toggle);
-            case "legacyHealthRounding" -> b.legacyHealthRounding(toggle);
-            default -> throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
+        requireKnown(name);
+        return (base != null ? base.toBuilder() : builder()).toggle(name, toggle).build();
+    }
+
+    private static void requireKnown(String name) {
+        if (!TOGGLES.contains(name)) {
+            throw new IllegalArgumentException("unknown fix toggle '" + name + "' (known: " + TOGGLES + ")");
         }
-        return b.build();
     }
 
     /** {@code base} (or an empty config) with one visual fix's config replaced ({@code visuals/<name>/<knob>}). */
@@ -176,49 +136,38 @@ public final class FixesConfig {
     public static Builder builder(@Nullable FixesConfig base) { return base != null ? new Builder(base) : new Builder(); }
 
     public static final class Builder {
+
         private @Nullable VisualsConfig visuals;
-        private @Nullable FixToggleConfig legacySelfPlacement;
-        private @Nullable FixToggleConfig equipmentFix;
-        private @Nullable FixToggleConfig legacyTabCompleteFix;
-        private @Nullable FixToggleConfig legacyConsume;
-        private @Nullable FixToggleConfig legacyFireDouse;
-        private @Nullable FixToggleConfig inventorySync;
-        private @Nullable FixToggleConfig legacyInventorySlot;
-        private @Nullable FixToggleConfig effectResync;
-        private @Nullable FixToggleConfig legacyUseResync;
-        private @Nullable FixToggleConfig legacyPlacementHalf;
-        private @Nullable FixToggleConfig legacyHealthRounding;
+        private final Map<String, FixToggleConfig> toggles = new LinkedHashMap<>();
         private @Nullable Integer legacyTabSlots;
 
         Builder() {}
+
         Builder(FixesConfig c) {
             visuals = c.visuals;
-            legacySelfPlacement = c.legacySelfPlacement;
-            equipmentFix = c.equipmentFix;
-            legacyTabCompleteFix = c.legacyTabCompleteFix;
-            legacyConsume = c.legacyConsume;
-            legacyFireDouse = c.legacyFireDouse;
-            inventorySync = c.inventorySync;
-            legacyInventorySlot = c.legacyInventorySlot;
-            effectResync = c.effectResync;
-            legacyUseResync = c.legacyUseResync;
-            legacyPlacementHalf = c.legacyPlacementHalf;
-            legacyHealthRounding = c.legacyHealthRounding;
+            toggles.putAll(c.toggles);
             legacyTabSlots = c.legacyTabSlots;
         }
 
+        /** Sets one toggle by its {@link FixCatalog} name; {@code null} clears it. */
+        public Builder toggle(String name, @Nullable FixToggleConfig v) {
+            if (v == null) toggles.remove(name);
+            else toggles.put(name, v);
+            return this;
+        }
+
         public Builder visuals(@Nullable VisualsConfig v) { this.visuals = v; return this; }
-        public Builder legacySelfPlacement(@Nullable FixToggleConfig v) { this.legacySelfPlacement = v; return this; }
-        public Builder equipmentFix(@Nullable FixToggleConfig v) { this.equipmentFix = v; return this; }
-        public Builder legacyTabCompleteFix(@Nullable FixToggleConfig v) { this.legacyTabCompleteFix = v; return this; }
-        public Builder legacyConsume(@Nullable FixToggleConfig v) { this.legacyConsume = v; return this; }
-        public Builder legacyFireDouse(@Nullable FixToggleConfig v) { this.legacyFireDouse = v; return this; }
-        public Builder inventorySync(@Nullable FixToggleConfig v) { this.inventorySync = v; return this; }
-        public Builder legacyInventorySlot(@Nullable FixToggleConfig v) { this.legacyInventorySlot = v; return this; }
-        public Builder effectResync(@Nullable FixToggleConfig v) { this.effectResync = v; return this; }
-        public Builder legacyUseResync(@Nullable FixToggleConfig v) { this.legacyUseResync = v; return this; }
-        public Builder legacyPlacementHalf(@Nullable FixToggleConfig v) { this.legacyPlacementHalf = v; return this; }
-        public Builder legacyHealthRounding(@Nullable FixToggleConfig v) { this.legacyHealthRounding = v; return this; }
+        public Builder legacySelfPlacement(@Nullable FixToggleConfig v) { return toggle("legacySelfPlacement", v); }
+        public Builder equipmentFix(@Nullable FixToggleConfig v) { return toggle("equipmentFix", v); }
+        public Builder legacyTabCompleteFix(@Nullable FixToggleConfig v) { return toggle("legacyTabCompleteFix", v); }
+        public Builder legacyConsume(@Nullable FixToggleConfig v) { return toggle("legacyConsume", v); }
+        public Builder legacyFireDouse(@Nullable FixToggleConfig v) { return toggle("legacyFireDouse", v); }
+        public Builder inventorySync(@Nullable FixToggleConfig v) { return toggle("inventorySync", v); }
+        public Builder legacyInventorySlot(@Nullable FixToggleConfig v) { return toggle("legacyInventorySlot", v); }
+        public Builder effectResync(@Nullable FixToggleConfig v) { return toggle("effectResync", v); }
+        public Builder legacyUseResync(@Nullable FixToggleConfig v) { return toggle("legacyUseResync", v); }
+        public Builder legacyPlacementHalf(@Nullable FixToggleConfig v) { return toggle("legacyPlacementHalf", v); }
+        public Builder legacyHealthRounding(@Nullable FixToggleConfig v) { return toggle("legacyHealthRounding", v); }
         public Builder legacyTabSlots(@Nullable Integer v) { this.legacyTabSlots = v; return this; }
 
         public FixesConfig build() { return new FixesConfig(this); }
