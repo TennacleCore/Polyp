@@ -99,9 +99,8 @@ public final class Explosion {
                 // ground loot: captured 3 fireballs / 2 TNT to clear, distance-independent, against vanilla
                 // health 5 (mmcfbitemdestroy 10/10 at n=3, mmctntdestroy 12/12 at n=2). Keyed on the blast's
                 // POWER, not the source class, so a sourceless or app-triggered blast is priced the same.
-                // DUELS only: MineMen's Emerald Rush clears EVERY dropped stack in one blast. Most likely it
-                // carries no override at all and takes the raw curve (~57 at a power-4 center); see the
-                // roadmap for the two measurements that tell that from a raised price
+                // DUELS only: Emerald Rush clears every dropped stack in one blast because it carries no
+                // price at all and takes the raw curve - toBuilder().clear("itemDamage"), not another value
                 .itemDamage(ctx -> ctx.power() != null
                         ? (ctx.power() <= FIREBALL_POWER ? 2.0 : 3.0)
                         : (ctx.source() instanceof FireballEntity ? 2.0 : 3.0))

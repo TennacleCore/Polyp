@@ -221,6 +221,32 @@ class ItemDamageTest extends HeadlessServerTest {
         }
     }
 
+    /**
+     * The Emerald Rush shape: MineMen's preset with its duel loot pricing DROPPED, so ground loot takes the raw
+     * curve and a blast clears every stack near it. A scope has to be able to unset a preset's knob for this -
+     * layering another value over it would keep the duel price underneath.
+     */
+    @Test
+    void droppingThePriceRestoresTheCurve() {
+        ExplosionSystem explosions = explosions();
+        Instance inst = flatInstance(MechanicsProfile.builder()
+                .set(MechanicsKeys.ITEM_DAMAGE, Items.damage())
+                .set(MechanicsKeys.EXPLOSION, io.github.term4.polyp.presets.mmc18.Explosion.config()
+                        .toBuilder().clear("itemDamage").build())
+                .build());
+        ItemEntity loot = drop(inst, Material.DIAMOND, new Pos(80.5, 66, 80.5));
+        Entity source = new Entity(EntityType.TNT);
+        source.setInstance(inst, new Pos(80.5, 66, 84.5)).join();
+        try {
+            // the duel preset needs two blasts here; without its price the curve clears it in one
+            explosions.explode(inst, new Pos(80.5, 66, 80.5), 4.0f, source);
+            assertTrue(loot.isRemoved(), "no price means the raw curve, which one-shots a 5-health stack");
+        } finally {
+            if (!loot.isRemoved()) loot.remove();
+            source.remove();
+        }
+    }
+
     /** A SOURCELESS blast still belongs to a world, so it must resolve that world's preset - not silently
      *  fall back to the install config and one-shot the loot the preset says survives. */
     @Test

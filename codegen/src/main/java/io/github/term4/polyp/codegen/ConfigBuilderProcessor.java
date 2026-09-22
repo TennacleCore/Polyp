@@ -293,7 +293,18 @@ public final class ConfigBuilderProcessor extends AbstractProcessor {
              .append(", c -> ((").append(cfg).append(") c).").append(k.name)
              .append(", (b, v) -> ((").append(base).append(") b).").append(k.name).append("((FieldValue) v)));\n");
         }
-        s.append("        KNOBS = java.util.Map.copyOf(m);\n    }\n}\n");
+        s.append("        KNOBS = java.util.Map.copyOf(m);\n    }\n");
+
+        // a scope that must DROP a preset value rather than layer another over it: the typed setters can
+        // only set, and a cast null at the call site reads like a mistake
+        s.append("\n    /** Unsets one generated knob by its {@link #KNOBS} name - what a scope uses to drop\n")
+         .append("     *  a preset's value instead of layering another over it. An unknown name throws. */\n")
+         .append("    public B clear(String knob) {\n")
+         .append("        io.github.term4.polyp.config.ConfigKnob k = KNOBS.get(knob);\n")
+         .append("        if (k == null) throw new IllegalArgumentException(\"no knob '\" + knob + \"' on ")
+         .append(cfg).append(", known: \" + KNOBS.keySet());\n")
+         .append("        k.set().accept(this, null);\n")
+         .append("        return self();\n    }\n}\n");
 
         try {
             Writer w = processingEnv.getFiler().createSourceFile(pkg + "." + base, config).openWriter();
