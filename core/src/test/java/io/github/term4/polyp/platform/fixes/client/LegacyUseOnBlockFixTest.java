@@ -1,5 +1,9 @@
 package io.github.term4.polyp.platform.fixes.client;
 
+import io.github.term4.polyp.mechanics.consumable.ConsumableSystem;
+import io.github.term4.polyp.platform.inventory.InventorySync;
+import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.presets.vanilla18.Consumables;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.MinecraftServer;
@@ -16,6 +20,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -28,6 +33,7 @@ class LegacyUseOnBlockFixTest extends HeadlessServerTest {
     @BeforeAll
     static void installFix() {
         LegacyUseOnBlockFix.install(MinecraftServer.getGlobalEventHandler());
+        ConsumableSystem.install(polyp, Consumables.config());
     }
 
     // the fallback lands at the tick's end, once no client use_item has shown up
@@ -78,6 +84,31 @@ class LegacyUseOnBlockFixTest extends HeadlessServerTest {
             useOnBlock(p);
             assertEquals(PlayerHand.MAIN, p.getItemUseHand());
             assertEquals(0, p.getCurrentItemUseTime(), "a repeat press restarts the draw clock");
+        } finally {
+            p.remove();
+        }
+    }
+
+    @Test
+    void aRecountCutSpans() {
+        Player p = FakePlayer.connect(instance, new Pos(8.5, 42, 8.5), "LegacyEatCut").player;
+        polyp.clientInfo().setConnectionDetails(p, "{\"version\": 47}");
+        InventorySync sync = ((OptimizedPlayer) p).inventorySync();
+        sync.countChangeEndsUse(true);
+        p.setFood(10);
+        p.setItemInMainHand(ItemStack.of(Material.BREAD, 5));
+        sync.broadcast(); // the join's full resend, which would end a running eat
+        try {
+            useOnBlock(p);
+            assertEquals(PlayerHand.MAIN, p.getItemUseHand());
+            for (int i = 0; i < 10; i++) p.tick(java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime()));
+            sync.broadcast();
+            p.setItemInMainHand(ItemStack.of(Material.BREAD, 4));
+            sync.broadcast();
+            // the 1.8 client's eat ended at the recount; its re-arm joins the server's, which never stopped
+            useOnBlock(p);
+            assertEquals(10, p.getCurrentItemUseTime());
+            assertFalse(sync.useCut());
         } finally {
             p.remove();
         }

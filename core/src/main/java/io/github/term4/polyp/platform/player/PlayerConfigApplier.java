@@ -54,8 +54,10 @@ public final class PlayerConfigApplier {
         // Reads two members of the same player's profile - resolve its scope chain once.
         MechanicsProfiles.Resolved profile = polyp.profiles().resolved(player);
         PlayerConfig cfg = profile.get(MechanicsKeys.PLAYER);
-        Integer interval = cfg != null ? FieldValue.resolve(cfg.positionBroadcastInterval, new PlayerConfig.PlayerContext(player)) : null;
+        PlayerConfig.PlayerContext ctx = new PlayerConfig.PlayerContext(player);
+        Integer interval = cfg != null ? FieldValue.resolve(cfg.positionBroadcastInterval, ctx) : null;
         if (interval != null) op.setPositionBroadcastInterval(Math.max(1, interval));
+        op.inventorySync().countChangeEndsUse(cfg != null ? FieldValue.resolve(cfg.countChangeEndsUse, ctx) : null);
         // one pass from the resolved config (all-off when no scope sets it), so a profile swap is a clean mode SWITCH -
         // the previous mode's state never sticks
         CompatConfig compat = profile.get(MechanicsKeys.COMPAT);

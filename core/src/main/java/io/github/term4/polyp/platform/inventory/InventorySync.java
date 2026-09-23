@@ -6,6 +6,8 @@ import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.platform.player.PlayListeners;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.GameMode;
+import net.minestom.server.entity.Metadata;
+import net.minestom.server.entity.MetadataDef;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventDispatcher;
@@ -32,6 +34,7 @@ import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
 import net.minestom.server.network.packet.server.SendablePacket;
 import net.minestom.server.network.packet.server.ServerPacket;
 import net.minestom.server.network.packet.server.play.CloseWindowPacket;
+import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
 import net.minestom.server.network.packet.server.play.JoinGamePacket;
 import net.minestom.server.network.packet.server.play.OpenWindowPacket;
 import net.minestom.server.network.packet.server.play.RespawnPacket;
@@ -46,6 +49,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * What one player's client shows of its inventory and open window, kept as vanilla's menus keep it: only a slot the
@@ -61,6 +65,8 @@ public final class InventorySync {
     private static final int REPORTS_CLICKS_PROTOCOL = 755;
     /** 1.13.1: the first client that predicts its own Q drop. */
     private static final int PREDICTS_DROPS_PROTOCOL = 401;
+    /** 1.14.4: holds a use while the stack is the same item; 1.14 still wants the same object (1.14.1-1.14.3 unread). */
+    private static final int COMPARES_USE_BY_ITEM_PROTOCOL = 498;
 
     private final OptimizedPlayer player;
     private final ClientWindow inventoryWindow = new ClientWindow(0, PlayerInventory.INVENTORY_SIZE, null);
@@ -76,6 +82,11 @@ public final class InventorySync {
     /** Minestom ends a close with a full resend of window 0; the close already carried the view over. */
     private boolean closing;
     private boolean sending;
+    private @Nullable Boolean countChangeEndsUse;
+    private @Nullable PlayerHand usedHand;
+    private ItemStack usedStack = ItemStack.AIR;
+    private boolean recounting;
+    private boolean useCut;
 
     public InventorySync(@NotNull OptimizedPlayer player) {
         this.player = player;
@@ -139,7 +150,25 @@ public final class InventorySync {
 
     /** Vanilla resyncs the hand after a use that did not start using; one that did must not see its hand rewritten. */
     public void afterUse(@NotNull PlayerHand hand) {
+        synchronized (this) {
+            useCut = false;
+        }
         if (!player.isUsingItem()) handUsed(hand);
+    }
+
+    /** {@link io.github.term4.polyp.platform.player.PlayerConfig#countChangeEndsUse}, resolved for this player. */
+    public synchronized void countChangeEndsUse(@Nullable Boolean ends) {
+        this.countChangeEndsUse = ends;
+    }
+
+    /** The hand slot going out now only recounts the stack in use: the same stack to the server, so its use runs on. */
+    public boolean recounting() {
+        return recounting;
+    }
+
+    /** A recount ended the client's use while the server's runs on; cleared by the client's next use packet. */
+    public synchronized boolean useCut() {
+        return useCut;
     }
 
     // ------------------------------------------------------------------ what the client predicted
@@ -404,7 +433,8 @@ public final class InventorySync {
             } else {
                 return;
             }
-            if (inClick) {
+            PlayerHand hand = player.getItemUseHand();
+            if (inClick || windowSlot == handSlot(window, hand) && sameUse(hand, item) && holdsRecount()) {
                 window.slot(windowSlot).forget();
                 return;
             }
@@ -421,23 +451,75 @@ public final class InventorySync {
             closing = false;
             ClientWindow window = current();
             if (window == null) return;
+            PlayerHand hand = player.getItemUseHand();
+            ItemStack held = hand == null ? ItemStack.AIR : player.getItemInHand(hand);
+            boolean sameUse = sameUse(hand, held);
+            boolean recount = sameUse && held.amount() != usedStack.amount();
+            usedHand = hand;
+            usedStack = held;
+            if (hand == null) useCut = false;
             if (window.resyncAll) {
                 sendAll(window);
                 return;
             }
+            int handSlot = handSlot(window, hand);
+            boolean byReference = protocol() < COMPARES_USE_BY_ITEM_PROTOCOL;
+            boolean endsUse = recount && Boolean.TRUE.equals(countChangeEndsUse);
+            // 1.13.1-1.14 predicted the drop and kept their use
+            if (endsUse && byReference && handSlot >= 0) window.slot(handSlot).forget();
             for (int slot = 0; slot < window.size(); slot++) {
+                if (slot == handSlot && sameUse && holdsRecount()) continue;
                 ItemStack truth = truth(window, slot);
                 Remote remote = window.slot(slot);
                 if (remote.matches(truth, this::hashOfView)) continue;
                 remote.sent(truth);
-                send(new SetSlotPacket(window.windowId, window.nextStateId(), (short) slot, truth));
+                SetSlotPacket packet = new SetSlotPacket(window.windowId, window.nextStateId(), (short) slot, truth);
+                if (slot == handSlot && recount && byReference) sendRecount(packet);
+                else send(packet);
             }
             ItemStack carried = player.getInventory().getCursorItem();
             if (!cursor.matches(carried, this::hashOfView)) {
                 cursor.sent(carried);
                 send(new SetCursorItemPacket(carried));
             }
+            if (endsUse && !byReference) stopClientUse();
         }
+    }
+
+    private boolean sameUse(@Nullable PlayerHand hand, ItemStack held) {
+        return hand != null && hand == usedHand && held.isSimilar(usedStack);
+    }
+
+    /** An old client ends its use at any rewrite of the stack in use, so a recount waits for the use to end. */
+    private boolean holdsRecount() {
+        return Boolean.FALSE.equals(countChangeEndsUse) && protocol() < COMPARES_USE_BY_ITEM_PROTOCOL;
+    }
+
+    /** The window slot showing the hand in use, or -1. */
+    private int handSlot(ClientWindow window, @Nullable PlayerHand hand) {
+        if (hand == null) return -1;
+        int slot = hand == PlayerHand.OFF ? PlayerInventoryUtils.OFFHAND_SLOT : player.getHeldSlot();
+        return window == inventoryWindow ? PlayerInventoryUtils.convertMinestomSlotToWindowSlot(slot) : containerSlot(slot);
+    }
+
+    private void sendRecount(SendablePacket packet) {
+        useCut = true;
+        recounting = true;
+        try {
+            send(packet);
+        } finally {
+            recounting = false;
+        }
+    }
+
+    /** A 1.14.4+ client ends its own use when its entity's flags say so. */
+    private void stopClientUse() {
+        int index = MetadataDef.LivingEntity.LIVING_ENTITY_FLAGS.index();
+        Metadata.Entry<?> flags = player.getMetadataPacket().entries().get(index);
+        byte using = ((MetadataDef.Entry.BitMask) MetadataDef.LivingEntity.IS_HAND_ACTIVE).bitMask();
+        byte value = flags != null && flags.value() instanceof Byte b ? b : 0;
+        useCut = true;
+        send(new EntityMetaDataPacket(player.getEntityId(), Map.of(index, Metadata.Byte((byte) (value & ~using)))));
     }
 
     private void sendAll(ClientWindow window) {

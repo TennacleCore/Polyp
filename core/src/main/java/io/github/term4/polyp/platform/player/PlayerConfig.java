@@ -19,9 +19,15 @@ public final class PlayerConfig {
 
     /** Position broadcast interval in ticks (1 = every tick, the Minestom default). */
     public final @Nullable FieldValue<PlayerContext, Integer> positionBroadcastInterval;
+    /**
+     * Whether a count change on the stack in use (a Q drop, a pickup) ends the client's use, as clients through 1.14
+     * do; the server's use runs on either way. Unset leaves each client as it is.
+     */
+    public final @Nullable FieldValue<PlayerContext, Boolean> countChangeEndsUse;
 
     private PlayerConfig(Builder b) {
         positionBroadcastInterval = b.positionBroadcastInterval;
+        countChangeEndsUse = b.countChangeEndsUse;
     }
 
     public Builder toBuilder() { return new Builder(this); }

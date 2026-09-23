@@ -6,6 +6,8 @@ import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.mechanics.consumable.ConsumableConfigResolver.ConsumableContext;
 import io.github.term4.polyp.platform.fixes.FixesConfig;
 import io.github.term4.polyp.platform.fixes.FixToggleConfig;
+import io.github.term4.polyp.platform.inventory.InventorySync;
+import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.presets.vanilla18.Consumables;
 import io.github.term4.polyp.mechanics.consumable.catalog.VanillaConsumables;
 import io.github.term4.polyp.testsupport.FakePlayer;
@@ -150,6 +152,26 @@ class ConsumableGateTest extends HeadlessServerTest {
 
         polyp.profiles().setGlobal(MechanicsProfile.builder().build());
         player.player.clearItemUse();
+    }
+
+    @Test
+    void cutRearmJoinsTheEat() {
+        player.player.setGameMode(GameMode.SURVIVAL);
+        polyp.clientInfo().setConnectionDetails(player.player, "{\"version\": 774}");
+        InventorySync sync = ((OptimizedPlayer) player.player).inventorySync();
+        sync.countChangeEndsUse(true);
+        int slot = player.player.getHeldSlot();
+        player.player.getInventory().setItemStack(slot, ItemStack.of(Material.GOLDEN_APPLE, 5));
+        player.player.refreshItemUse(PlayerHand.MAIN, 32);
+        sync.broadcast();
+        player.player.getInventory().setItemStack(slot, ItemStack.of(Material.GOLDEN_APPLE, 4));
+        sync.broadcast();
+        var rearm = new PlayerUseItemEvent(player.player, PlayerHand.MAIN, ItemStack.of(Material.GOLDEN_APPLE, 4), 32);
+        EventDispatcher.call(rearm);
+        assertEquals(0, rearm.getItemUseTime(), "the re-arm joins the running eat");
+        sync.countChangeEndsUse(null);
+        player.player.clearItemUse();
+        sync.broadcast();
     }
 
     /**

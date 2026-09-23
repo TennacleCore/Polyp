@@ -9,6 +9,7 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.GameMode;
+import net.minestom.server.entity.MetadataDef;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.EventListener;
 import net.minestom.server.event.inventory.InventoryPreClickEvent;
@@ -25,6 +26,7 @@ import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
 import net.minestom.server.network.packet.server.SendablePacket;
 import net.minestom.server.network.packet.server.ServerPacket;
+import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
 import net.minestom.server.network.packet.server.play.SetCursorItemPacket;
 import net.minestom.server.network.packet.server.play.SetPlayerInventorySlotPacket;
 import net.minestom.server.network.packet.server.play.SetSlotPacket;
@@ -312,6 +314,75 @@ class InventorySyncTest extends HeadlessServerTest {
     }
 
     @Test
+    void oldRecountEndsTheEat() {
+        FakePlayer p = join("SyncCutOld", LEGACY);
+        try {
+            sync(p).countChangeEndsUse(true);
+            eat(p);
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.THROW, Map.of(), ItemStack.AIR));
+            List<SetSlotPacket> slots = p.sent(SetSlotPacket.class);
+            assertEquals(1, slots.size());
+            assertEquals(4, slots.getFirst().itemStack().amount());
+            assertTrue(p.player.isUsingItem(), "the server's eat runs on");
+            assertTrue(sync(p).useCut());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void oldRecountWaitsForTheEat() {
+        FakePlayer p = join("SyncHoldOld", LEGACY);
+        try {
+            sync(p).countChangeEndsUse(false);
+            eat(p);
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.THROW, Map.of(), ItemStack.AIR));
+            sync(p).broadcast();
+            assertTrue(inventoryPackets(p).isEmpty(), "held while the eat runs");
+            p.player.clearItemUse();
+            sync(p).broadcast();
+            List<SetSlotPacket> slots = p.sent(SetSlotPacket.class);
+            assertEquals(1, slots.size());
+            assertEquals(4, slots.getFirst().itemStack().amount());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void modernRecountEndsTheEat() {
+        FakePlayer p = join("SyncCutNew", MODERN);
+        try {
+            sync(p).countChangeEndsUse(true);
+            eat(p);
+            feed(p, drop());
+            sync(p).broadcast();
+            assertTrue(inventoryPackets(p).isEmpty(), "the drop was predicted");
+            List<EntityMetaDataPacket> meta = ownMeta(p);
+            assertEquals(1, meta.size());
+            byte flags = (Byte) meta.getFirst().entries().get(MetadataDef.LivingEntity.LIVING_ENTITY_FLAGS.index()).value();
+            assertEquals(0, flags & 1, "told its use ended");
+            assertTrue(p.player.isUsingItem(), "the server's eat runs on");
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void modernRecountKeepsTheEat() {
+        FakePlayer p = join("SyncKeepNew", MODERN);
+        try {
+            sync(p).countChangeEndsUse(false);
+            eat(p);
+            feed(p, drop());
+            sync(p).broadcast();
+            assertTrue(ownMeta(p).isEmpty());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
     void middleClientClickResendsAll() {
         FakePlayer p = join("SyncNine", 107);
         try {
@@ -470,6 +541,19 @@ class InventorySyncTest extends HeadlessServerTest {
         sync(p).broadcast();
         p.sent.clear();
         return p;
+    }
+
+    /** Five bread in hotbar slot 0 and the server mid-eat. */
+    private static void eat(FakePlayer p) {
+        give(p, 0, ItemStack.of(Material.BREAD, 5));
+        p.player.refreshItemUse(PlayerHand.MAIN, 32);
+        p.player.refreshActiveHand(true, false, false);
+        sync(p).broadcast();
+        p.sent.clear();
+    }
+
+    private static List<EntityMetaDataPacket> ownMeta(FakePlayer p) {
+        return p.sent(EntityMetaDataPacket.class).stream().filter(m -> m.entityId() == p.player.getEntityId()).toList();
     }
 
     private static void give(FakePlayer p, int slot, ItemStack item) {

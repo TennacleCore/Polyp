@@ -19,6 +19,7 @@ public final class Vanilla {
         return MechanicsProfile.builder()
                 .set(MechanicsKeys.DAMAGE, Damage.config())
                 .set(MechanicsKeys.DEATH, Death.config())
+                .set(MechanicsKeys.PLAYER, Player.config())
                 .set(MechanicsKeys.PROJECTILES, Projectiles.config())
                 .set(MechanicsKeys.ATTRIBUTES, Attributes.config())
                 .set(MechanicsKeys.CONSUMABLES, Consumables.config())

@@ -32,9 +32,9 @@ public final class LegacyUseOnBlockFix {
             Player p = e.getPlayer();
             Polyp polyp = Polyp.getInstance();
             if (!polyp.clientInfo().isLegacy(p)) return;
-            if (p.getItemUseHand() != null) {
-                // a drawing 1.8 client never re-sends C08: a repeat press means ITS draw restarted and the
-                // release was lost - restart, never span (vanilla's reference no-op would bank the lost gap)
+            // a drawing 1.8 client never re-sends C08: a repeat press means ITS draw restarted and the release was
+            // lost - restart, never span (vanilla's reference no-op would bank the lost gap). A recount spans, as in 1.8
+            if (p.getItemUseHand() != null && !(p instanceof OptimizedPlayer op && op.inventorySync().useCut())) {
                 p.refreshActiveHand(false, p.getItemUseHand() == net.minestom.server.entity.PlayerHand.OFF, false);
                 p.clearItemUse();
             }
