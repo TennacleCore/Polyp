@@ -69,6 +69,8 @@ public final class InventorySync {
     private static final int PREDICTS_DROPS_PROTOCOL = 401;
     /** 1.14.4: holds a use while the stack is the same item; 1.14 still wants the same object (1.14.1-1.14.3 unread). */
     private static final int COMPARES_USE_BY_ITEM_PROTOCOL = 498;
+    /** A pong that never comes back (a proxy that drops the ack) must not freeze the inventory. */
+    private static final long FENCE_TICKS = 100;
 
     private final OptimizedPlayer player;
     private final ClientWindow inventoryWindow = new ClientWindow(0, PlayerInventory.INVENTORY_SIZE, null);
@@ -95,6 +97,7 @@ public final class InventorySync {
     /** The ping a 1.8 client has to answer before its clicks count again; 0 when none is out. */
     private int fence;
     private int lastFence;
+    private long fencedAt;
 
     public InventorySync(@NotNull OptimizedPlayer player) {
         this.player = player;
@@ -483,6 +486,7 @@ public final class InventorySync {
                 sendAll(window);
                 lastFence = lastFence <= Short.MIN_VALUE + 1 ? -1 : lastFence - 1;
                 fence = lastFence;
+                fencedAt = player.getAliveTicks();
                 send(new PingPacket(fence));
                 return;
             }
@@ -501,6 +505,7 @@ public final class InventorySync {
     }
 
     synchronized boolean fenced() {
+        if (fence != 0 && player.getAliveTicks() - fencedAt > FENCE_TICKS) fence = 0;
         return fence != 0;
     }
 

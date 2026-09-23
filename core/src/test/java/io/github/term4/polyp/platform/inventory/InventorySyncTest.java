@@ -45,6 +45,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -494,6 +495,28 @@ class InventorySyncTest extends HeadlessServerTest {
             feed(p, click(p, 0, HOTBAR_0, 0, ClickType.PICKUP, Map.of(), sword));
             assertEquals(sword, p.player.getInventory().getCursorItem());
             assertTrue(inventoryPackets(p).isEmpty());
+        } finally {
+            MinecraftServer.getGlobalEventHandler().removeListener(refuseFirst);
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void lostPongLiftsFence() {
+        FakePlayer p = join("SyncFenceLift", LEGACY);
+        boolean[] refuse = {true};
+        EventListener<InventoryPreClickEvent> refuseFirst = EventListener.of(InventoryPreClickEvent.class, e -> {
+            if (refuse[0]) e.setCancelled(true);
+        });
+        MinecraftServer.getGlobalEventHandler().addListener(refuseFirst);
+        try {
+            ItemStack sword = ItemStack.of(Material.DIAMOND_SWORD);
+            give(p, 0, sword);
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.PICKUP, Map.of(), sword));
+            refuse[0] = false;
+            for (int i = 0; i <= 100; i++) p.player.tick(TimeUnit.NANOSECONDS.toMillis(System.nanoTime()));
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.PICKUP, Map.of(), sword));
+            assertEquals(sword, p.player.getInventory().getCursorItem());
         } finally {
             MinecraftServer.getGlobalEventHandler().removeListener(refuseFirst);
             p.player.remove();
