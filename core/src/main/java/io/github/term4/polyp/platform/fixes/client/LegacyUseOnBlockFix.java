@@ -46,13 +46,10 @@ public final class LegacyUseOnBlockFix {
                 if (!p.isOnline() || !Boolean.TRUE.equals(p.getTag(PENDING))) return;
                 p.removeTag(PENDING);
                 // straight to the listener, not the queue: a queued use lands a tick later, which a bow draw feels.
-                // The queue's own hook is what marks the slot unverified, so call it here instead
-                if (p instanceof OptimizedPlayer op) {
-                    op.inventorySync().onPredictedUse(hand == PlayerHand.OFF
-                            ? net.minestom.server.utils.inventory.PlayerInventoryUtils.OFFHAND_SLOT : op.getHeldSlot());
-                }
+                // That skips the sync's wrapper around it, so its after-use rule runs here
                 UseItemListener.useItemListener(new ClientUseItemPacket(hand, 0,
                         p.getPosition().yaw(), p.getPosition().pitch()), p);
+                if (p instanceof OptimizedPlayer op) op.inventorySync().afterUse(hand);
             });
         });
         node.addListener(PlayerPacketEvent.class, e -> {

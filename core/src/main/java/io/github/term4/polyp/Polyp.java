@@ -13,6 +13,7 @@ import io.github.term4.polyp.platform.compatibility.CompatPlacement;
 import io.github.term4.polyp.platform.compatibility.LegacyVelocityBridge;
 import io.github.term4.polyp.platform.compatibility.via.ViaBridgeRpc;
 import io.github.term4.polyp.platform.fixes.client.MetaFix;
+import io.github.term4.polyp.platform.inventory.InventorySync;
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.platform.player.PlayerConfigApplier;
 import io.github.term4.polyp.tracking.ClientInfoTracker;
@@ -159,6 +160,7 @@ public final class Polyp {
             // reads the field per-connect, not bound at init: a factory set late still takes effect
             MinecraftServer.getConnectionManager().setPlayerProvider((conn, profile) -> playerFactory.apply(conn, profile));
             PlayerConfigApplier.install(this);
+            InventorySync.install(this);
             // inert unless CompatConfig.disableOffhand
             CompatOffhand.install(this);
             // inert unless CompatConfig.blockPlaceReach

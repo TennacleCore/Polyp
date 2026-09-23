@@ -11,7 +11,7 @@ import io.github.term4.polyp.mechanics.projectile.ProjectileConfig;
 import io.github.term4.polyp.platform.compatibility.CompatConfig;
 import io.github.term4.polyp.platform.compatibility.CompatState;
 import io.github.term4.polyp.platform.fixes.RefreshPositionFix;
-import io.github.term4.polyp.platform.fixes.client.InventorySync;
+import io.github.term4.polyp.platform.inventory.InventorySync;
 import io.github.term4.polyp.platform.fixes.client.LegacyInventorySlotFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyHealthRoundingFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyPlacementHalfFix;
@@ -75,7 +75,7 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
     private final BooleanSupplier aimSyncGate = this::useItemAimSyncEnabled;
     private final Consumer<ClientPacket> queueTail = super::addPacketToQueue;
     private final Consumer<ClientPacket> aimSyncStage = p -> aimSync.intercept(p, aimSyncGate, queueTail);
-    private final InventorySync inventorySync = new InventorySync();
+    private final InventorySync inventorySync = new InventorySync(this);
     private final BooleanSupplier healthRounding =
             () -> compat.legacyClient() && fixEnabled(FixesConfig::legacyHealthRounding);
 
@@ -155,7 +155,6 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         super.sendPacketToViewersAndSelf(packet);
     }
 
-    /** Inert until {@code FixesSystem} arms {@link InventorySync}. */
     public @NotNull InventorySync inventorySync() { return inventorySync; }
 
     @Override
@@ -168,12 +167,11 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
                 && packet instanceof UpdateHealthPacket uh && uh.food() > 6) {
             packet = new UpdateHealthPacket(uh.health(), 6, uh.foodSaturation());
         }
+        // server items: the sync records what the client is sent before the per-client view rewrites it
+        SendablePacket synced = inventorySync.outgoing(packet);
+        if (synced == null) return;
         SendablePacket p = LegacyInventorySlotFix.rewrite(compat.legacyClient(),
-                EquipmentSlotsFix.rewrite(compat.rewriteItems(packet)));
-        if (InventorySync.enabled()) {
-            p = inventorySync.filter(p);
-            if (p == null) return; // redundant slot echo: the client already shows it
-        }
+                EquipmentSlotsFix.rewrite(compat.rewriteItems(synced)));
         p = SpectatorHud.rewrite(this, p);
         p = LegacyHealthRoundingFix.rewrite(this, healthRounding, p);
         // not gated on the client: join lands before the protocol is known, and 1.8+ ignores the field

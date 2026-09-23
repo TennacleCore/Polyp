@@ -17,12 +17,12 @@ class FixCatalogTest {
     @Test
     void everyToggleIsCatalogued() {
         FixesConfig cfg = FixesLegacy.config();
-        assertEquals(11, FixesConfig.TOGGLES.size(), "a new toggle needs its FixCatalog entry");
+        assertEquals(10, FixesConfig.TOGGLES.size(), "a new toggle needs its FixCatalog entry");
         for (String name : FixesConfig.TOGGLES) {
             assertNotNull(FixCatalog.of(name), name);
             cfg.toggle(name); // a name the switch does not know throws
         }
-        assertEquals(12, FixCatalog.fixes().size(), "eleven toggles and the one value knob");
+        assertEquals(11, FixCatalog.fixes().size(), "ten toggles and the one value knob");
         assertNotNull(FixCatalog.of("legacyTabSlots"), "the value knob is catalogued too, though it is no toggle");
         assertTrue(FixCatalog.describe().stream().anyMatch(l -> l.startsWith("legacyTabSlots  [any]")));
     }

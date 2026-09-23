@@ -17,7 +17,6 @@ public final class Fixes {
         return FixesConfig.builder()
                 .equipmentFix(FixToggleConfig.on())
                 .effectResync(FixToggleConfig.on())
-                .inventorySync(FixToggleConfig.on()) // EXPERIMENTAL
                 .build();
     }
 }

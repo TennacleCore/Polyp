@@ -32,6 +32,7 @@ class PerViewerInventoryTest extends HeadlessServerTest {
 
         conn.sent.clear();
         p.getInventory().setItemStack(0, ItemStack.of(Material.SNOWBALL)); // the throw/drop path
+        p.inventorySync().broadcast();
 
         SendablePacket slot = conn.sent.stream()
                 .filter(x -> x instanceof SetPlayerInventorySlotPacket || x instanceof SetSlotPacket)

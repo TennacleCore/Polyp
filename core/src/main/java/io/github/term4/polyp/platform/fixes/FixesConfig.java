@@ -48,8 +48,6 @@ public final class FixesConfig {
     /** 1.8 douses fire on the dig START, not on the break ({@code LegacyFireDouseFix}); legacy clients only. */
     public @Nullable FixToggleConfig legacyFireDouse() { return toggles.get("legacyFireDouse"); }
 
-    /** EXPERIMENTAL: suppresses the server's echo of a slot the client already shows ({@code InventorySync}); install-level. */
-    public @Nullable FixToggleConfig inventorySync() { return toggles.get("inventorySync"); }
 
     /** The player window arrives as {@code -2} through ViaRewind ({@code LegacyInventorySlotFix}); legacy clients only. */
     public @Nullable FixToggleConfig legacyInventorySlot() { return toggles.get("legacyInventorySlot"); }
@@ -162,7 +160,6 @@ public final class FixesConfig {
         public Builder legacyTabCompleteFix(@Nullable FixToggleConfig v) { return toggle("legacyTabCompleteFix", v); }
         public Builder legacyConsume(@Nullable FixToggleConfig v) { return toggle("legacyConsume", v); }
         public Builder legacyFireDouse(@Nullable FixToggleConfig v) { return toggle("legacyFireDouse", v); }
-        public Builder inventorySync(@Nullable FixToggleConfig v) { return toggle("inventorySync", v); }
         public Builder legacyInventorySlot(@Nullable FixToggleConfig v) { return toggle("legacyInventorySlot", v); }
         public Builder effectResync(@Nullable FixToggleConfig v) { return toggle("effectResync", v); }
         public Builder legacyUseResync(@Nullable FixToggleConfig v) { return toggle("legacyUseResync", v); }

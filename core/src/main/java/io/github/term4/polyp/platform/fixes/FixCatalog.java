@@ -43,8 +43,6 @@ public final class FixCatalog {
                 "1.8 neither gates its own eating nor learns the eaten count");
         add("legacyFireDouse", ClientRange.LEGACY,
                 "1.8 extinguishes fire on a dig START, not a break");
-        add("inventorySync", ClientRange.ANY,
-                "EXPERIMENTAL remote-slot echo suppression; install-level, and the echo is every client's");
         add("legacyInventorySlot", ClientRange.LEGACY,
                 "the player window arrives as -2 through ViaRewind");
         add("effectResync", ClientRange.ANY,

@@ -8,12 +8,36 @@ import net.minestom.server.network.packet.server.SendablePacket;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Delivers incremental slot/cursor refreshes bare: the {@link net.minestom.server.Viewable#sendPacketToViewers} default
- * wraps them in a shared {@code CachedPacket} the per-client item rewrite ({@link OptimizedPlayer#sendPacket}) can't
- * unwrap - so a stamp/reskin reverted after the first throw/drop until a full {@code WindowItems} resend. A player
- * inventory has one viewer; the shared cache buys nothing.
+ * The player's own inventory. Slot and cursor changes go to the owner's
+ * {@link io.github.term4.polyp.platform.inventory.InventorySync}, which sends only what the client does not already
+ * show. Anything still sent from here reaches {@link OptimizedPlayer#sendPacket} bare: the
+ * {@link net.minestom.server.Viewable#sendPacketToViewers} default wraps it in a shared {@code CachedPacket} the
+ * per-client item rewrite can't unwrap.
  */
 public final class PerViewerInventory extends PlayerInventory {
+
+    @Override
+    protected void UNSAFE_itemInsert(int slot, ItemStack item, ItemStack previous, boolean sendPacket) {
+        super.UNSAFE_itemInsert(slot, item, previous, false);
+    }
+
+    @Override
+    public void sendSlotRefresh(int slot, ItemStack item) {
+        for (Player viewer : getViewers()) {
+            if (viewer instanceof OptimizedPlayer op) op.inventorySync().refresh(this, slot, item);
+        }
+    }
+
+    @Override
+    public void update(Player player) {
+        if (player instanceof OptimizedPlayer op) op.inventorySync().resync(this);
+        else super.update(player);
+    }
+
+    @Override
+    public void setCursorItem(ItemStack cursorItem, boolean sendPacket) {
+        super.setCursorItem(cursorItem, false);
+    }
 
     @Override
     public void sendPacketToViewers(@NotNull SendablePacket packet) {
@@ -36,7 +60,6 @@ public final class PerViewerInventory extends PlayerInventory {
             return false;
         }
         setCursorItem(cursor);
-        update();
         return true;
     }
 }

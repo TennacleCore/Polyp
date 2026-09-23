@@ -319,6 +319,12 @@ public final class CompatState {
         };
     }
 
+    /** {@code item} as this client is shown it: the per-item form of {@link #rewriteItems}. */
+    public @NotNull ItemStack view(@NotNull ItemStack item) {
+        Rewrites r = rewrites();
+        return r.any() ? rewrite(item, r) : item;
+    }
+
     /**
      * Inbound counterpart to {@link #rewriteItems}: undoes what an affected client echoes back through creative
      * (client-authoritative slots), so a view-only rewrite never becomes server state.

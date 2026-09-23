@@ -88,7 +88,7 @@ class UseItemInterruptFixTest extends HeadlessServerTest {
         p.setItemInMainHand(ItemStack.of(Material.BOW));
         try {
             use(p);
-            p.setItemInMainHand(ItemStack.of(Material.BOW)); // InventorySync re-sending the same bow
+            p.setItemInMainHand(ItemStack.of(Material.BOW)); // a resync re-sending the same bow
             tick(p);
             assertNotNull(p.getItemUseHand(), "same material keeps the use, like the client keeps drawing");
         } finally {
