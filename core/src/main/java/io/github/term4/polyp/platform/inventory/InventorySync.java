@@ -13,7 +13,10 @@ import net.minestom.server.event.inventory.InventoryCloseEvent;
 import net.minestom.server.event.player.PlayerPacketEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.player.PlayerTickEvent;
+import net.minestom.server.entity.GameMode;
 import net.minestom.server.inventory.AbstractInventory;
+import net.minestom.server.inventory.Inventory;
+import net.minestom.server.inventory.InventoryType;
 import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.listener.CreativeInventoryActionListener;
@@ -50,6 +53,8 @@ import java.util.List;
  */
 public final class InventorySync {
 
+    /** 1.8: clicks are followed with its own click logic ({@link LegacyClicks}). */
+    private static final int LEGACY_PROTOCOL = 47;
     /** 1.17: a click carries the client's own post-click slots and cursor. */
     private static final int REPORTS_CLICKS_PROTOCOL = 755;
     /** 1.13.1: the first client that predicts its own Q drop. */
@@ -59,6 +64,8 @@ public final class InventorySync {
     private final ClientWindow inventoryWindow = new ClientWindow(0, PlayerInventory.INVENTORY_SIZE, null);
     private @Nullable ClientWindow container;
     private final Remote cursor = new Remote();
+    private final LegacyClicks legacyClicks = new LegacyClicks();
+    private int legacyWindow = -1;
     private boolean inClick;
     /** Minestom ends a close with a full resend of window 0; the close already carried the view over. */
     private boolean closing;
@@ -136,6 +143,10 @@ public final class InventorySync {
         synchronized (this) {
             ClientWindow window = click.windowId() == 0 ? inventoryWindow : openWindow(click.windowId());
             if (window == null) return;
+            if (protocol() <= LEGACY_PROTOCOL) {
+                if (!predictLegacy(window, click)) window.resyncAll = true;
+                return;
+            }
             if (protocol() < REPORTS_CLICKS_PROTOCOL) {
                 // below 1.17 ViaBackwards invents the reported slots, so they say nothing about the client;
                 // a drag changes nothing until its last packet
@@ -164,6 +175,47 @@ public final class InventorySync {
     synchronized int stateId(int windowId) {
         if (windowId == 0) return inventoryWindow.stateId();
         return container != null && container.windowId == windowId ? container.stateId() : 0;
+    }
+
+    /** The click as a 1.8 client ran it on what it shows; false when that cannot be followed. */
+    private boolean predictLegacy(ClientWindow window, ClientClickWindowPacket click) {
+        if (click.windowId() != legacyWindow) {
+            legacyClicks.resetDrag();
+            legacyWindow = click.windowId();
+        }
+        int mode = click.clickType().ordinal();
+        int slot = click.slot();
+        if (window == inventoryWindow && mode == 4) {
+            // ViaBackwards replays a 1.8 Q drop as a throw here, one the client never predicted
+            if (window.has(slot)) window.slot(slot).forget();
+            return true;
+        }
+        LegacyClicks.Layout layout = layout(window);
+        if (layout == null) return false;
+        ItemStack[] shown = new ItemStack[layout.size()];
+        for (int i = 0; i < shown.length; i++) {
+            shown[i] = window.slot(i).sent();
+            if (shown[i] == null) return false;
+        }
+        ItemStack carried = cursor.sent();
+        if (carried == null) return false;
+        // ViaBackwards passes a left pickup's clicked item as the cursor: 1.8's own check of what the client saw
+        if (mode == 0 && click.button() == 0 && slot >= 0 && slot < shown.length
+                && !click.clickedItem().equals(hashOfView(shown[slot]))) return false;
+        ItemStack after = legacyClicks.click(layout, shown, carried, slot, click.button(), mode,
+                player.getGameMode() == GameMode.CREATIVE);
+        if (after == null) return false;
+        for (int i = 0; i < shown.length; i++) window.slot(i).sent(shown[i]);
+        cursor.sent(after);
+        return true;
+    }
+
+    private static LegacyClicks.@Nullable Layout layout(ClientWindow window) {
+        if (window.windowId == 0) return LegacyClicks.Layout.PLAYER;
+        if (!(window.inventory instanceof Inventory inventory)) return null;
+        InventoryType type = inventory.getInventoryType();
+        boolean chest = type.name().startsWith("CHEST_") || type == InventoryType.SHULKER_BOX;
+        return chest ? LegacyClicks.Layout.chest(window.containerSize()) : null;
     }
 
     private static boolean dragInProgress(ClientClickWindowPacket click) {

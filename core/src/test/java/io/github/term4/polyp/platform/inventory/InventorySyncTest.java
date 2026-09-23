@@ -129,12 +129,40 @@ class InventorySyncTest extends HeadlessServerTest {
     }
 
     @Test
-    void oldClientClickResendsAll() {
+    void oldPickupStaysQuiet() {
         FakePlayer p = join("SyncOld", LEGACY);
         try {
             ItemStack sword = ItemStack.of(Material.DIAMOND_SWORD);
             give(p, 0, sword);
+            // below 1.17 ViaBackwards carries a left pickup's clicked item where the cursor goes
             feed(p, click(p, 0, HOTBAR_0, 0, ClickType.PICKUP, Map.of(HOTBAR_0, ItemStack.Hash.AIR), sword));
+            assertEquals(sword, p.player.getInventory().getCursorItem());
+            assertTrue(inventoryPackets(p).isEmpty(), "the client ran the same click");
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void oldShiftClickStaysQuiet() {
+        FakePlayer p = join("SyncOldShift", LEGACY);
+        try {
+            give(p, 0, ItemStack.of(Material.DIAMOND_SWORD));
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.QUICK_MOVE, Map.of(), ItemStack.AIR));
+            assertEquals(Material.DIAMOND_SWORD, p.player.getInventory().getItemStack(9).material());
+            assertTrue(inventoryPackets(p).isEmpty());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void oldStaleViewResendsAll() {
+        FakePlayer p = join("SyncOldStale", LEGACY);
+        try {
+            give(p, 0, ItemStack.of(Material.DIAMOND_SWORD));
+            // the client clicked a slot it still saw empty: 1.8 rejects the click and resends the window
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.PICKUP, Map.of(), ItemStack.AIR));
             assertEquals(1, p.sent(WindowItemsPacket.class).size());
         } finally {
             p.player.remove();
@@ -142,7 +170,26 @@ class InventorySyncTest extends HeadlessServerTest {
     }
 
     @Test
-    void oldDragWaitsForItsEnd() {
+    void oldRefusedClickIsCorrected() {
+        FakePlayer p = join("SyncOldRefuse", LEGACY);
+        EventListener<InventoryPreClickEvent> refuse = EventListener.of(InventoryPreClickEvent.class,
+                e -> e.setCancelled(true));
+        MinecraftServer.getGlobalEventHandler().addListener(refuse);
+        try {
+            ItemStack sword = ItemStack.of(Material.DIAMOND_SWORD);
+            give(p, 0, sword);
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.PICKUP, Map.of(), sword));
+            assertTrue(p.sent(WindowItemsPacket.class).isEmpty(), "a correction, not a full resend");
+            assertEquals(1, p.sent(SetSlotPacket.class).size());
+            assertEquals(1, p.sent(SetCursorItemPacket.class).size());
+        } finally {
+            MinecraftServer.getGlobalEventHandler().removeListener(refuse);
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void oldDragStaysQuiet() {
         FakePlayer p = join("SyncDrag", LEGACY);
         try {
             p.player.getInventory().setCursorItem(ItemStack.of(Material.STONE, 4));
@@ -150,9 +197,38 @@ class InventorySyncTest extends HeadlessServerTest {
             p.sent.clear();
             feed(p, click(p, 0, (short) -999, 0, ClickType.QUICK_CRAFT, Map.of(), ItemStack.AIR));
             feed(p, click(p, 0, (short) 9, 1, ClickType.QUICK_CRAFT, Map.of(), ItemStack.AIR));
-            assertTrue(inventoryPackets(p).isEmpty(), "a drag changes nothing before its last packet");
             feed(p, click(p, 0, (short) -999, 2, ClickType.QUICK_CRAFT, Map.of(), ItemStack.AIR));
-            assertEquals(1, p.sent(WindowItemsPacket.class).size());
+            assertEquals(4, p.player.getInventory().getItemStack(9).amount());
+            assertTrue(inventoryPackets(p).isEmpty());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void oldThrowResendsTheSlot() {
+        FakePlayer p = join("SyncOldThrow", LEGACY);
+        try {
+            give(p, 0, ItemStack.of(Material.STONE, 5));
+            // how ViaBackwards replays a 1.8 Q drop, which the client never predicted
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.THROW, Map.of(), ItemStack.AIR));
+            sync(p).broadcast();
+            List<SetSlotPacket> slots = p.sent(SetSlotPacket.class);
+            assertEquals(1, slots.size());
+            assertEquals(4, slots.getFirst().itemStack().amount());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void middleClientClickResendsAll() {
+        FakePlayer p = join("SyncNine", 107);
+        try {
+            ItemStack sword = ItemStack.of(Material.DIAMOND_SWORD);
+            give(p, 0, sword);
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.PICKUP, Map.of(HOTBAR_0, ItemStack.Hash.AIR), sword));
+            assertEquals(1, p.sent(WindowItemsPacket.class).size(), "1.9 to 1.16 clicks are not followed yet");
         } finally {
             p.player.remove();
         }
