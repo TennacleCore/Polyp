@@ -1,6 +1,7 @@
 package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.tracking.ClientRange;
+import io.github.term4.polyp.tracking.ClientVersion;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,7 +37,7 @@ public final class CompatCatalog {
         add("attackHitboxMargin", ClientRange.MODERN, "the melee box margin; the server pads by it from 1.9 up, but only a 1.21.11 client can be STAMPED with it - see CompatState.stampsAttackRange");
         add("fistRayHits", ClientRange.MODERN, "the empty-hand half of the stamped attack box");
         add("suppressThrowSwing", ClientRange.MODERN, "the throwable reskin that hides a 1.9+ swing");
-        add("swordBlockingPose", ClientRange.MODERN, "1.8 blocks natively; this restyles a modern client's use pose");
+        add("swordBlockingPose", ClientRange.from(ClientVersion.BLOCKS_ATTACKS_PROTOCOL), "1.8 blocks natively; this restyles the use pose by stamping blocks_attacks, which only exists from 1.21.5");
         add("disableElytraFlight", ClientRange.MODERN, "the glider strip; a 1.8 client cannot glide");
         add("blockPlaceReach", ClientRange.MODERN, "only a modern survival client can sneak-bridge past 1.8 reach");
         add("legacySelfPlace", ClientRange.LEGACY, "stairs into a legacy placer's own body, as on Paper; nothing else lands there");

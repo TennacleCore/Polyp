@@ -268,4 +268,33 @@ class CompatStateTest extends HeadlessServerTest {
             now.player.remove();
         }
     }
+
+    /**
+     * Same shape as the attack_range floor: {@code blocks_attacks} is 1.21.5, so stamping it below that only gives
+     * Via something to back up. Here the knob IS the stamp - nothing reads it server-side - so the floor is the
+     * catalog range, and {@code scopedTo} does the rest.
+     */
+    @Test
+    void theBlockPoseSkipsClientsThatCannotReadIt() {
+        FakePlayer old = FakePlayer.connect(instance, new Pos(0.5, 65, 1240.5), "PoseOld");
+        FakePlayer now = FakePlayer.connect(instance, new Pos(2.5, 65, 1240.5), "PoseNow");
+        try {
+            Polyp polyp = Polyp.getInstance();
+            polyp.clientInfo().setProtocol(old.player, ClientVersion.BLOCKS_ATTACKS_PROTOCOL - 1); // 1.21.4
+            polyp.clientInfo().setProtocol(now.player, ClientVersion.BLOCKS_ATTACKS_PROTOCOL);
+
+            CompatState before = new CompatState();
+            before.apply(Compat18.config(), old.player);
+            assertFalse(before.swordBlockingPose(), "1.21.4 cannot read blocks_attacks");
+            assertNull(slotItem(before, ItemStack.of(Material.DIAMOND_SWORD)).get(DataComponents.BLOCKS_ATTACKS));
+
+            CompatState after = new CompatState();
+            after.apply(Compat18.config(), now.player);
+            assertTrue(after.swordBlockingPose(), "1.21.5 reads it natively");
+            assertNotNull(slotItem(after, ItemStack.of(Material.DIAMOND_SWORD)).get(DataComponents.BLOCKS_ATTACKS));
+        } finally {
+            old.player.remove();
+            now.player.remove();
+        }
+    }
 }

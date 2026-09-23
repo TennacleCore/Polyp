@@ -17,6 +17,11 @@ public record ClientRange(int min, int max) {
     /** 1.9 and newer. */
     public static final ClientRange MODERN = new ClientRange(ClientVersion.LEGACY_PROTOCOL_MAX + 1, Integer.MAX_VALUE);
 
+    /** {@code min} and newer - a component's own era, for a knob that stamps one. */
+    public static ClientRange from(int min) {
+        return new ClientRange(min, Integer.MAX_VALUE);
+    }
+
     public boolean covers(int protocol) {
         return protocol >= min && protocol <= max;
     }
