@@ -404,6 +404,13 @@ public final class InventorySync {
         }
     }
 
+    /** The next broadcast sends this player slot again, whatever the client is thought to show. */
+    public void resend(int slot) {
+        synchronized (this) {
+            forgetPlayerSlot(slot);
+        }
+    }
+
     /** Forgets everything; the next broadcast sends the whole inventory. */
     public void forget() {
         synchronized (this) {

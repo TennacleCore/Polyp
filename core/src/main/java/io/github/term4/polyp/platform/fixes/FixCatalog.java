@@ -48,7 +48,7 @@ public final class FixCatalog {
         add("effectResync", ClientRange.ANY,
                 "a new viewer is owed the effects an entity already carries, on any client");
         add("legacyUseResync", ClientRange.LEGACY,
-                "a 1.8 client draws on after a use the server refused, until its inventory is re-sent");
+                "a 1.8 client spends its own arrow on a bow release the server may not have fired");
         add("legacyPlacementHalf", ClientRange.LEGACY,
                 "a byte cursor cannot say 9/16, so a hit just above a side face's middle arrives as 0.5");
         add("legacyHealthRounding", ClientRange.LEGACY,

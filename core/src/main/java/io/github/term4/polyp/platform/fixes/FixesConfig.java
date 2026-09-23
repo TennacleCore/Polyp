@@ -55,7 +55,7 @@ public final class FixesConfig {
     /** A new viewer is owed the effects an entity already carries ({@code EffectResyncFix}); any client. */
     public @Nullable FixToggleConfig effectResync() { return toggles.get("effectResync"); }
 
-    /** A 1.8 client draws on after a refused use until its inventory is re-sent ({@code LegacyUseResyncFix}). */
+    /** A 1.8 client's arrows are re-sent after a bow release it may have fired alone ({@code LegacyUseResyncFix}). */
     public @Nullable FixToggleConfig legacyUseResync() { return toggles.get("legacyUseResync"); }
 
     /** A byte cursor cannot say 9/16, so a hit above a side face's middle arrives as {@code 0.5} ({@code LegacyPlacementHalfFix}). */
