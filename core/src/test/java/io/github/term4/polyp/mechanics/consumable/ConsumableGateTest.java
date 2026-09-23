@@ -4,6 +4,8 @@ import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.mechanics.consumable.ConsumableConfigResolver.ConsumableContext;
+import io.github.term4.polyp.mechanics.containers.Spill;
+import io.github.term4.polyp.mechanics.damage.DeathConfig;
 import io.github.term4.polyp.platform.fixes.FixesConfig;
 import io.github.term4.polyp.platform.fixes.FixToggleConfig;
 import io.github.term4.polyp.platform.inventory.InventorySync;
@@ -103,8 +105,11 @@ class ConsumableGateTest extends HeadlessServerTest {
         player.player.setHealth(20f);
         player.player.refreshItemUse(PlayerHand.MAIN, 32);
         assertTrue(player.player.isUsingItem(), "mid-eat");
+        // the shared eater keeps its stock: this death is about the use, not the inventory
+        polyp.profiles().setPlayer(player.player, MechanicsKeys.DEATH, DeathConfig.builder().spill(Spill.KEEP).build());
 
         player.player.kill();
+        polyp.profiles().setPlayer(player.player, null);
 
         assertFalse(player.player.isUsingItem(), "death stopped the use");
         assertEquals(0, player.player.getCurrentItemUseTime(), "and disarmed the finish timer");

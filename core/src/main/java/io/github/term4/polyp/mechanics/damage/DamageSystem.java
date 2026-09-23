@@ -149,6 +149,7 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
             if (!(e.getEntity() instanceof LivingEntity dead)) return;
             DeathContext ctx = new DeathContext(dead);
             DeathConfig death = effectiveDeath(polyp.profiles().resolve(dead, MechanicsKeys.DEATH), ctx);
+            if (dead instanceof Player p) DeathDrops.spill(p, death, ctx);
             if (deathFlag(death != null ? death.clearEffects(ctx) : null)) dead.clearEffects();
             if (deathFlag(death != null ? death.resetMechanicsState(ctx) : null)) resetMechanicsState(dead);
             // Minestom keeps the health-0 entity in the world (1.8/Via replays the death smoke on chunk reload); hide it

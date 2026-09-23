@@ -62,12 +62,14 @@ class VriFeaturesTest extends HeadlessServerTest {
 
     @Test
     void dropSpawnsWithVanillaShape() {
-        long before = instance.getEntities().stream().filter(e -> e instanceof ItemEntity).count();
+        // the world is shared: another class's leftovers are no part of this drop
+        var before = instance.getEntities().stream().filter(e -> e instanceof ItemEntity).toList();
         EventDispatcher.call(breakEvent(Block.DIRT)); // no tool required
         tickEnd();
-        var items = instance.getEntities().stream().filter(e -> e instanceof ItemEntity).map(e -> (ItemEntity) e).toList();
-        assertEquals(before + 1, items.size());
-        ItemEntity drop = items.getLast();
+        var items = instance.getEntities().stream().filter(e -> e instanceof ItemEntity && !before.contains(e))
+                .map(e -> (ItemEntity) e).toList();
+        assertEquals(1, items.size());
+        ItemEntity drop = items.getFirst();
         assertEquals(Material.DIRT, drop.getItemStack().material());
         // vanilla spawn box: blockPos + [0.25, 0.75] per axis; 10t pickup delay
         assertTrue(drop.getPosition().x() >= BLOCK.x() + 0.25 && drop.getPosition().x() <= BLOCK.x() + 0.75, drop.getPosition().toString());

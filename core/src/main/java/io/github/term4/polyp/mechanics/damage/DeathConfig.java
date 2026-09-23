@@ -1,6 +1,7 @@
 package io.github.term4.polyp.mechanics.damage;
 
 import io.github.term4.polyp.codegen.GenerateBuilder;
+import io.github.term4.polyp.mechanics.containers.Spill;
 import net.minestom.server.entity.Entity;
 import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.config.Config;
@@ -11,9 +12,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.function.Function;
 
 /**
- * Config for the death/respawn cleanup. Assigned per scope via the
+ * Config for the death/respawn cleanup and what the inventory does at death. Assigned per scope via the
  * {@link io.github.term4.polyp.MechanicsProfile} {@code DEATH} member and resolved per-victim by
- * {@code DamageSystem} on the death path. An unset knob reads as its vanilla default (on / 20-tick animation).
+ * {@code DamageSystem} on the death path. An unset knob reads as its vanilla default (on / 20-tick animation / drop).
  */
 @GenerateBuilder
 public final class DeathConfig extends Config<DeathConfig.DeathContext, DeathConfig> {
@@ -26,6 +27,9 @@ public final class DeathConfig extends Config<DeathConfig.DeathContext, DeathCon
     public final @Nullable FieldValue<DeathContext, Boolean> resetMechanicsState;
     public final @Nullable FieldValue<DeathContext, Boolean> hideCorpse;
     public final @Nullable FieldValue<DeathContext, Integer> deathAnimationTicks;
+    public final @Nullable FieldValue<DeathContext, Spill> spill;
+    public final @Nullable FieldValue<DeathContext, Spill.Throw> dropThrow;
+    public final @Nullable FieldValue<DeathContext, Boolean> vanishingCurse;
 
     private DeathConfig(Builder b) {
         super(b.subConfig);
@@ -33,6 +37,9 @@ public final class DeathConfig extends Config<DeathConfig.DeathContext, DeathCon
         this.resetMechanicsState = b.resetMechanicsState;
         this.hideCorpse = b.hideCorpse;
         this.deathAnimationTicks = b.deathAnimationTicks;
+        this.spill = b.spill;
+        this.dropThrow = b.dropThrow;
+        this.vanishingCurse = b.vanishingCurse;
     }
 
     /** Clear active potion effects on death (Minestom's {@code kill()} doesn't). Unset = on. */
@@ -46,6 +53,15 @@ public final class DeathConfig extends Config<DeathConfig.DeathContext, DeathCon
 
     /** Ticks the death animation plays before {@link #hideCorpse} removes the body. Unset = 20. */
     public @Nullable Integer deathAnimationTicks(DeathContext ctx) { return resolve(deathAnimationTicks, ctx); }
+
+    /** What a player's inventory does at death; {@link Spill#KEEP} is keepInventory, and PACK drops. Unset = drop. */
+    public @Nullable Spill spill(DeathContext ctx) { return resolve(spill, ctx); }
+
+    /** How the drops leave the body. Unset = {@link Spill.Throw#PLAYER}. */
+    public @Nullable Spill.Throw dropThrow(DeathContext ctx) { return resolve(dropThrow, ctx); }
+
+    /** Curse of Vanishing items are destroyed instead of dropped, as from 1.11. Unset = on. */
+    public @Nullable Boolean vanishingCurse(DeathContext ctx) { return resolve(vanishingCurse, ctx); }
 
     /** Merges this config over {@code base}. */
     public DeathConfig fromBase(DeathConfig base) {

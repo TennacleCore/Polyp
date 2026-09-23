@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class ItemSpawnEvent implements CancellableEvent {
 
-    public enum Cause { BLOCK_DROP, PLAYER_DROP, SERVER }
+    public enum Cause { BLOCK_DROP, PLAYER_DROP, DEATH_DROP, SERVER }
 
     private final DroppedItemEntity item;
     private final Cause cause;

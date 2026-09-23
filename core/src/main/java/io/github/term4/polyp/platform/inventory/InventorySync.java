@@ -186,6 +186,10 @@ public final class InventorySync {
         this.cursorOnClose = rule;
     }
 
+    public synchronized @Nullable PlayerConfig.CursorOnClose cursorOnClose() {
+        return cursorOnClose;
+    }
+
     /** The hand slot going out now only recounts the stack in use: the same stack to the server, so its use runs on. */
     public boolean recounting() {
         return recounting;
@@ -531,40 +535,8 @@ public final class InventorySync {
         ItemStack carried = inventory.getCursorItem();
         if (rule == null || carried.isAir()) return;
         inventory.setCursorItem(ItemStack.AIR);
-        if (rule == PlayerConfig.CursorOnClose.RETURN) carried = placeBack(carried);
+        if (rule == PlayerConfig.CursorOnClose.RETURN) carried = PlaceBack.into(player, carried);
         if (!carried.isAir() && !player.dropItem(carried)) inventory.addItemStack(carried);
-    }
-
-    /** 26.1's placeItemBackInInventory; what does not fit comes back. */
-    private ItemStack placeBack(ItemStack item) {
-        PlayerInventory inventory = player.getInventory();
-        while (!item.isAir()) {
-            int slot = roomFor(inventory, item);
-            if (slot < 0) return item;
-            ItemStack there = inventory.getItemStack(slot);
-            int put = Math.min(item.amount(), item.maxStackSize() - (there.isAir() ? 0 : there.amount()));
-            inventory.setItemStack(slot, there.isAir() ? item.withAmount(put) : there.withAmount(there.amount() + put));
-            item = item.amount() == put ? ItemStack.AIR : item.withAmount(item.amount() - put);
-        }
-        return item;
-    }
-
-    /** The held slot, the offhand, any stack with room, then the first empty slot. */
-    private int roomFor(PlayerInventory inventory, ItemStack item) {
-        int held = player.getHeldSlot();
-        if (hasRoom(inventory.getItemStack(held), item)) return held;
-        if (hasRoom(inventory.getItemStack(PlayerInventoryUtils.OFFHAND_SLOT), item)) return PlayerInventoryUtils.OFFHAND_SLOT;
-        for (int slot = 0; slot < PlayerInventory.INNER_INVENTORY_SIZE; slot++) {
-            if (hasRoom(inventory.getItemStack(slot), item)) return slot;
-        }
-        for (int slot = 0; slot < PlayerInventory.INNER_INVENTORY_SIZE; slot++) {
-            if (inventory.getItemStack(slot).isAir()) return slot;
-        }
-        return -1;
-    }
-
-    private static boolean hasRoom(ItemStack there, ItemStack item) {
-        return !there.isAir() && there.isSimilar(item) && there.amount() < there.maxStackSize();
     }
 
     // ------------------------------------------------------------------ the broadcast

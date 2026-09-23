@@ -1,5 +1,7 @@
 package io.github.term4.polyp.mechanics.damage;
 
+import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.mechanics.containers.Spill;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.coordinate.Pos;
@@ -27,6 +29,8 @@ class DeathHeldItemProbeTest extends HeadlessServerTest {
     void deathSendsNoInventoryClearToTheDyingPlayer() {
         FakePlayer p = FakePlayer.connect(instance, new Pos(300.5, 64, 300.5), "DeathProbe");
         try {
+            // a death with no spill: dropping is DeathDrops' and clears the slots on purpose
+            polyp.profiles().setPlayer(p.player, MechanicsKeys.DEATH, DeathConfig.builder().spill(Spill.KEEP).build());
             p.player.setHeldItemSlot((byte) 0);
             p.player.getInventory().setItemStack(0, ItemStack.of(Material.DIAMOND_SWORD));
             p.sent.clear();

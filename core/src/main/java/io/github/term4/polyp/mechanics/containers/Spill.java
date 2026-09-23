@@ -13,7 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-/** What becomes of a holder's contents when the holder goes: a broken container now, a killed entity later. */
+/** What becomes of a holder's contents when the holder goes: a broken container, a killed player. */
 public enum Spill {
     /** Scattered at the spot with vanilla drop physics. */
     DROP,
@@ -23,7 +23,19 @@ public enum Spill {
     PACK,
     VANISH;
 
+    /** How a killed player's drops leave the body. */
+    public enum Throw {
+        /** Vanilla in both eras ({@code drop(stack, true, false)}): eye height less 0.3, a random heading up to 0.5, 40t pickup delay. */
+        PLAYER,
+        /** Spigot/Paper 1.8 ({@code dropItemNaturally}): inside the feet block, the item's own random kick, 10t pickup delay. */
+        NATURAL
+    }
+
     static final int PICKUP_DELAY_TICKS = 10;
+    private static final int THROWN_PICKUP_DELAY_TICKS = 40;
+    /** 0.2F and 0.3F widened: both eras write them as float literals. */
+    private static final double KICK_Y = 0.20000000298023224;
+    private static final double HAND_BELOW_EYE = 0.30000001192092896;
 
     /** Vanilla {@code Block.dropBlockAsItem}: the cell's middle half, a small upward kick, 10t pickup delay. */
     public static void scatter(@NotNull MechanicsWorld world, @NotNull Point at, @NotNull Iterable<ItemStack> stacks,
@@ -36,5 +48,34 @@ public enum Spill {
             Vec kick = new Vec(rnd.nextDouble() * 0.2 - 0.1, 0.2, rnd.nextDouble() * 0.2 - 0.1);
             DroppedItemEntity.spawn(world, pos, kick, stack, null, PICKUP_DELAY_TICKS, ItemSpawnEvent.Cause.BLOCK_DROP, by);
         }
+    }
+
+    /** A killed player's drops, thrown from where the body stands. */
+    public static void throwFrom(@NotNull Player body, @NotNull Iterable<ItemStack> stacks, @NotNull Throw how) {
+        MechanicsWorld world = MechanicsWorld.of(body);
+        Pos at = body.getPosition();
+        var rnd = ThreadLocalRandom.current();
+        for (ItemStack stack : stacks) {
+            if (stack == null || stack.isAir()) continue;
+            if (how == Throw.PLAYER) {
+                float pow = rnd.nextFloat() * 0.5f;
+                float heading = rnd.nextFloat() * (float) (Math.PI * 2);
+                Vec kick = new Vec(-Math.sin(heading) * pow, KICK_Y, Math.cos(heading) * pow);
+                DroppedItemEntity.spawn(world, at.withY(at.y() + body.getEyeHeight() - HAND_BELOW_EYE), kick, stack, null,
+                        THROWN_PICKUP_DELAY_TICKS, ItemSpawnEvent.Cause.DEATH_DROP, body);
+            } else {
+                Pos pos = new Pos(nudge(at.x(), rnd), nudge(at.y(), rnd), nudge(at.z(), rnd));
+                Vec kick = new Vec((float) (Math.random() * 0.2 - 0.1), KICK_Y, (float) (Math.random() * 0.2 - 0.1));
+                DroppedItemEntity.spawn(world, pos, kick, stack, null, PICKUP_DELAY_TICKS, ItemSpawnEvent.Cause.DEATH_DROP, body);
+            }
+        }
+    }
+
+    // Paper's randomLocationWithinBlock: a 0.35 nudge that never leaves the block, so feet on a block top stay on it
+    private static double nudge(double at, ThreadLocalRandom rnd) {
+        double moved = at + (rnd.nextFloat() * 0.7F - 0.35D);
+        if (moved < Math.floor(at)) moved = Math.floor(at);
+        if (moved >= Math.ceil(at)) moved = Math.ceil(at - 0.01);
+        return moved;
     }
 }

@@ -4,6 +4,7 @@ import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
 import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.vri.VriConfig;
 import io.github.term4.polyp.entity.DroppedItemEntity;
+import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Player;
@@ -37,6 +38,8 @@ public final class ItemDrop {
             // containers drop the cursor natively (removeViewer); only the player's own screen leaks it
             var inventory = e.getPlayer().getInventory();
             if (e.getInventory() != inventory) return;
+            // a profile's PlayerConfig.cursorOnClose owns the close instead
+            if (e.getPlayer() instanceof OptimizedPlayer op && op.inventorySync().cursorOnClose() != null) return;
             ItemStack cursor = inventory.getCursorItem();
             if (cursor.isAir()) return;
             inventory.setCursorItem(ItemStack.AIR);
