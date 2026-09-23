@@ -33,7 +33,7 @@ public final class CompatCatalog {
         add("restrictSwimSpeed", ClientRange.MODERN, "dampens the 1.9+ swim sprint; 1.8 never had it");
         add("swimFactor", ClientRange.MODERN, "with restrictSwimSpeed");
         add("swimVerticalFactor", ClientRange.MODERN, "with restrictSwimSpeed");
-        add("attackHitboxMargin", ClientRange.MODERN, "the attack_range stamp on the client's view of an item; 1.8 hits natively and Via makes junk NBT of it");
+        add("attackHitboxMargin", ClientRange.MODERN, "the melee box margin; the server pads by it from 1.9 up, but only a 1.21.11 client can be STAMPED with it - see CompatState.stampsAttackRange");
         add("fistRayHits", ClientRange.MODERN, "the empty-hand half of the stamped attack box");
         add("suppressThrowSwing", ClientRange.MODERN, "the throwable reskin that hides a 1.9+ swing");
         add("swordBlockingPose", ClientRange.MODERN, "1.8 blocks natively; this restyles a modern client's use pose");

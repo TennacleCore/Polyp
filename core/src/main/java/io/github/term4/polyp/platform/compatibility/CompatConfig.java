@@ -35,7 +35,9 @@ public final class CompatConfig {
     public final @Nullable FieldValue<CompatContext, Boolean> restrictMovement;
     /** Server box stays at standing dimensions (no crouch shrink) + 1.8 eye heights (1.54 sneaking); the client still renders its own pose. */
     public final @Nullable FieldValue<CompatContext, Boolean> legacyHitbox;
-    /** {@code attack_range.hitbox_margin} stamped on the client's view of held items (1.8 = {@code 0.1f}, modern 0.3). Held-item only - bare-hand hardcodes 0 client-side. */
+    /** {@code attack_range.hitbox_margin} (1.8 = {@code 0.1f}, modern 0.3). Held-item only - bare-hand hardcodes 0
+     *  client-side. The server pads its melee box by this for every client above 1.8; the STAMP that tells the
+     *  client reaches 1.21.11 and up alone, since that is where the component exists. */
     public final @Nullable FieldValue<CompatContext, Float> attackHitboxMargin;
     /** F-swap + offhand-slot clicks cancelled; no effect on 1.8 clients. */
     public final @Nullable FieldValue<CompatContext, Boolean> disableOffhand;
