@@ -9,6 +9,7 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.GameMode;
+import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.EventListener;
 import net.minestom.server.event.inventory.InventoryPreClickEvent;
 import net.minestom.server.instance.block.BlockFace;
@@ -21,6 +22,7 @@ import net.minestom.server.network.packet.client.play.ClientClickWindowPacket;
 import net.minestom.server.network.packet.client.play.ClientClickWindowPacket.ClickType;
 import net.minestom.server.network.packet.client.play.ClientCreativeInventoryActionPacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
+import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
 import net.minestom.server.network.packet.server.SendablePacket;
 import net.minestom.server.network.packet.server.ServerPacket;
 import net.minestom.server.network.packet.server.play.SetCursorItemPacket;
@@ -222,6 +224,94 @@ class InventorySyncTest extends HeadlessServerTest {
     }
 
     @Test
+    void blockClickKeepsTheHand() {
+        FakePlayer p = join("SyncEatBlock", LEGACY);
+        try {
+            give(p, 0, ItemStack.of(Material.BREAD, 5));
+            // a 1.8 client eating at a block sends a placement too; a hand resend would end its eat
+            feed(p, new ClientPlayerBlockPlacementPacket(PlayerHand.MAIN, new Vec(0, 63, 0), BlockFace.TOP,
+                    0.5f, 1f, 0.5f, false, false, 0));
+            sync(p).broadcast();
+            assertTrue(inventoryPackets(p).isEmpty());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void oldDragSkipsExtraSlots() {
+        FakePlayer p = join("SyncDragWide", LEGACY);
+        try {
+            p.player.getInventory().setCursorItem(ItemStack.of(Material.STONE, 4));
+            sync(p).broadcast();
+            p.sent.clear();
+            drag(p, 0, 9, 10, 11, 12, 13, 14);
+            for (int slot = 9; slot <= 12; slot++) assertEquals(1, p.player.getInventory().getItemStack(slot).amount());
+            assertTrue(p.player.getInventory().getItemStack(13).isAir(), "1.8 stops adding slots at the cursor's count");
+            assertTrue(p.player.getInventory().getCursorItem().isAir());
+            assertTrue(inventoryPackets(p).isEmpty());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void oldDragSkipsOtherItems() {
+        FakePlayer p = join("SyncDragMix", LEGACY);
+        try {
+            give(p, 10, ItemStack.of(Material.DIRT));
+            p.player.getInventory().setCursorItem(ItemStack.of(Material.STONE, 9));
+            sync(p).broadcast();
+            p.sent.clear();
+            drag(p, 0, 9, 10, 11);
+            assertEquals(4, p.player.getInventory().getItemStack(9).amount(), "split two ways, not three");
+            assertEquals(Material.DIRT, p.player.getInventory().getItemStack(10).material());
+            assertEquals(1, p.player.getInventory().getCursorItem().amount());
+            assertTrue(inventoryPackets(p).isEmpty());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void oldDoubleClickMatches() {
+        FakePlayer p = join("SyncGather", LEGACY);
+        try {
+            give(p, 9, ItemStack.of(Material.STONE, 64));
+            give(p, 10, ItemStack.of(Material.STONE, 30));
+            p.player.getInventory().setCursorItem(ItemStack.of(Material.STONE, 1));
+            sync(p).broadcast();
+            p.sent.clear();
+            feed(p, click(p, 0, (short) 20, 0, ClickType.PICKUP_ALL, Map.of(), ItemStack.AIR));
+            assertEquals(64, p.player.getInventory().getCursorItem().amount());
+            assertTrue(p.player.getInventory().getItemStack(10).isAir(), "the partial stack goes first");
+            assertEquals(31, p.player.getInventory().getItemStack(9).amount());
+            assertTrue(inventoryPackets(p).isEmpty());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void oldNumberKeyPushesAside() {
+        FakePlayer p = join("SyncNumKey", LEGACY);
+        CreativeInventory chest = new CreativeInventory(InventoryType.CHEST_3_ROW, Component.text("Chest"));
+        chest.setItemStack(0, ItemStack.of(Material.DIAMOND_SWORD));
+        try {
+            give(p, 0, ItemStack.of(Material.STONE, 5));
+            p.player.openInventory(chest);
+            p.sent.clear();
+            feed(p, click(p, chest.getWindowId(), (short) 0, 0, ClickType.SWAP, Map.of(), ItemStack.AIR));
+            assertEquals(Material.DIAMOND_SWORD, p.player.getInventory().getItemStack(0).material());
+            assertEquals(5, p.player.getInventory().getItemStack(1).amount(), "the hotbar item goes aside, not into the chest");
+            assertTrue(chest.getItemStack(0).isAir());
+            assertTrue(inventoryPackets(p).isEmpty());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
     void middleClientClickResendsAll() {
         FakePlayer p = join("SyncNine", 107);
         try {
@@ -400,6 +490,13 @@ class InventorySyncTest extends HeadlessServerTest {
                                                  Map<Short, ItemStack.Hash> changed, ItemStack carried) {
         return new ClientClickWindowPacket(windowId, sync(p).stateId(windowId), slot, (byte) button, type, changed,
                 hash(p, carried));
+    }
+
+    /** A left drag over {@code slots}, the three kinds of packet a client sends for one. */
+    private static void drag(FakePlayer p, int windowId, int... slots) {
+        feed(p, click(p, windowId, (short) -999, 0, ClickType.QUICK_CRAFT, Map.of(), ItemStack.AIR));
+        for (int slot : slots) feed(p, click(p, windowId, (short) slot, 1, ClickType.QUICK_CRAFT, Map.of(), ItemStack.AIR));
+        feed(p, click(p, windowId, (short) -999, 2, ClickType.QUICK_CRAFT, Map.of(), ItemStack.AIR));
     }
 
     private static ClientPlayerActionPacket drop() {

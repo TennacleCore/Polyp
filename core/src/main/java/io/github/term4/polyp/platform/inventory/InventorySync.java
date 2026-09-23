@@ -5,19 +5,22 @@ import io.github.term4.polyp.platform.PacketShapes;
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.platform.player.PlayListeners;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.Event;
+import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.EventListener;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.inventory.InventoryCloseEvent;
+import net.minestom.server.event.inventory.InventoryPreClickEvent;
 import net.minestom.server.event.player.PlayerPacketEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.player.PlayerTickEvent;
-import net.minestom.server.entity.GameMode;
 import net.minestom.server.inventory.AbstractInventory;
 import net.minestom.server.inventory.Inventory;
 import net.minestom.server.inventory.InventoryType;
 import net.minestom.server.inventory.PlayerInventory;
+import net.minestom.server.inventory.click.Click;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.listener.CreativeInventoryActionListener;
 import net.minestom.server.listener.UseItemListener;
@@ -25,7 +28,6 @@ import net.minestom.server.listener.WindowListener;
 import net.minestom.server.network.packet.client.play.ClientClickWindowPacket;
 import net.minestom.server.network.packet.client.play.ClientCreativeInventoryActionPacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
-import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
 import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
 import net.minestom.server.network.packet.server.SendablePacket;
 import net.minestom.server.network.packet.server.ServerPacket;
@@ -64,8 +66,12 @@ public final class InventorySync {
     private final ClientWindow inventoryWindow = new ClientWindow(0, PlayerInventory.INVENTORY_SIZE, null);
     private @Nullable ClientWindow container;
     private final Remote cursor = new Remote();
+    /** The client's copy of 1.8's click state, run on what it shows. */
     private final LegacyClicks legacyClicks = new LegacyClicks();
     private int legacyWindow = -1;
+    /** The server's copy, run on its own items: the same logic, so both land on the same result. */
+    private final LegacyClicks serverClicks = new LegacyClicks();
+    private int serverWindow = -1;
     private boolean inClick;
     /** Minestom ends a close with a full resend of window 0; the close already carried the view over. */
     private boolean closing;
@@ -85,7 +91,6 @@ public final class InventorySync {
             switch (e.getPacket()) {
                 case ClientClickWindowPacket p -> sync.beforeClick(p);
                 case ClientCreativeInventoryActionPacket p -> sync.creative(p.slot(), p.item());
-                case ClientPlayerBlockPlacementPacket p -> sync.handUsed(p.hand());
                 case ClientPlayerActionPacket p when p.status() == ClientPlayerActionPacket.Status.DROP_ITEM ->
                         sync.dropped(false);
                 case ClientPlayerActionPacket p when p.status() == ClientPlayerActionPacket.Status.DROP_ITEM_STACK ->
@@ -115,7 +120,7 @@ public final class InventorySync {
             if (sync.stale(packet.windowId())) return;
             sync.clicking(true);
             try {
-                next.accept(packet, player);
+                if (!sync.applyLegacy(packet)) next.accept(packet, player);
             } finally {
                 sync.clicking(false);
                 sync.broadcast();
@@ -175,6 +180,79 @@ public final class InventorySync {
     synchronized int stateId(int windowId) {
         if (windowId == 0) return inventoryWindow.stateId();
         return container != null && container.windowId == windowId ? container.stateId() : 0;
+    }
+
+    /**
+     * A 1.8 click applied as a 1.8 server applies it, with the client's own logic, so the client's prediction holds by
+     * construction; false leaves it to Minestom (the crafting grid, a window the port does not model).
+     */
+    boolean applyLegacy(@NotNull ClientClickWindowPacket packet) {
+        if (protocol() > LEGACY_PROTOCOL) return false;
+        AbstractInventory inventory = packet.windowId() == 0 ? player.getInventory() : player.getOpenInventory();
+        if (inventory == null || packet.slot() == -1) return false;
+        ClientWindow window;
+        LegacyClicks.Layout layout;
+        synchronized (this) {
+            window = packet.windowId() == 0 ? inventoryWindow : current();
+            layout = window == null || window.windowId != packet.windowId() ? null : layout(window);
+        }
+        int mode = packet.clickType().ordinal();
+        int slot = packet.slot();
+        if (layout == null || layout.playerWindow() && slot >= 0 && slot < 5 && mode != 5) return false;
+        if (packet.windowId() != serverWindow) {
+            serverClicks.resetDrag();
+            serverWindow = packet.windowId();
+        }
+        // Minestom's preprocessing still runs: it names the click for InventoryPreClickEvent, as WindowListener does
+        Integer size = packet.windowId() == 0 ? null : inventory.getSize();
+        Click click = player.getClickPreprocessor().processClick(packet, size);
+        if (click != null) {
+            player.UNSAFE_changeDidCloseInventory(false);
+            Click.Window target = Click.toWindow(click, size);
+            InventoryPreClickEvent event = new InventoryPreClickEvent(
+                    target.inOpened() ? inventory : player.getInventory(), player, target.click());
+            EventDispatcher.call(event);
+            if (player.didCloseInventory() || event.isCancelled()) {
+                player.UNSAFE_changeDidCloseInventory(false);
+                serverClicks.resetDrag();
+                return true;
+            }
+            if (!event.getClick().equals(target.click())) {
+                inventory.handleClick(player, Click.fromWindow(new Click.Window(target.inOpened(), event.getClick()), size));
+                return true;
+            }
+        }
+        ItemStack[] items = new ItemStack[layout.size()];
+        synchronized (this) {
+            for (int i = 0; i < items.length; i++) items[i] = truth(window, i);
+        }
+        ItemStack[] before = items.clone();
+        ItemStack cursor = serverClicks.click(layout, items, player.getInventory().getCursorItem(), slot,
+                packet.button(), mode, player.getGameMode() == GameMode.CREATIVE);
+        if (cursor == null) {
+            // a drag that ended over the crafting grid
+            if (click != null) inventory.handleClick(player, click);
+            return true;
+        }
+        for (int i = 0; i < items.length; i++) {
+            if (!items[i].equals(before[i])) setTruth(window, i, items[i]);
+        }
+        player.getInventory().setCursorItem(cursor);
+        for (ItemStack out : serverClicks.dropped()) {
+            if (!player.dropItem(out)) player.getInventory().addItemStack(out);
+        }
+        return true;
+    }
+
+    private void setTruth(ClientWindow window, int slot, ItemStack item) {
+        PlayerInventory inventory = player.getInventory();
+        if (window == inventoryWindow) {
+            inventory.setItemStack(PlayerInventoryUtils.convertWindow0SlotToMinestomSlot(slot), item);
+            return;
+        }
+        int size = window.containerSize();
+        if (slot < size) window.inventory.setItemStack(slot, item);
+        else inventory.setItemStack(PlayerInventoryUtils.convertWindowSlotToMinestomSlot(slot, size), item);
     }
 
     /** The click as a 1.8 client ran it on what it shows; false when that cannot be followed. */

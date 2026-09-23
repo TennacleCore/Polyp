@@ -6,8 +6,10 @@ import net.minestom.server.item.Material;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -43,6 +45,7 @@ final class LegacyClicks {
     private int dragEvent;
     private int dragMode;
     private final Set<Integer> dragSlots = new LinkedHashSet<>();
+    private final List<ItemStack> dropped = new ArrayList<>();
 
     private Layout layout;
     private ItemStack[] slots;
@@ -52,6 +55,11 @@ final class LegacyClicks {
     void resetDrag() {
         dragEvent = 0;
         dragSlots.clear();
+    }
+
+    /** What the last click threw out of the window: the cursor clicked outside, or a slot's throw. */
+    @NotNull List<ItemStack> dropped() {
+        return List.copyOf(dropped);
     }
 
     /**
@@ -67,6 +75,7 @@ final class LegacyClicks {
         this.slots = slots;
         this.cursor = cursor;
         this.creative = creative;
+        dropped.clear();
         slotClick(slot, button, mode);
         if (grid != null) {
             for (int i = 0; i < 5; i++) if (!grid[i].equals(slots[i])) return null;
@@ -81,7 +90,10 @@ final class LegacyClicks {
             resetDrag(); // any other click cancels a drag and does nothing else
         } else if ((mode == 0 || mode == 1) && (button == 0 || button == 1)) {
             if (slot == -999) {
-                if (!cursor.isAir()) cursor = button == 0 ? ItemStack.AIR : shrink(cursor, 1);
+                if (cursor.isAir()) return;
+                int out = button == 0 ? cursor.amount() : 1;
+                dropped.add(cursor.withAmount(out));
+                cursor = shrink(cursor, out);
             } else if (valid(slot)) {
                 if (mode == 1) shift(slot, button);
                 else pickup(slot, button);
@@ -91,7 +103,11 @@ final class LegacyClicks {
         } else if (mode == 3 && creative && cursor.isAir() && valid(slot)) {
             if (!slots[slot].isAir()) cursor = slots[slot].withAmount(slots[slot].maxStackSize());
         } else if (mode == 4 && cursor.isAir() && valid(slot)) {
-            if (!slots[slot].isAir()) slots[slot] = button == 0 ? shrink(slots[slot], 1) : ItemStack.AIR;
+            ItemStack in = slots[slot];
+            if (in.isAir()) return;
+            int out = button == 0 ? 1 : in.amount();
+            dropped.add(in.withAmount(out));
+            slots[slot] = shrink(in, out);
         } else if (mode == 6 && valid(slot)) {
             gather(slot, button);
         }
