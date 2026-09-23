@@ -11,11 +11,9 @@ import net.minestom.server.entity.MetadataDef;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventDispatcher;
-import net.minestom.server.event.EventListener;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.inventory.InventoryCloseEvent;
 import net.minestom.server.event.inventory.InventoryPreClickEvent;
-import net.minestom.server.event.player.PlayerPacketEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.event.player.PlayerTickEvent;
 import net.minestom.server.inventory.AbstractInventory;
@@ -25,6 +23,7 @@ import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.inventory.click.Click;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.listener.CreativeInventoryActionListener;
+import net.minestom.server.listener.PlayerActionListener;
 import net.minestom.server.listener.UseItemListener;
 import net.minestom.server.listener.WindowListener;
 import net.minestom.server.network.packet.client.play.ClientClickWindowPacket;
@@ -75,6 +74,8 @@ public final class InventorySync {
     /** The client's copy of 1.8's click state, run on what it shows. */
     private final LegacyClicks legacyClicks = new LegacyClicks();
     private int legacyWindow = -1;
+    /** A 1.8 client has its inventory screen up: opening it sends nothing, so a window-0 click says so. */
+    private boolean screenOpen;
     /** The server's copy, run on its own items: the same logic, so both land on the same result. */
     private final LegacyClicks serverClicks = new LegacyClicks();
     private int serverWindow = -1;
@@ -95,20 +96,6 @@ public final class InventorySync {
 
     public static void install(@NotNull Polyp polyp) {
         EventNode<@NotNull Event> node = EventNode.all("polyp:inventory-sync");
-        // even a packet another listener cancelled: the client already applied what it sent
-        node.addListener(EventListener.builder(PlayerPacketEvent.class).ignoreCancelled(false).handler(e -> {
-            if (!(e.getPlayer() instanceof OptimizedPlayer op)) return;
-            InventorySync sync = op.inventorySync();
-            switch (e.getPacket()) {
-                case ClientClickWindowPacket p -> sync.beforeClick(p);
-                case ClientCreativeInventoryActionPacket p -> sync.creative(p.slot(), p.item());
-                case ClientPlayerActionPacket p when p.status() == ClientPlayerActionPacket.Status.DROP_ITEM ->
-                        sync.dropped(false);
-                case ClientPlayerActionPacket p when p.status() == ClientPlayerActionPacket.Status.DROP_ITEM_STACK ->
-                        sync.dropped(true);
-                default -> {}
-            }
-        }).build());
         node.addListener(PlayerTickEvent.class, e -> {
             if (e.getPlayer() instanceof OptimizedPlayer op) op.inventorySync().broadcast();
         });
@@ -121,12 +108,15 @@ public final class InventorySync {
         });
         polyp.install(node);
 
+        // the client's side of a packet is read here, where it is handled, and not off PlayerPacketEvent: a packet
+        // held back and fed in again (the lag simulator) fires that event twice
         PlayListeners.wrap(ClientClickWindowPacket.class, WindowListener::clickWindowListener, (packet, player, next) -> {
             if (!(player instanceof OptimizedPlayer op)) {
                 next.accept(packet, player);
                 return;
             }
             InventorySync sync = op.inventorySync();
+            sync.beforeClick(packet);
             // vanilla ignores a click on any window but the one the server has open; Minestom applies it anyway
             if (sync.stale(packet.windowId())) return;
             sync.clicking(true);
@@ -139,8 +129,20 @@ public final class InventorySync {
         });
         PlayListeners.wrap(ClientCreativeInventoryActionPacket.class, CreativeInventoryActionListener::listener,
                 (packet, player, next) -> {
+                    if (player instanceof OptimizedPlayer op) op.inventorySync().creative(packet.slot(), packet.item());
                     next.accept(packet, player);
                     if (player instanceof OptimizedPlayer op) op.inventorySync().broadcast();
+                });
+        PlayListeners.wrap(ClientPlayerActionPacket.class, PlayerActionListener::playerActionListener,
+                (packet, player, next) -> {
+                    if (player instanceof OptimizedPlayer op) {
+                        switch (packet.status()) {
+                            case DROP_ITEM -> op.inventorySync().dropped(false);
+                            case DROP_ITEM_STACK -> op.inventorySync().dropped(true);
+                            default -> {}
+                        }
+                    }
+                    next.accept(packet, player);
                 });
         PlayListeners.wrap(ClientUseItemPacket.class, UseItemListener::useItemListener, (packet, player, next) -> {
             next.accept(packet, player);
@@ -292,10 +294,14 @@ public final class InventorySync {
         }
         int mode = click.clickType().ordinal();
         int slot = click.slot();
-        if (window == inventoryWindow && mode == 4) {
-            // ViaBackwards replays a 1.8 Q drop as a throw here, one the client never predicted
-            if (window.has(slot)) window.slot(slot).forget();
-            return true;
+        if (window == inventoryWindow) {
+            // ViaBackwards replays a 1.8 Q drop with no screen open as a throw on the held slot, one the client
+            // never predicted; any other window-0 click means the inventory screen is up
+            if (mode == 4 && !screenOpen && slot == PlayerInventoryUtils.convertMinestomSlotToWindowSlot(player.getHeldSlot())) {
+                if (window.has(slot)) window.slot(slot).forget();
+                return true;
+            }
+            screenOpen = true;
         }
         LegacyClicks.Layout layout = layout(window);
         if (layout == null) return false;
@@ -363,6 +369,7 @@ public final class InventorySync {
 
     void closing(@NotNull AbstractInventory inventory) {
         synchronized (this) {
+            screenOpen = false;
             if (container != null && container.inventory == inventory) {
                 transfer(container);
                 container = null;
@@ -376,6 +383,7 @@ public final class InventorySync {
     /** Forgets everything; the next broadcast sends the whole inventory. */
     public void forget() {
         synchronized (this) {
+            screenOpen = false;
             inventoryWindow.forgetAll();
             inventoryWindow.resyncAll = true;
             container = null;
@@ -617,12 +625,14 @@ public final class InventorySync {
                 }
                 case WindowItemsPacket p -> windowSent(p);
                 case OpenWindowPacket ignored -> {
+                    screenOpen = false;
                     // its contents follow; opening over another container fires no close
                     if (container != null) transfer(container);
                     container = null;
                     yield packet;
                 }
                 case CloseWindowPacket p -> {
+                    screenOpen = false;
                     if (container != null && container.windowId == p.windowId()) {
                         transfer(container);
                         container = null;

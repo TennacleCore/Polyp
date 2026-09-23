@@ -13,6 +13,7 @@ import net.minestom.server.entity.MetadataDef;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.EventListener;
 import net.minestom.server.event.inventory.InventoryPreClickEvent;
+import net.minestom.server.event.player.PlayerPacketEvent;
 import net.minestom.server.instance.block.BlockFace;
 import net.minestom.server.inventory.InventoryType;
 import net.minestom.server.item.ItemStack;
@@ -21,6 +22,7 @@ import net.minestom.server.network.ConnectionState;
 import net.minestom.server.network.packet.client.ClientPacket;
 import net.minestom.server.network.packet.client.play.ClientClickWindowPacket;
 import net.minestom.server.network.packet.client.play.ClientClickWindowPacket.ClickType;
+import net.minestom.server.network.packet.client.play.ClientCloseWindowPacket;
 import net.minestom.server.network.packet.client.play.ClientCreativeInventoryActionPacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
@@ -33,8 +35,11 @@ import net.minestom.server.network.packet.server.play.SetSlotPacket;
 import net.minestom.server.network.packet.server.play.WindowItemsPacket;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -383,6 +388,83 @@ class InventorySyncTest extends HeadlessServerTest {
     }
 
     @Test
+    void heldClickCountsOnce() {
+        FakePlayer p = join("SyncHeldClick", LEGACY);
+        EventListener<PlayerPacketEvent> hold = holdOnce(ClientClickWindowPacket.class);
+        MinecraftServer.getGlobalEventHandler().addListener(hold);
+        try {
+            ItemStack sword = ItemStack.of(Material.DIAMOND_SWORD);
+            give(p, 0, sword);
+            ClientClickWindowPacket pickup = click(p, 0, HOTBAR_0, 0, ClickType.PICKUP,
+                    Map.of(HOTBAR_0, ItemStack.Hash.AIR), sword);
+            // held back and fed in again, as the lag simulator does
+            feed(p, pickup);
+            sync(p).broadcast();
+            assertTrue(inventoryPackets(p).isEmpty(), "nothing is corrected before the click lands");
+            feed(p, pickup);
+            assertEquals(sword, p.player.getInventory().getCursorItem());
+            sync(p).broadcast();
+            assertTrue(inventoryPackets(p).isEmpty());
+        } finally {
+            MinecraftServer.getGlobalEventHandler().removeListener(hold);
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void heldDropCountsOnce() {
+        FakePlayer p = join("SyncHeldDrop", MODERN);
+        EventListener<PlayerPacketEvent> hold = holdOnce(ClientPlayerActionPacket.class);
+        MinecraftServer.getGlobalEventHandler().addListener(hold);
+        try {
+            give(p, 0, ItemStack.of(Material.STONE, 5));
+            ClientPlayerActionPacket drop = drop();
+            feed(p, drop);
+            sync(p).broadcast();
+            feed(p, drop);
+            assertEquals(4, p.player.getInventory().getItemStack(0).amount());
+            sync(p).broadcast();
+            assertTrue(inventoryPackets(p).isEmpty(), "the predicted drop is counted once");
+        } finally {
+            MinecraftServer.getGlobalEventHandler().removeListener(hold);
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void oldScreenThrowStaysQuiet() {
+        FakePlayer p = join("SyncScreenThrow", LEGACY);
+        try {
+            give(p, 0, ItemStack.of(Material.STONE, 5));
+            // a click on an empty slot: the inventory screen is up
+            feed(p, click(p, 0, (short) 20, 0, ClickType.PICKUP, Map.of(), ItemStack.AIR));
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.THROW, Map.of(), ItemStack.AIR));
+            assertEquals(4, p.player.getInventory().getItemStack(0).amount());
+            assertTrue(inventoryPackets(p).isEmpty(), "the client threw it itself");
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void closedScreenThrowResends() {
+        FakePlayer p = join("SyncClosedThrow", LEGACY);
+        try {
+            give(p, 0, ItemStack.of(Material.STONE, 5));
+            feed(p, click(p, 0, (short) 20, 0, ClickType.PICKUP, Map.of(), ItemStack.AIR));
+            feed(p, new ClientCloseWindowPacket((byte) 0));
+            sync(p).broadcast();
+            p.sent.clear();
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.THROW, Map.of(), ItemStack.AIR));
+            List<SetSlotPacket> slots = p.sent(SetSlotPacket.class);
+            assertEquals(1, slots.size(), "a Q drop replayed as a throw");
+            assertEquals(4, slots.getFirst().itemStack().amount());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
     void middleClientClickResendsAll() {
         FakePlayer p = join("SyncNine", 107);
         try {
@@ -554,6 +636,14 @@ class InventorySyncTest extends HeadlessServerTest {
 
     private static List<EntityMetaDataPacket> ownMeta(FakePlayer p) {
         return p.sent(EntityMetaDataPacket.class).stream().filter(m -> m.entityId() == p.player.getEntityId()).toList();
+    }
+
+    /** Cancels the first pass of each {@code type} packet, so a second feed of the same one goes through. */
+    private static EventListener<PlayerPacketEvent> holdOnce(Class<? extends ClientPacket> type) {
+        Set<ClientPacket> held = Collections.newSetFromMap(new IdentityHashMap<>());
+        return EventListener.of(PlayerPacketEvent.class, e -> {
+            if (type.isInstance(e.getPacket()) && held.add(e.getPacket())) e.setCancelled(true);
+        });
     }
 
     private static void give(FakePlayer p, int slot, ItemStack item) {
