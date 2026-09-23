@@ -297,4 +297,36 @@ class CompatStateTest extends HeadlessServerTest {
             now.player.remove();
         }
     }
+
+    /**
+     * The reskin is not a bare material swap: it rides {@code item_model} (1.21.2) to keep the original's look.
+     * Below that the component is backed up by Via and the client simply renders paper, which is worse than the
+     * swing the knob exists to hide. A strip is different - see the glider and cooldown knobs, which stay at
+     * MODERN because removing a component is what SPARES an old client the backup.
+     */
+    @Test
+    void theThrowableReskinSkipsClientsThatWouldSeePaper() {
+        FakePlayer old = FakePlayer.connect(instance, new Pos(0.5, 65, 1280.5), "SkinOld");
+        FakePlayer now = FakePlayer.connect(instance, new Pos(2.5, 65, 1280.5), "SkinNow");
+        try {
+            Polyp polyp = Polyp.getInstance();
+            polyp.clientInfo().setProtocol(old.player, ClientVersion.ITEM_MODEL_PROTOCOL - 1); // 1.21.1
+            polyp.clientInfo().setProtocol(now.player, ClientVersion.ITEM_MODEL_PROTOCOL);
+
+            CompatState before = new CompatState();
+            before.apply(Compat18.config(), old.player);
+            assertFalse(before.suppressesThrowSwing(), "1.21.1 cannot read item_model");
+            assertEquals(Material.ENDER_PEARL, slotItem(before, ItemStack.of(Material.ENDER_PEARL)).material(),
+                    "so the pearl stays a pearl instead of becoming paper");
+
+            CompatState after = new CompatState();
+            after.apply(Compat18.config(), now.player);
+            assertTrue(after.suppressesThrowSwing());
+            assertEquals(Material.PAPER, slotItem(after, ItemStack.of(Material.ENDER_PEARL)).material(),
+                    "1.21.2 takes the reskin and reads the model back off item_model");
+        } finally {
+            old.player.remove();
+            now.player.remove();
+        }
+    }
 }
