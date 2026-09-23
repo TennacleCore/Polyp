@@ -1,6 +1,10 @@
 package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.mechanics.blocking.catalog.VanillaBlocking;
+import io.github.term4.polyp.Polyp;
+import io.github.term4.polyp.testsupport.FakePlayer;
+import io.github.term4.polyp.tracking.ClientVersion;
+import net.minestom.server.coordinate.Pos;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
@@ -229,5 +233,39 @@ class CompatStateTest extends HeadlessServerTest {
 
         var equipment = new EntityEquipmentPacket(7, Map.of(EquipmentSlot.MAIN_HAND, ItemStack.of(Material.DIAMOND_SWORD)));
         assertSame(equipment, s.rewriteItems(equipment), "no stamp for a 1.8 viewer");
+    }
+
+    /**
+     * From a 26.2 server through Via: a 1.9 client got the stamp, could not read it, and ViaBackwards backed the
+     * component up into custom_data. That tag made the stack unmatchable, so pick block built a new one in the
+     * next hotbar slot instead of switching to the stack already there.
+     */
+    @Test
+    void theStampSkipsClientsThatCannotReadIt() {
+        FakePlayer old = FakePlayer.connect(instance, new Pos(0.5, 65, 1200.5), "StampOld");
+        FakePlayer now = FakePlayer.connect(instance, new Pos(2.5, 65, 1200.5), "StampNow");
+        try {
+            Polyp polyp = Polyp.getInstance();
+            polyp.clientInfo().setProtocol(old.player, 773);  // 1.21.9, the last without attack_range
+            polyp.clientInfo().setProtocol(now.player, ClientVersion.ATTACK_RANGE_PROTOCOL);
+
+            CompatState before = new CompatState();
+            before.apply(Compat18.config(), old.player);
+            assertFalse(before.stampsAttackRange(), "773 cannot read attack_range");
+            assertNull(slotItem(before, ItemStack.of(Material.DIAMOND_SWORD)).get(DataComponents.ATTACK_RANGE),
+                    "so nothing rides the item down for Via to back up");
+
+            CompatState after = new CompatState();
+            after.apply(Compat18.config(), now.player);
+            assertTrue(after.stampsAttackRange(), "774 reads it natively");
+            assertNotNull(slotItem(after, ItemStack.of(Material.DIAMOND_SWORD)).get(DataComponents.ATTACK_RANGE));
+
+            // the bare-fist fill does NOT follow the stamp: the client that loses it is the one that needs it
+            assertTrue(before.fistRayHits(), "still filled without the stamp");
+            assertTrue(after.fistRayHits());
+        } finally {
+            old.player.remove();
+            now.player.remove();
+        }
     }
 }

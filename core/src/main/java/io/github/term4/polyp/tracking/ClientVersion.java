@@ -9,6 +9,8 @@ public final class ClientVersion {
     public static final int UNKNOWN_PROTOCOL = -1;
     /** 1.8.x = 47. */
     public static final int LEGACY_PROTOCOL_MAX = 47;
+    /** 1.21.11, the first client that reads {@code attack_range}. */
+    public static final int ATTACK_RANGE_PROTOCOL = 774;
 
     private ClientVersion() {}
 
