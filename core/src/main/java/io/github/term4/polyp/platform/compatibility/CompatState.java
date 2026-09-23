@@ -86,12 +86,6 @@ public final class CompatState {
     private int scopedProtocol = Integer.MIN_VALUE;
 
     /** The knobs this client can take, re-read whenever the config or the known protocol changes. */
-    /** The protocol the knobs are scoped to; {@link #apply} refreshes it, this covers a read before the first. */
-    private int protocol() {
-        if (scopedProtocol == Integer.MIN_VALUE) rescope();
-        return scopedProtocol;
-    }
-
     private void rescope() {
         int protocol = scopeProtocol();
         if (protocol == scopedProtocol) return;
@@ -242,10 +236,9 @@ public final class CompatState {
 
     /** Whether this client receives the {@code attack_range} stamp (echo counterpart: {@link #sanitizeInboundItem}). Animatium clients take the 1.8 set natively - the stamp would double it. */
     public boolean stampsAttackRange() {
-        // below 1.21.11 the client cannot read the component and Via backs it up into custom_data, which makes the
-        // stack unmatchable for pick block and stacking
+        // below 1.21.11 Via backs the component up into custom_data: junk NBT that breaks pick block
         return policy.attackHitboxMargin(ctx) != null && !legacyClient && !animatiumClient
-                && protocol() >= ClientVersion.ATTACK_RANGE_PROTOCOL;
+                && scopedProtocol >= ClientVersion.ATTACK_RANGE_PROTOCOL;
     }
 
     /** Whether this client gets the throwable reskin (echo counterpart: {@link #sanitizeInboundItem}). Excluded for Animatium: its native 1.8 animations key off the real item. */
@@ -253,9 +246,8 @@ public final class CompatState {
         return on(policy.suppressThrowSwing(ctx)) && !legacyClient && !animatiumClient;
     }
 
-    /** Whether this client's bare-fist swings get the {@code FakeHits} ray fill - the empty-hand half of the
-     *  attack-box. Not tied to the stamp: a client too old to read {@code attack_range} needs the fill for held
-     *  items too, and that is exactly the client the stamp now skips. */
+    /** Whether this client's bare-fist swings get the {@code FakeHits} ray fill - the empty-hand half of the attack box.
+     *  No version floor: an empty hand never carries {@code attack_range}, whatever the client reads. */
     public boolean fistRayHits() {
         return on(policy.fistRayHits(ctx)) && !legacyClient && !animatiumClient;
     }

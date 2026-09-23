@@ -12,8 +12,8 @@ import java.util.Map;
 /**
  * Every compat knob and the clients it applies to. Most are ANY on purpose: they emulate an era's MECHANICS on the
  * server, so a modern client on a 1.8 preset takes them like everyone else - the note says which era a knob speaks
- * for. The narrowed ones are the knobs whose effect is a client's own rendering or prediction, and each of those was
- * already gated in {@link CompatState}; the range only states the gate in one place.
+ * for. The narrowed ones are the knobs whose effect is a client's own rendering or prediction; a knob that stamps an
+ * item component starts at that component's version, since Via backs an unreadable one up as junk NBT.
  */
 public final class CompatCatalog {
 
@@ -34,10 +34,10 @@ public final class CompatCatalog {
         add("restrictSwimSpeed", ClientRange.MODERN, "dampens the 1.9+ swim sprint; 1.8 never had it");
         add("swimFactor", ClientRange.MODERN, "with restrictSwimSpeed");
         add("swimVerticalFactor", ClientRange.MODERN, "with restrictSwimSpeed");
-        add("attackHitboxMargin", ClientRange.MODERN, "the melee box margin; the server pads by it from 1.9 up, but only a 1.21.11 client can be STAMPED with it - see CompatState.stampsAttackRange");
+        add("attackHitboxMargin", ClientRange.MODERN, "the melee box margin; the server pads by it from 1.9, the attack_range stamp needs 1.21.11");
         add("fistRayHits", ClientRange.MODERN, "the empty-hand half of the stamped attack box");
-        add("suppressThrowSwing", ClientRange.from(ClientVersion.ITEM_MODEL_PROTOCOL), "the throwable reskin; it rides item_model to keep the look, and below 1.21.2 the item just renders as paper");
-        add("swordBlockingPose", ClientRange.from(ClientVersion.BLOCKS_ATTACKS_PROTOCOL), "1.8 blocks natively; this restyles the use pose by stamping blocks_attacks, which only exists from 1.21.5");
+        add("suppressThrowSwing", ClientRange.from(ClientVersion.ITEM_MODEL_PROTOCOL), "the throwable reskin; without item_model it renders as paper");
+        add("swordBlockingPose", ClientRange.from(ClientVersion.BLOCKS_ATTACKS_PROTOCOL), "1.8 blocks natively; the pose stamps blocks_attacks");
         add("disableElytraFlight", ClientRange.MODERN, "the glider strip; a 1.8 client cannot glide");
         add("blockPlaceReach", ClientRange.MODERN, "only a modern survival client can sneak-bridge past 1.8 reach");
         add("legacySelfPlace", ClientRange.LEGACY, "stairs into a legacy placer's own body, as on Paper; nothing else lands there");

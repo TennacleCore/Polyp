@@ -13,7 +13,7 @@ public final class ClientVersion {
     public static final int ATTACK_RANGE_PROTOCOL = 774;
     /** 1.21.5, the first client that reads {@code blocks_attacks}. */
     public static final int BLOCKS_ATTACKS_PROTOCOL = 770;
-    /** 1.21.2, the first client that reads {@code item_model} - what a reskin needs to look like anything else. */
+    /** 1.21.2, the first client that reads {@code item_model}. */
     public static final int ITEM_MODEL_PROTOCOL = 768;
 
     private ClientVersion() {}

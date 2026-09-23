@@ -1,15 +1,14 @@
 package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.mechanics.blocking.catalog.VanillaBlocking;
-import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.testsupport.FakePlayer;
-import io.github.term4.polyp.tracking.ClientVersion;
-import net.minestom.server.coordinate.Pos;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
+import io.github.term4.polyp.tracking.ClientVersion;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.component.DataComponents;
+import net.minestom.server.coordinate.Pos;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.item.component.AttackRange;
@@ -238,33 +237,25 @@ class CompatStateTest extends HeadlessServerTest {
         assertSame(equipment, s.rewriteItems(equipment), "no stamp for a 1.8 viewer");
     }
 
-    /**
-     * From a 26.2 server through Via: a 1.9 client got the stamp, could not read it, and ViaBackwards backed the
-     * component up into custom_data. That tag made the stack unmatchable, so pick block built a new one in the
-     * next hotbar slot instead of switching to the stack already there.
-     */
+    /** Below 1.21.11 Via backs the stamp up into custom_data, and pick block stops matching the stack. */
     @Test
-    void theStampSkipsClientsThatCannotReadIt() {
+    void attackRangeStampFloor() {
         FakePlayer old = FakePlayer.connect(instance, new Pos(0.5, 65, 1200.5), "StampOld");
         FakePlayer now = FakePlayer.connect(instance, new Pos(2.5, 65, 1200.5), "StampNow");
         try {
-            Polyp polyp = Polyp.getInstance();
-            polyp.clientInfo().setProtocol(old.player, 773);  // 1.21.9, the last without attack_range
+            polyp.clientInfo().setProtocol(old.player, ClientVersion.ATTACK_RANGE_PROTOCOL - 1);
             polyp.clientInfo().setProtocol(now.player, ClientVersion.ATTACK_RANGE_PROTOCOL);
 
             CompatState before = new CompatState();
             before.apply(Compat18.config(), old.player);
-            assertFalse(before.stampsAttackRange(), "773 cannot read attack_range");
-            assertNull(slotItem(before, ItemStack.of(Material.DIAMOND_SWORD)).get(DataComponents.ATTACK_RANGE),
-                    "so nothing rides the item down for Via to back up");
+            assertFalse(before.stampsAttackRange());
+            assertNull(slotItem(before, ItemStack.of(Material.DIAMOND_SWORD)).get(DataComponents.ATTACK_RANGE));
+            assertTrue(before.fistRayHits(), "an empty hand never carries the stamp");
 
             CompatState after = new CompatState();
             after.apply(Compat18.config(), now.player);
-            assertTrue(after.stampsAttackRange(), "774 reads it natively");
+            assertTrue(after.stampsAttackRange());
             assertNotNull(slotItem(after, ItemStack.of(Material.DIAMOND_SWORD)).get(DataComponents.ATTACK_RANGE));
-
-            // the bare-fist fill does NOT follow the stamp: the client that loses it is the one that needs it
-            assertTrue(before.fistRayHits(), "still filled without the stamp");
             assertTrue(after.fistRayHits());
         } finally {
             old.player.remove();
@@ -272,28 +263,23 @@ class CompatStateTest extends HeadlessServerTest {
         }
     }
 
-    /**
-     * Same shape as the attack_range floor: {@code blocks_attacks} is 1.21.5, so stamping it below that only gives
-     * Via something to back up. Here the knob IS the stamp - nothing reads it server-side - so the floor is the
-     * catalog range, and {@code scopedTo} does the rest.
-     */
+    /** Nothing reads the pose knob server-side, so its floor is the catalog range. */
     @Test
-    void theBlockPoseSkipsClientsThatCannotReadIt() {
+    void blockPoseFloor() {
         FakePlayer old = FakePlayer.connect(instance, new Pos(0.5, 65, 1240.5), "PoseOld");
         FakePlayer now = FakePlayer.connect(instance, new Pos(2.5, 65, 1240.5), "PoseNow");
         try {
-            Polyp polyp = Polyp.getInstance();
-            polyp.clientInfo().setProtocol(old.player, ClientVersion.BLOCKS_ATTACKS_PROTOCOL - 1); // 1.21.4
+            polyp.clientInfo().setProtocol(old.player, ClientVersion.BLOCKS_ATTACKS_PROTOCOL - 1);
             polyp.clientInfo().setProtocol(now.player, ClientVersion.BLOCKS_ATTACKS_PROTOCOL);
 
             CompatState before = new CompatState();
             before.apply(Compat18.config(), old.player);
-            assertFalse(before.swordBlockingPose(), "1.21.4 cannot read blocks_attacks");
+            assertFalse(before.swordBlockingPose());
             assertNull(slotItem(before, ItemStack.of(Material.DIAMOND_SWORD)).get(DataComponents.BLOCKS_ATTACKS));
 
             CompatState after = new CompatState();
             after.apply(Compat18.config(), now.player);
-            assertTrue(after.swordBlockingPose(), "1.21.5 reads it natively");
+            assertTrue(after.swordBlockingPose());
             assertNotNull(slotItem(after, ItemStack.of(Material.DIAMOND_SWORD)).get(DataComponents.BLOCKS_ATTACKS));
         } finally {
             old.player.remove();
@@ -301,32 +287,24 @@ class CompatStateTest extends HeadlessServerTest {
         }
     }
 
-    /**
-     * The reskin is not a bare material swap: it rides {@code item_model} (1.21.2) to keep the original's look.
-     * Below that the component is backed up by Via and the client simply renders paper, which is worse than the
-     * swing the knob exists to hide. A strip is different - see the glider and cooldown knobs, which stay at
-     * MODERN because removing a component is what SPARES an old client the backup.
-     */
+    /** Below 1.21.2 there is no item_model to carry the look, so the reskinned pearl would render as paper. */
     @Test
-    void theThrowableReskinSkipsClientsThatWouldSeePaper() {
+    void throwReskinFloor() {
         FakePlayer old = FakePlayer.connect(instance, new Pos(0.5, 65, 1280.5), "SkinOld");
         FakePlayer now = FakePlayer.connect(instance, new Pos(2.5, 65, 1280.5), "SkinNow");
         try {
-            Polyp polyp = Polyp.getInstance();
-            polyp.clientInfo().setProtocol(old.player, ClientVersion.ITEM_MODEL_PROTOCOL - 1); // 1.21.1
+            polyp.clientInfo().setProtocol(old.player, ClientVersion.ITEM_MODEL_PROTOCOL - 1);
             polyp.clientInfo().setProtocol(now.player, ClientVersion.ITEM_MODEL_PROTOCOL);
 
             CompatState before = new CompatState();
             before.apply(Compat18.config(), old.player);
-            assertFalse(before.suppressesThrowSwing(), "1.21.1 cannot read item_model");
-            assertEquals(Material.ENDER_PEARL, slotItem(before, ItemStack.of(Material.ENDER_PEARL)).material(),
-                    "so the pearl stays a pearl instead of becoming paper");
+            assertFalse(before.suppressesThrowSwing());
+            assertEquals(Material.ENDER_PEARL, slotItem(before, ItemStack.of(Material.ENDER_PEARL)).material());
 
             CompatState after = new CompatState();
             after.apply(Compat18.config(), now.player);
             assertTrue(after.suppressesThrowSwing());
-            assertEquals(Material.PAPER, slotItem(after, ItemStack.of(Material.ENDER_PEARL)).material(),
-                    "1.21.2 takes the reskin and reads the model back off item_model");
+            assertEquals(Material.PAPER, slotItem(after, ItemStack.of(Material.ENDER_PEARL)).material());
         } finally {
             old.player.remove();
             now.player.remove();
