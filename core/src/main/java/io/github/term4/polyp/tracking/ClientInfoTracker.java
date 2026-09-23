@@ -2,6 +2,7 @@ package io.github.term4.polyp.tracking;
 
 import net.minestom.server.MinecraftServer;
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PlayerConfigApplier;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
@@ -13,7 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
@@ -75,12 +76,7 @@ public final class ClientInfoTracker implements Tracker {
         ClientInfo info = infoOf(player);
         info.connectionDetails = connectionDetails;
         info.cachedProtocol = null;
-        // legacy resolved: stop the attack_range stamp (junk NBT through Via) and re-send items stamped during the
-        // unknown-protocol window
-        if (player instanceof OptimizedPlayer op && ClientVersion.isLegacy(getProtocol(player)) && !op.compat().legacyClient()) {
-            op.compat().setLegacyClient(true);
-            if (op.compat().attackHitboxMargin() != null) op.getInventory().update();
-        }
+        rescopeCompat(player);
     }
 
     /**
@@ -91,13 +87,15 @@ public final class ClientInfoTracker implements Tracker {
     public void setProtocol(Player player, int protocolVersion) {
         ClientInfo info = infoOf(player);
         info.markedProtocol = protocolVersion == ClientVersion.UNKNOWN_PROTOCOL ? null : protocolVersion;
-        if (player instanceof OptimizedPlayer op) {
-            boolean legacy = ClientVersion.isLegacy(getProtocol(player));
-            if (op.compat().legacyClient() != legacy) {
-                op.compat().setLegacyClient(legacy);
-                if (op.compat().attackHitboxMargin() != null) op.getInventory().update();
-            }
-        }
+        rescopeCompat(player);
+    }
+
+    // the item stamps each have a protocol floor, and the join inventory went out under the unknown-protocol guess
+    private void rescopeCompat(Player player) {
+        if (!(player instanceof OptimizedPlayer op)) return;
+        List<Object> view = op.compat().itemViewKey();
+        op.compat().setLegacyClient(ClientVersion.isLegacy(getProtocol(player)));
+        if (!view.equals(op.compat().itemViewKey())) PlayerConfigApplier.resendItemView(op);
     }
 
     private static ClientInfo infoOf(Player player) {

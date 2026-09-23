@@ -2,6 +2,7 @@ package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.mechanics.blocking.catalog.VanillaBlocking;
 import io.github.term4.polyp.Polyp;
+import io.github.term4.polyp.platform.player.OptimizedPlayer;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.tracking.ClientVersion;
 import net.minestom.server.coordinate.Pos;
@@ -15,8 +16,10 @@ import net.minestom.server.item.component.AttackRange;
 import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.network.packet.server.play.EntityEquipmentPacket;
 import net.minestom.server.network.packet.server.play.SetSlotPacket;
+import net.minestom.server.network.packet.server.play.WindowItemsPacket;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -327,6 +330,29 @@ class CompatStateTest extends HeadlessServerTest {
         } finally {
             old.player.remove();
             now.player.remove();
+        }
+    }
+
+    /** The join inventory goes out before the protocol is known, rendered as for the server's own version. */
+    @Test
+    void lateProtocolResends() {
+        FakePlayer fp = FakePlayer.connect(instance, new Pos(0.5, 65, 1320.5), "LateProto");
+        try {
+            OptimizedPlayer op = (OptimizedPlayer) fp.player;
+            op.compat().apply(Compat18.config(), op);
+            op.getInventory().setItemStack(0, ItemStack.of(Material.DIAMOND_SWORD));
+            assertTrue(op.compat().stampsAttackRange(), "unknown reads as modern");
+
+            fp.sent.clear();
+            polyp.clientInfo().setConnectionDetails(op, "{\"version\": 107}");
+            assertFalse(op.compat().stampsAttackRange());
+            List<WindowItemsPacket> resent = fp.sent(WindowItemsPacket.class);
+            assertFalse(resent.isEmpty(), "the stamped inventory is sent again");
+            ItemStack sword = resent.getLast().items().get(36);
+            assertEquals(Material.DIAMOND_SWORD, sword.material());
+            assertNull(sword.get(DataComponents.ATTACK_RANGE));
+        } finally {
+            fp.player.remove();
         }
     }
 }

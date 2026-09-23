@@ -65,10 +65,7 @@ public final class PlayerConfigApplier {
         state.apply(compat, player);
         // the join inventory is sent before this applies, so a changed client-view rewrite wouldn't reach the client
         // until the next packet; visible entities too - the blocking-pose stamp rides their equipment
-        if (!prevView.equals(state.itemViewKey())) {
-            op.getInventory().update();
-            resendViewedEquipment(op);
-        }
+        if (!prevView.equals(state.itemViewKey())) resendItemView(op);
         // touched only on a real change, so a non-compat server's attack speed is never clobbered
         boolean nowCooldownRemoved = state.removeAttackCooldown(); // the resolved knob, not the field's holder
         if (nowCooldownRemoved != prevCooldownRemoved) {
@@ -91,7 +88,12 @@ public final class PlayerConfigApplier {
         CompatAnimatium.applyFeatures(polyp, player);
     }
 
-    /** Re-sends every visible entity's equipment through {@code player}'s (now changed) item view. */
+    /** Re-sends {@code player}'s inventory and every visible entity's equipment through its (now changed) item view. */
+    public static void resendItemView(OptimizedPlayer player) {
+        player.getInventory().update();
+        resendViewedEquipment(player);
+    }
+
     private static void resendViewedEquipment(Player player) {
         Instance instance = player.getInstance();
         if (instance == null) return;
