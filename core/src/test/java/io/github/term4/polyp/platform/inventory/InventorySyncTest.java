@@ -2,6 +2,7 @@ package io.github.term4.polyp.platform.inventory;
 
 import io.github.term4.polyp.platform.player.CreativeInventory;
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PlayerConfig;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.kyori.adventure.text.Component;
@@ -13,6 +14,7 @@ import net.minestom.server.entity.MetadataDef;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.EventListener;
 import net.minestom.server.event.inventory.InventoryPreClickEvent;
+import net.minestom.server.event.item.ItemDropEvent;
 import net.minestom.server.event.player.PlayerPacketEvent;
 import net.minestom.server.instance.block.BlockFace;
 import net.minestom.server.inventory.InventoryType;
@@ -20,6 +22,7 @@ import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.network.ConnectionState;
 import net.minestom.server.network.packet.client.ClientPacket;
+import net.minestom.server.network.packet.client.common.ClientPongPacket;
 import net.minestom.server.network.packet.client.play.ClientClickWindowPacket;
 import net.minestom.server.network.packet.client.play.ClientClickWindowPacket.ClickType;
 import net.minestom.server.network.packet.client.play.ClientCloseWindowPacket;
@@ -28,6 +31,7 @@ import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
 import net.minestom.server.network.packet.server.SendablePacket;
 import net.minestom.server.network.packet.server.ServerPacket;
+import net.minestom.server.network.packet.server.common.PingPacket;
 import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
 import net.minestom.server.network.packet.server.play.SetCursorItemPacket;
 import net.minestom.server.network.packet.server.play.SetPlayerInventorySlotPacket;
@@ -35,6 +39,7 @@ import net.minestom.server.network.packet.server.play.SetSlotPacket;
 import net.minestom.server.network.packet.server.play.WindowItemsPacket;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -188,9 +193,10 @@ class InventorySyncTest extends HeadlessServerTest {
             ItemStack sword = ItemStack.of(Material.DIAMOND_SWORD);
             give(p, 0, sword);
             feed(p, click(p, 0, HOTBAR_0, 0, ClickType.PICKUP, Map.of(), sword));
-            assertTrue(p.sent(WindowItemsPacket.class).isEmpty(), "a correction, not a full resend");
-            assertEquals(1, p.sent(SetSlotPacket.class).size());
-            assertEquals(1, p.sent(SetCursorItemPacket.class).size());
+            // what a 1.8 server sends for a rejected click: the window, and a fence
+            assertEquals(1, p.sent(WindowItemsPacket.class).size());
+            assertTrue(p.sent(SetSlotPacket.class).isEmpty());
+            assertEquals(1, p.sent(PingPacket.class).size());
         } finally {
             MinecraftServer.getGlobalEventHandler().removeListener(refuse);
             p.player.remove();
@@ -465,6 +471,89 @@ class InventorySyncTest extends HeadlessServerTest {
     }
 
     @Test
+    void fenceDropsLaterClicks() {
+        FakePlayer p = join("SyncFence", LEGACY);
+        boolean[] refuse = {true};
+        EventListener<InventoryPreClickEvent> refuseFirst = EventListener.of(InventoryPreClickEvent.class, e -> {
+            if (refuse[0]) e.setCancelled(true);
+        });
+        MinecraftServer.getGlobalEventHandler().addListener(refuseFirst);
+        try {
+            ItemStack sword = ItemStack.of(Material.DIAMOND_SWORD);
+            give(p, 0, sword);
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.PICKUP, Map.of(), sword));
+            List<PingPacket> pings = p.sent(PingPacket.class);
+            assertEquals(1, pings.size());
+            refuse[0] = false;
+            p.sent.clear();
+            // sent before the client took the resend
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.PICKUP, Map.of(), sword));
+            assertEquals(sword, p.player.getInventory().getItemStack(0), "ignored until the client confirms");
+            assertTrue(inventoryPackets(p).isEmpty());
+            feed(p, new ClientPongPacket(pings.getFirst().id()));
+            feed(p, click(p, 0, HOTBAR_0, 0, ClickType.PICKUP, Map.of(), sword));
+            assertEquals(sword, p.player.getInventory().getCursorItem());
+            assertTrue(inventoryPackets(p).isEmpty());
+        } finally {
+            MinecraftServer.getGlobalEventHandler().removeListener(refuseFirst);
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void closedCursorDrops() {
+        FakePlayer p = join("SyncCursorDrop", LEGACY);
+        List<ItemStack> dropped = new ArrayList<>();
+        EventListener<ItemDropEvent> drops = EventListener.of(ItemDropEvent.class, e -> {
+            if (e.getPlayer() == p.player) dropped.add(e.getItemStack());
+        });
+        MinecraftServer.getGlobalEventHandler().addListener(drops);
+        try {
+            sync(p).cursorOnClose(PlayerConfig.CursorOnClose.DROP);
+            give(p, 0, ItemStack.of(Material.STONE, 10));
+            carry(p, ItemStack.of(Material.STONE, 3));
+            feed(p, new ClientCloseWindowPacket((byte) 0));
+            assertTrue(p.player.getInventory().getCursorItem().isAir());
+            assertEquals(List.of(ItemStack.of(Material.STONE, 3)), dropped);
+            assertEquals(10, p.player.getInventory().getItemStack(0).amount());
+        } finally {
+            MinecraftServer.getGlobalEventHandler().removeListener(drops);
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void closedCursorReturns() {
+        FakePlayer p = join("SyncCursorBack", MODERN);
+        try {
+            sync(p).cursorOnClose(PlayerConfig.CursorOnClose.RETURN);
+            give(p, 0, ItemStack.of(Material.DIAMOND_SWORD));
+            give(p, 5, ItemStack.of(Material.STONE, 63));
+            carry(p, ItemStack.of(Material.STONE, 3));
+            feed(p, new ClientCloseWindowPacket((byte) 0));
+            assertTrue(p.player.getInventory().getCursorItem().isAir());
+            // a stack with room first, then the first empty slot
+            assertEquals(64, p.player.getInventory().getItemStack(5).amount());
+            assertEquals(ItemStack.of(Material.STONE, 2), p.player.getInventory().getItemStack(1));
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void closedCursorStays() {
+        FakePlayer p = join("SyncCursorKeep", LEGACY);
+        try {
+            sync(p).cursorOnClose(null);
+            carry(p, ItemStack.of(Material.STONE, 3));
+            feed(p, new ClientCloseWindowPacket((byte) 0));
+            assertEquals(ItemStack.of(Material.STONE, 3), p.player.getInventory().getCursorItem());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
     void middleClientClickResendsAll() {
         FakePlayer p = join("SyncNine", 107);
         try {
@@ -644,6 +733,12 @@ class InventorySyncTest extends HeadlessServerTest {
         return EventListener.of(PlayerPacketEvent.class, e -> {
             if (type.isInstance(e.getPacket()) && held.add(e.getPacket())) e.setCancelled(true);
         });
+    }
+
+    private static void carry(FakePlayer p, ItemStack item) {
+        p.player.getInventory().setCursorItem(item);
+        sync(p).broadcast();
+        p.sent.clear();
     }
 
     private static void give(FakePlayer p, int slot, ItemStack item) {

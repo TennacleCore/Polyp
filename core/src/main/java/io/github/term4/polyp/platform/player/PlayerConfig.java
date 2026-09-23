@@ -24,10 +24,20 @@ public final class PlayerConfig {
      * do; the server's use runs on either way. Unset leaves each client as it is.
      */
     public final @Nullable FieldValue<PlayerContext, Boolean> countChangeEndsUse;
+    /** Where the cursor item goes when its window closes. Unset leaves it on the cursor, as Minestom does. */
+    public final @Nullable FieldValue<PlayerContext, CursorOnClose> cursorOnClose;
+
+    public enum CursorOnClose {
+        /** Through 1.17. */
+        DROP,
+        /** From 1.17.1: into the inventory as 26.1 places it back, dropping what does not fit. */
+        RETURN
+    }
 
     private PlayerConfig(Builder b) {
         positionBroadcastInterval = b.positionBroadcastInterval;
         countChangeEndsUse = b.countChangeEndsUse;
+        cursorOnClose = b.cursorOnClose;
     }
 
     public Builder toBuilder() { return new Builder(this); }

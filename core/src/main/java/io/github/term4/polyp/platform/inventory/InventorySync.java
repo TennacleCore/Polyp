@@ -3,6 +3,7 @@ package io.github.term4.polyp.platform.inventory;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.platform.PacketShapes;
 import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PlayerConfig;
 import io.github.term4.polyp.platform.player.PlayListeners;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.GameMode;
@@ -26,12 +27,14 @@ import net.minestom.server.listener.CreativeInventoryActionListener;
 import net.minestom.server.listener.PlayerActionListener;
 import net.minestom.server.listener.UseItemListener;
 import net.minestom.server.listener.WindowListener;
+import net.minestom.server.network.packet.client.common.ClientPongPacket;
 import net.minestom.server.network.packet.client.play.ClientClickWindowPacket;
 import net.minestom.server.network.packet.client.play.ClientCreativeInventoryActionPacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
 import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
 import net.minestom.server.network.packet.server.SendablePacket;
 import net.minestom.server.network.packet.server.ServerPacket;
+import net.minestom.server.network.packet.server.common.PingPacket;
 import net.minestom.server.network.packet.server.play.CloseWindowPacket;
 import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
 import net.minestom.server.network.packet.server.play.JoinGamePacket;
@@ -88,6 +91,10 @@ public final class InventorySync {
     private ItemStack usedStack = ItemStack.AIR;
     private boolean recounting;
     private boolean useCut;
+    private @Nullable PlayerConfig.CursorOnClose cursorOnClose;
+    /** The ping a 1.8 client has to answer before its clicks count again; 0 when none is out. */
+    private int fence;
+    private int lastFence;
 
     public InventorySync(@NotNull OptimizedPlayer player) {
         this.player = player;
@@ -116,6 +123,8 @@ public final class InventorySync {
                 return;
             }
             InventorySync sync = op.inventorySync();
+            // sent before the client took the last correction, which undoes it there too
+            if (sync.fenced()) return;
             sync.beforeClick(packet);
             // vanilla ignores a click on any window but the one the server has open; Minestom applies it anyway
             if (sync.stale(packet.windowId())) return;
@@ -124,8 +133,14 @@ public final class InventorySync {
                 if (!sync.applyLegacy(packet)) next.accept(packet, player);
             } finally {
                 sync.clicking(false);
-                sync.broadcast();
+                sync.afterClick();
             }
+        });
+        // ViaBackwards answers a ping with the pre-1.17 client's own transaction ack when
+        // handle-pings-as-inv-acknowledgements is on, else at once
+        PlayListeners.wrap(ClientPongPacket.class, WindowListener::pong, (packet, player, next) -> {
+            if (player instanceof OptimizedPlayer op) op.inventorySync().pong(packet.id());
+            next.accept(packet, player);
         });
         PlayListeners.wrap(ClientCreativeInventoryActionPacket.class, CreativeInventoryActionListener::listener,
                 (packet, player, next) -> {
@@ -158,9 +173,14 @@ public final class InventorySync {
         if (!player.isUsingItem()) handUsed(hand);
     }
 
-    /** {@link io.github.term4.polyp.platform.player.PlayerConfig#countChangeEndsUse}, resolved for this player. */
+    /** {@link PlayerConfig#countChangeEndsUse}, resolved for this player. */
     public synchronized void countChangeEndsUse(@Nullable Boolean ends) {
         this.countChangeEndsUse = ends;
+    }
+
+    /** {@link PlayerConfig#cursorOnClose}, resolved for this player. */
+    public synchronized void cursorOnClose(@Nullable PlayerConfig.CursorOnClose rule) {
+        this.cursorOnClose = rule;
     }
 
     /** The hand slot going out now only recounts the stack in use: the same stack to the server, so its use runs on. */
@@ -368,6 +388,7 @@ public final class InventorySync {
     }
 
     void closing(@NotNull AbstractInventory inventory) {
+        placeCursor();
         synchronized (this) {
             screenOpen = false;
             if (container != null && container.inventory == inventory) {
@@ -384,6 +405,7 @@ public final class InventorySync {
     public void forget() {
         synchronized (this) {
             screenOpen = false;
+            fence = 0;
             inventoryWindow.forgetAll();
             inventoryWindow.resyncAll = true;
             container = null;
@@ -449,6 +471,88 @@ public final class InventorySync {
             window.slot(windowSlot).sent(item);
             send(new SetSlotPacket(window.windowId, window.nextStateId(), (short) windowSlot, item));
         }
+    }
+
+    // ------------------------------------------------------------------ 1.8's answer to a wrong prediction
+
+    /** A 1.8 client that predicted wrong gets 1.8's rejection: the whole window, then none of its clicks until it has it. */
+    void afterClick() {
+        synchronized (this) {
+            ClientWindow window = current();
+            if (window != null && protocol() <= LEGACY_PROTOCOL && mispredicted(window)) {
+                sendAll(window);
+                lastFence = lastFence <= Short.MIN_VALUE + 1 ? -1 : lastFence - 1;
+                fence = lastFence;
+                send(new PingPacket(fence));
+                return;
+            }
+        }
+        broadcast();
+    }
+
+    /** A slot or the cursor the client was known to show, which the server now disagrees with. */
+    private boolean mispredicted(ClientWindow window) {
+        if (window.resyncAll) return true;
+        for (int slot = 0; slot < window.size(); slot++) {
+            Remote remote = window.slot(slot);
+            if (remote.sent() != null && !remote.matches(truth(window, slot), this::hashOfView)) return true;
+        }
+        return cursor.sent() != null && !cursor.matches(player.getInventory().getCursorItem(), this::hashOfView);
+    }
+
+    synchronized boolean fenced() {
+        return fence != 0;
+    }
+
+    synchronized void pong(int id) {
+        if (id == fence) fence = 0;
+    }
+
+    // ------------------------------------------------------------------ the cursor at a close
+
+    private void placeCursor() {
+        PlayerConfig.CursorOnClose rule;
+        synchronized (this) {
+            rule = cursorOnClose;
+        }
+        PlayerInventory inventory = player.getInventory();
+        ItemStack carried = inventory.getCursorItem();
+        if (rule == null || carried.isAir()) return;
+        inventory.setCursorItem(ItemStack.AIR);
+        if (rule == PlayerConfig.CursorOnClose.RETURN) carried = placeBack(carried);
+        if (!carried.isAir() && !player.dropItem(carried)) inventory.addItemStack(carried);
+    }
+
+    /** 26.1's placeItemBackInInventory; what does not fit comes back. */
+    private ItemStack placeBack(ItemStack item) {
+        PlayerInventory inventory = player.getInventory();
+        while (!item.isAir()) {
+            int slot = roomFor(inventory, item);
+            if (slot < 0) return item;
+            ItemStack there = inventory.getItemStack(slot);
+            int put = Math.min(item.amount(), item.maxStackSize() - (there.isAir() ? 0 : there.amount()));
+            inventory.setItemStack(slot, there.isAir() ? item.withAmount(put) : there.withAmount(there.amount() + put));
+            item = item.amount() == put ? ItemStack.AIR : item.withAmount(item.amount() - put);
+        }
+        return item;
+    }
+
+    /** The held slot, the offhand, any stack with room, then the first empty slot. */
+    private int roomFor(PlayerInventory inventory, ItemStack item) {
+        int held = player.getHeldSlot();
+        if (hasRoom(inventory.getItemStack(held), item)) return held;
+        if (hasRoom(inventory.getItemStack(PlayerInventoryUtils.OFFHAND_SLOT), item)) return PlayerInventoryUtils.OFFHAND_SLOT;
+        for (int slot = 0; slot < PlayerInventory.INNER_INVENTORY_SIZE; slot++) {
+            if (hasRoom(inventory.getItemStack(slot), item)) return slot;
+        }
+        for (int slot = 0; slot < PlayerInventory.INNER_INVENTORY_SIZE; slot++) {
+            if (inventory.getItemStack(slot).isAir()) return slot;
+        }
+        return -1;
+    }
+
+    private static boolean hasRoom(ItemStack there, ItemStack item) {
+        return !there.isAir() && there.isSimilar(item) && there.amount() < there.maxStackSize();
     }
 
     // ------------------------------------------------------------------ the broadcast
