@@ -137,16 +137,20 @@ public final class ConsumableSystem extends ScopedSystem<ConsumableConfig> {
             p.getInventory().update(p); // the client already predicted the consume; repaint it
             return;
         }
+        boolean creative = p.getGameMode() == GameMode.CREATIVE;
+        boolean legacy = !creative && legacyConsumeEnabled(p);
+        // 1.8 feeds itself on status 9 (ItemFood.onItemUseFinish) and its server sends it before feeding: after our
+        // food update, the client counted the food twice until the next health packet
+        if (legacy) p.sendPacket(new EntityStatusPacket(p.getEntityId(), (byte) EntityStatuses.Player.MARK_ITEM_FINISHED));
         (consume.behavior() != null ? consume.behavior() : r.resolved.behavior()).onFinish(consume.finalSnap());
         // food burps on finish (vanilla ItemFood.onFoodEaten), drinks don't; the chew sound + eating particles are
         // client-driven off the hand-active metadata
         if (item.get(DataComponents.FOOD) != null) Fx.play(services, Fx.BURP, FxContext.of(p));
-        if (p.getGameMode() != GameMode.CREATIVE) {
+        if (!creative) {
             Material remMat = r.ctx.consumable().remainder();
             ItemStack remainder = remMat != null ? ItemStack.of(remMat) : item.get(DataComponents.USE_REMAINDER);
             boolean hasRemainder = remainder != null && !remainder.isAir();
             int left = item.amount() - 1;
-            boolean legacy = legacyConsumeEnabled(p);
             if (hasRemainder && left <= 0) {
                 p.setItemInHand(hand, remainder); // a genuine item change: echoed either way
             } else {
@@ -158,12 +162,9 @@ public final class ConsumableSystem extends ScopedSystem<ConsumableConfig> {
                 if (hasRemainder) p.getInventory().addItemStack(remainder); // extra bottle alongside: not predicted
             }
             // legacy count pacing: status 9 (self) makes the client decrement + clear its use, a window_items confirm
-            // right behind it re-anchors the count. status-9-first is required so the confirm isn't cleared early.
+            // behind it re-anchors the count. status-9-first is required so the confirm isn't cleared early.
             // Full-inventory confirm on purpose - a targeted single-slot re-anchor paces noticeably worse in-game.
-            if (legacy) {
-                p.sendPacket(new EntityStatusPacket(p.getEntityId(), (byte) EntityStatuses.Player.MARK_ITEM_FINISHED));
-                p.getInventory().update(p);
-            }
+            if (legacy) p.getInventory().update(p);
         }
         if (CONSUME_APPLIED.hasListener()) EventDispatcher.call(new ConsumeAppliedEvent(consume.finalSnap(), services));
     }
