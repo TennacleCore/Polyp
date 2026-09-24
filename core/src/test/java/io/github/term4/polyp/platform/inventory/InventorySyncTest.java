@@ -17,6 +17,7 @@ import net.minestom.server.event.inventory.InventoryPreClickEvent;
 import net.minestom.server.event.item.ItemDropEvent;
 import net.minestom.server.event.player.PlayerPacketEvent;
 import net.minestom.server.instance.block.BlockFace;
+import net.minestom.server.inventory.Inventory;
 import net.minestom.server.inventory.InventoryType;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -320,6 +321,25 @@ class InventorySyncTest extends HeadlessServerTest {
             assertEquals(5, p.player.getInventory().getItemStack(1).amount(), "the hotbar item goes aside, not into the chest");
             assertTrue(chest.getItemStack(0).isAir());
             assertTrue(inventoryPackets(p).isEmpty());
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    /** A plain chest's items go out before its window is known; a resync of the player's slots used to throw on it. */
+    @Test
+    void plainChestResyncs() {
+        FakePlayer p = join("SyncPlain", LEGACY);
+        Inventory chest = new Inventory(InventoryType.CHEST_3_ROW, Component.text("Chest"));
+        chest.setItemStack(0, ItemStack.of(Material.DIAMOND));
+        try {
+            p.player.openInventory(chest);
+            p.sent.clear();
+            p.player.getInventory().update(); // what Minestom does after a refused use
+            WindowItemsPacket all = (WindowItemsPacket) inventoryPackets(p).stream()
+                    .filter(s -> s instanceof WindowItemsPacket w && w.windowId() == chest.getWindowId())
+                    .findFirst().orElseThrow();
+            assertEquals(Material.DIAMOND, all.items().getFirst().material());
         } finally {
             p.player.remove();
         }

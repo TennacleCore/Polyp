@@ -444,8 +444,9 @@ public final class InventorySync {
                     return;
                 }
                 inventoryWindow.resyncAll = true;
-                // an open container shows the player's slots too
-                window = container != null ? container : inventoryWindow;
+                // an open container shows the player's slots too; a container first seen by its items needs the open inventory
+                window = current();
+                if (window == null) return;
             } else {
                 if (container == null || container.inventory != inventory) container = ClientWindow.container(inventory);
                 window = container;
