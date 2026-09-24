@@ -17,6 +17,7 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.item.PlayerCancelItemUseEvent;
+import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import org.jetbrains.annotations.NotNull;
@@ -31,7 +32,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * knob), {@code < 0.1} fires nothing, full draw is critical
  * (chance = the arrow type's {@code critChance} knob); consumes one arrow (unless creative); the arrow launches at
  * speed {@code power * speed}.
- * TODO: offhand arrow selection; gate drawing (not just release) on ammo.
+ * TODO: offhand arrow selection.
  */
 public final class Bow implements Shootable {
 
@@ -48,7 +49,16 @@ public final class Bow implements Shootable {
 
     @Override
     public void install(@NotNull EventNode<@NotNull Event> node, @NotNull ProjectileSystem system) {
+        node.addListener(PlayerUseItemEvent.class, e -> onDraw(e, system));
         node.addListener(PlayerCancelItemUseEvent.class, e -> onRelease(e, system));
+    }
+
+    // vanilla draws only with an arrow to fire; Minestom starts any bow, and the viewers see the draw
+    private void onDraw(PlayerUseItemEvent e, ProjectileSystem system) {
+        if (e.getItemStack().material() != Material.BOW) return;
+        Player p = e.getPlayer();
+        if (!system.armed(arrowType.key(), p) || p.getGameMode() == GameMode.CREATIVE) return;
+        if (firstArrowSlot(p) < 0) e.setItemUseTime(0);
     }
 
     private void onRelease(PlayerCancelItemUseEvent e, ProjectileSystem system) {

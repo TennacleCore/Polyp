@@ -1,9 +1,12 @@
 package io.github.term4.polyp.mechanics.projectile;
 
+import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.presets.vanilla18.Vanilla18;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
+import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.EventDispatcher;
@@ -15,6 +18,7 @@ import net.minestom.server.listener.PlayerActionListener;
 import net.minestom.server.listener.UseItemListener;
 import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
 import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -22,6 +26,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The bow trusts Minestom's use-duration wholesale, so tap-tap-tap draw spam must never accumulate: every
@@ -29,6 +35,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * clears the state. Exercises the real packet listeners.
  */
 class BowDrawStateTest extends HeadlessServerTest {
+
+    @BeforeAll
+    static void install() {
+        ProjectileSystem.install(polyp);
+    }
 
     private static void use(Player p) {
         UseItemListener.useItemListener(new ClientUseItemPacket(PlayerHand.MAIN, 0,
@@ -48,6 +59,7 @@ class BowDrawStateTest extends HeadlessServerTest {
     void tapSpamNeverAccumulatesDraw() {
         Player p = FakePlayer.connect(instance, new Pos(8.5, 42, 8.5), "BowTapper").player;
         p.setItemInMainHand(ItemStack.of(Material.BOW));
+        p.getInventory().setItemStack(9, ItemStack.of(Material.ARROW, 64));
         List<Long> durations = new ArrayList<>();
         var node = net.minestom.server.MinecraftServer.getGlobalEventHandler();
         var listener = net.minestom.server.event.EventListener.of(PlayerCancelItemUseEvent.class,
@@ -77,6 +89,29 @@ class BowDrawStateTest extends HeadlessServerTest {
             assertEquals(List.of(2L), durations, "a repeated use must restart the draw clock");
         } finally {
             node.removeListener(listener);
+            p.remove();
+        }
+    }
+
+    /** Bridge's lone arrow: the click after the shot drew on the server, and every viewer saw a bow pulled back. */
+    @Test
+    void noArrowNoDraw() {
+        Player p = FakePlayer.connect(instance, new Pos(8.5, 42, 8.5), "BowEmpty").player;
+        polyp.profiles().setPlayer(p, MechanicsKeys.PROJECTILES, Vanilla18.projectiles()); // arms the bow
+        p.setItemInMainHand(ItemStack.of(Material.BOW));
+        p.getInventory().setItemStack(9, ItemStack.of(Material.ARROW));
+        try {
+            use(p);
+            ticks(p, 20);
+            release(p);
+            assertTrue(p.getInventory().getItemStack(9).isAir(), "the only arrow went");
+            use(p);
+            assertFalse(p.isUsingItem(), "nothing to draw");
+            p.setGameMode(GameMode.CREATIVE);
+            use(p);
+            assertTrue(p.isUsingItem(), "creative draws empty");
+        } finally {
+            polyp.profiles().setPlayer(p, null);
             p.remove();
         }
     }
