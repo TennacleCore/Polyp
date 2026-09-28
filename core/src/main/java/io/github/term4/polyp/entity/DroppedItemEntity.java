@@ -19,6 +19,7 @@ import net.kyori.adventure.sound.Sound;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.collision.Aerodynamics;
 import net.minestom.server.collision.PhysicsResult;
+import net.minestom.server.collision.Shape;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
@@ -306,8 +307,15 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
     }
 
     private boolean buried(MechanicsWorld world, Pos pos) {
-        return world.getBlock((int) Math.floor(pos.x()), (int) Math.floor(centerY(pos)), (int) Math.floor(pos.z()),
-                Block.Getter.Condition.TYPE).solid();
+        return fullCube(world, (int) Math.floor(pos.x()), (int) Math.floor(centerY(pos)), (int) Math.floor(pos.z()));
+    }
+
+    // 1.8 Entity.pushOutOfBlocks reads isBlockFullCube: a slab or a stair buries nothing, so a forge pad's iron stays put
+    private static boolean fullCube(MechanicsWorld world, int x, int y, int z) {
+        Block block = world.getBlock(x, y, z, Block.Getter.Condition.TYPE);
+        if (!block.solid()) return false;
+        Shape shape = block.collisionShape();
+        return shape.relativeStart().isZero() && shape.relativeEnd().samePoint(1, 1, 1);
     }
 
     private double centerY(Pos pos) {
@@ -351,6 +359,6 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
     }
 
     private static boolean free(MechanicsWorld world, int x, int y, int z) {
-        return !world.getBlock(x, y, z, Block.Getter.Condition.TYPE).solid();
+        return !fullCube(world, x, y, z);
     }
 }

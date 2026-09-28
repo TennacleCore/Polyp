@@ -40,10 +40,12 @@ public final class Explosion {
     // glass is still selected; it survives only if the straight line from the blast centre to it crosses
     // glass. The rule vetoes glass, OCCLUSION makes vetoed blocks cast that hard shadow. Obsidian (1200)
     // just stops rays as in vanilla and, being breakable, casts no shadow.
+    // a blasted block drops nothing (Bed Wars, our play)
     private static final BlockBreaking BLOCK_BREAKING =
             io.github.term4.polyp.presets.vanilla18.Explosion.blockBreaking().toBuilder()
                     .breakRule(BlockBreaking.BreakRule.neverBreaks(BLAST_PROOF_GLASS))
                     .shielding(BlockBreaking.Shielding.OCCLUSION)
+                    .interaction(BlockBreaking.Interaction.DESTROY_NO_DROPS)
                     .build();
 
     /** Vanilla18 rays + blast-proof glass. */

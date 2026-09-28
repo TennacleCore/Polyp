@@ -49,6 +49,8 @@ public final class ConsumableTypeConfig extends Config<ConsumableContext, Consum
     public final @Nullable FieldValue<ConsumableContext, ConsumableBehavior> behavior;
     /** Default {@link ParticleVisibility#SHOWN}; read by the built-in effect behaviors via {@code ctx.particles()}. */
     public final @Nullable FieldValue<ConsumableContext, ParticleVisibility> particles;
+    /** The emptied container stays (a potion's bottle); default {@code true}. Off, the item is simply spent. */
+    public final @Nullable FieldValue<ConsumableContext, Boolean> remainder;
 
     ConsumableTypeConfig(Builder b) {
         super(b.subConfig);
@@ -58,6 +60,7 @@ public final class ConsumableTypeConfig extends Config<ConsumableContext, Consum
         this.consumeTicks = b.consumeTicks;
         this.behavior = b.behavior;
         this.particles = b.particles;
+        this.remainder = b.remainder;
     }
 
     public Key key() { return key; }

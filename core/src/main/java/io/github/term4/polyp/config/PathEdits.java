@@ -163,6 +163,7 @@ public final class PathEdits {
         MEMBERS.put("attributes", new Member(MechanicsKeys.ATTRIBUTES, io.github.term4.polyp.mechanics.attribute.AttributeConfig.class));
         MEMBERS.put("hunger", new Member(MechanicsKeys.HUNGER, io.github.term4.polyp.mechanics.hunger.HungerConfig.class));
         MEMBERS.put("vri", new Member(MechanicsKeys.VRI, io.github.term4.polyp.vri.VriConfig.class));
+        MEMBERS.put("fluids", new Member(MechanicsKeys.FLUIDS, io.github.term4.polyp.mechanics.fluids.FluidsConfig.class));
         MEMBERS.put("player", new Member(MechanicsKeys.PLAYER, io.github.term4.polyp.platform.player.PlayerConfig.class));
         MEMBERS.put("item-damage", new Member(MechanicsKeys.ITEM_DAMAGE, io.github.term4.polyp.mechanics.itemdamage.ItemDamageConfig.class));
         MEMBERS.put("durability", new Member(MechanicsKeys.DURABILITY, io.github.term4.polyp.mechanics.durability.DurabilityConfig.class));

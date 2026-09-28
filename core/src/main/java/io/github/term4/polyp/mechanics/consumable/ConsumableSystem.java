@@ -149,7 +149,7 @@ public final class ConsumableSystem extends ScopedSystem<ConsumableConfig> {
         if (!creative) {
             Material remMat = r.ctx.consumable().remainder();
             ItemStack remainder = remMat != null ? ItemStack.of(remMat) : item.get(DataComponents.USE_REMAINDER);
-            boolean hasRemainder = remainder != null && !remainder.isAir();
+            boolean hasRemainder = remainder != null && !remainder.isAir() && r.resolved.remainder();
             int left = item.amount() - 1;
             if (hasRemainder && left <= 0) {
                 p.setItemInHand(hand, remainder); // a genuine item change: echoed either way

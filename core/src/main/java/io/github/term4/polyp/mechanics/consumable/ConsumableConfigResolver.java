@@ -63,8 +63,10 @@ public final class ConsumableConfigResolver {
                 // scaled HERE so the arm, the remaining countdown and the sound cadence all speak server ticks
                 TickScaler.duration(ctx.user(), FieldValue.resolve(tc.consumeTicks, ctx, Consumable.VANILLA_CONSUME_TICKS),
                         ConsumableSystem.KEY),
-                FieldValue.resolve(tc.behavior, ctx, ConsumableBehavior.NONE));
+                FieldValue.resolve(tc.behavior, ctx, ConsumableBehavior.NONE),
+                FieldValue.resolve(tc.remainder, ctx, Boolean.TRUE));
     }
 
-    public record ResolvedConsumable(boolean enabled, boolean canConsume, int consumeTicks, ConsumableBehavior behavior) {}
+    public record ResolvedConsumable(boolean enabled, boolean canConsume, int consumeTicks, ConsumableBehavior behavior,
+                                     boolean remainder) {}
 }

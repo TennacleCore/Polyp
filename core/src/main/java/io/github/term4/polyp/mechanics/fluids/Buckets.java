@@ -57,7 +57,7 @@ final class Buckets {
         Hit hit = trace(world, player, reach, empty);
         if (hit == null) return;
         if (empty) scoop(world, player, e.getHand(), hit, waterlogging);
-        else pour(world, player, e.getHand(), fluid, hit, waterlogging);
+        else pour(world, player, e.getHand(), fluid, hit, waterlogging, FieldValue.resolve(cfg.bucketKept, ctx, true));
     }
 
     private static @Nullable Block fluidOf(Material material) {
@@ -68,7 +68,8 @@ final class Buckets {
 
     // 1.8 tryPlaceContainedLiquid: only into air or a block with nothing solid to it; 26.1 fills the clicked block
     // when it can hold water
-    private void pour(MechanicsWorld world, Player player, PlayerHand hand, Block fluid, Hit hit, boolean waterlogging) {
+    private void pour(MechanicsWorld world, Player player, PlayerHand hand, Block fluid, Hit hit, boolean waterlogging,
+                      boolean kept) {
         boolean water = waterlogging && fluid.compare(Block.WATER);
         BlockVec at = water && Fluids.waterloggable(world.getBlock(hit.cell())) ? hit.cell() : hit.cell().relative(hit.face());
         Block there = world.getBlock(at);
@@ -86,7 +87,7 @@ final class Buckets {
         system.set(world, at, landing);
         system.placed(world, at);
         Fx.play(system.services(), Fx.BUCKET_EMPTY, FxContext.at(world, at.add(0.5, 0.5, 0.5), player));
-        if (player.getGameMode() != GameMode.CREATIVE) hold(player, hand, ItemStack.of(Material.BUCKET));
+        if (player.getGameMode() != GameMode.CREATIVE) hold(player, hand, kept ? ItemStack.of(Material.BUCKET) : ItemStack.AIR);
     }
 
     private void scoop(MechanicsWorld world, Player player, PlayerHand hand, Hit hit, boolean waterlogging) {

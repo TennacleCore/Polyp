@@ -237,6 +237,20 @@ class FluidsTest extends HeadlessServerTest {
     }
 
     @Test
+    void aSpentBucketCanGoWithTheWater() {
+        MechanicsWorld w = worldOf(Fluids.config().toBuilder().bucketKept(false).build());
+        FakePlayer fp = FakePlayer.connect(instanceOf(w), new Pos(0.5, Y, 0.5, 0, 90), "Spender");
+        try {
+            fp.player.setItemInMainHand(ItemStack.of(Material.WATER_BUCKET));
+            EventDispatcher.call(new PlayerUseItemEvent(fp.player, PlayerHand.MAIN, fp.player.getItemInMainHand(), 0));
+            assertTrue(instanceOf(w).getBlock(0, Y, 0).compare(Block.WATER), "poured at the feet");
+            assertTrue(fp.player.getItemInMainHand().isAir(), "nothing left in the hand");
+        } finally {
+            fp.player.remove();
+        }
+    }
+
+    @Test
     void aBucketPoursAndScoops() {
         FakePlayer fp = FakePlayer.connect(instance, new Pos(140.5, Y, Z + 0.5, 0, 90), "Pourer");
         try {
