@@ -66,6 +66,8 @@ public final class MobKindConfig extends Config<MobContext, MobKindConfig> {
     public final @Nullable FieldValue<MobContext, Double> wingPush;
     public final @Nullable FieldValue<MobContext, Double> wingLift;
     public final @Nullable FieldValue<MobContext, Float> biteDamage;
+    /** One bite a victim a charge (Hypixel); off, every tick the head meets them, under the hurt window (vanilla). */
+    public final @Nullable FieldValue<MobContext, Boolean> biteOncePerCharge;
     public final @Nullable FieldValue<MobContext, Double> roamRadius;
     public final @Nullable FieldValue<MobContext, Double> roamMinY;
     public final @Nullable FieldValue<MobContext, Double> roamHeight;
@@ -109,6 +111,7 @@ public final class MobKindConfig extends Config<MobContext, MobKindConfig> {
         this.wingPush = b.wingPush;
         this.wingLift = b.wingLift;
         this.biteDamage = b.biteDamage;
+        this.biteOncePerCharge = b.biteOncePerCharge;
         this.roamRadius = b.roamRadius;
         this.roamMinY = b.roamMinY;
         this.roamHeight = b.roamHeight;

@@ -13,6 +13,7 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
+import net.minestom.server.potion.PotionEffect;
 import net.minestom.server.tag.Tag;
 import net.minestom.server.timer.Task;
 import net.minestom.server.timer.TaskSchedule;
@@ -51,7 +52,10 @@ public final class SpectatorMode {
         node.addListener(PlayerGameModeChangeEvent.class, e -> {
             Player player = e.getPlayer();
             boolean spectator = e.getNewGameMode() == GameMode.SPECTATOR;
-            if (spectator != (player.getGameMode() == GameMode.SPECTATOR)) player.setInvisible(spectator);
+            // the way back keeps an invisibility the effect still grants (a dead seat's wait, a drunk potion)
+            if (spectator != (player.getGameMode() == GameMode.SPECTATOR)) {
+                player.setInvisible(spectator || player.hasEffect(PotionEffect.INVISIBILITY));
+            }
             MinecraftServer.getSchedulerManager().scheduleNextTick(() -> {
                 if (player.isOnline()) WorldPolicy.refreshSight(player);
             });

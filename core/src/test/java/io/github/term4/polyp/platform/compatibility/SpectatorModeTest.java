@@ -7,6 +7,8 @@ import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.network.packet.server.play.CameraPacket;
+import net.minestom.server.potion.Potion;
+import net.minestom.server.potion.PotionEffect;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -16,6 +18,25 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SpectatorModeTest extends HeadlessServerTest {
+
+    /** A ghost with the invisibility effect on (a dead seat's wait) rides spectator mode and comes back still unseen. */
+    @Test
+    void anEffectOutlivesTheSpectatorBody() {
+        FakePlayer w = FakePlayer.connect(instance, new Pos(0.5, 64, 0.5), "ModeUnseen");
+        try {
+            w.player.setGameMode(GameMode.SURVIVAL);
+            w.player.addEffect(new Potion(PotionEffect.INVISIBILITY, 0, 32767, Potion.ICON_FLAG));
+            w.player.setInvisible(true); // what the effect's behavior sets in a full boot
+            assertTrue(SpectatorMode.enter(w.player, SpectatorMode.Mode.GHOST));
+            assertTrue(w.player.isInvisible(), "the ghost body keeps the effect's flag");
+            assertTrue(SpectatorMode.enter(w.player, SpectatorMode.Mode.TRUE));
+            assertTrue(w.player.isInvisible());
+            assertTrue(SpectatorMode.enter(w.player, SpectatorMode.Mode.GHOST));
+            assertTrue(w.player.isInvisible(), "back from spectator mode, the effect still hides the body");
+        } finally {
+            w.player.remove();
+        }
+    }
 
     @Test
     void legacyWearsBothBodies() {

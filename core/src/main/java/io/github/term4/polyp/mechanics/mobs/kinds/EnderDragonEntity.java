@@ -36,6 +36,8 @@ import net.minestom.server.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -52,6 +54,7 @@ public final class EnderDragonEntity extends MobEntity {
     private final DragonPart[] parts;
     private final double[][] ring = new double[64][3];
     private int ringIndex = -1;
+    private final Set<LivingEntity> bitten = new HashSet<>(); // this charge's, under biteOncePerCharge
     private double targetX, targetY = 100.0, targetZ;
     private @Nullable Entity flightTarget;
     private boolean forceNewTarget;
@@ -233,6 +236,7 @@ public final class EnderDragonEntity extends MobEntity {
 
     private void newTarget() {
         forceNewTarget = false;
+        bitten.clear();
         List<Player> players = new ArrayList<>();
         Predicate<LivingEntity> selector = knob(kind().targetSelector, ANY);
         for (Player p : world().players()) {
@@ -346,7 +350,9 @@ public final class EnderDragonEntity extends MobEntity {
         Services s = services();
         DamageSystem damage = s.damage();
         if (damage == null) return;
+        boolean once = knob(kind().biteOncePerCharge, false);
         for (LivingEntity e : victims(head.grown(1.0, 1.0, 0.0))) {
+            if (once && !bitten.add(e)) continue;
             DamageSnapshot snap = MobDamage.INSTANCE.snapshot(this, e, amount, false, s);
             DamageOutcome outcome = damage.apply(snap);
             KnockbackSystem kb = s.knockback();
