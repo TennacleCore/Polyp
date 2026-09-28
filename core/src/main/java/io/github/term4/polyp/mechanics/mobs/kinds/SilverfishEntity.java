@@ -59,7 +59,7 @@ public final class SilverfishEntity extends MobEntity {
         goalSelector().add(4, new MeleeAttackGoal(this, 1.0, false));
         goalSelector().add(5, new HideInStoneGoal());
         targetGoals().add(1, new HurtByTargetGoal(this, true));
-        targetGoals().add(2, new NearestAttackableTargetGoal(this, targetSight(), targetNearbyOnly()));
+        targetGoals().add(2, new NearestAttackableTargetGoal(this));
     }
 
     @Override

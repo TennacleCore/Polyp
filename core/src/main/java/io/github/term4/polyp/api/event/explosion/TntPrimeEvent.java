@@ -33,7 +33,7 @@ public final class TntPrimeEvent implements CancellableEvent {
 
     public PrimedTnt tnt() { return tnt; }
     public MechanicsWorld world() { return world; }
-    /** The TNT block being converted, or {@code null} for a blockless prime. */
+    /** The TNT block being converted, or the cell a placement would have filled; {@code null} for a free spawn. */
     public @Nullable Point blockPos() { return blockPos; }
     public @Nullable Entity igniter() { return igniter; }
     public Cause cause() { return cause; }

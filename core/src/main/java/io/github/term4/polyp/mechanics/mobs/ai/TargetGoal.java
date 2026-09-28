@@ -4,6 +4,7 @@ import io.github.term4.polyp.mechanics.mobs.MobEntity;
 import io.github.term4.polyp.mechanics.mobs.path.Path;
 import io.github.term4.polyp.mechanics.mobs.path.PathPoint;
 import net.minestom.server.entity.GameMode;
+import java.util.function.BooleanSupplier;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.attribute.Attribute;
@@ -13,13 +14,18 @@ import org.jetbrains.annotations.Nullable;
 public abstract class TargetGoal extends Goal {
 
     protected final MobEntity owner;
-    protected final boolean checkSight;
-    private final boolean nearbyOnly;
+    private final BooleanSupplier checkSight;
+    private final BooleanSupplier nearbyOnly;
     private int searchStatus;
     private int searchDelay;
     private int unseenTicks;
 
     protected TargetGoal(MobEntity owner, boolean checkSight, boolean nearbyOnly) {
+        this(owner, () -> checkSight, () -> nearbyOnly);
+    }
+
+    /** Read at each check, so a kind set after the goals were built (the mode's overlay) still counts. */
+    protected TargetGoal(MobEntity owner, BooleanSupplier checkSight, BooleanSupplier nearbyOnly) {
         this.owner = owner;
         this.checkSight = checkSight;
         this.nearbyOnly = nearbyOnly;
@@ -32,7 +38,7 @@ public abstract class TargetGoal extends Goal {
         if (owner.sides().same(owner, target)) return false;
         double range = targetDistance();
         if (owner.getPosition().distanceSquared(target.getPosition()) > range * range) return false;
-        if (checkSight) {
+        if (checkSight.getAsBoolean()) {
             if (owner.senses().canSee(target)) unseenTicks = 0;
             else if (++unseenTicks > 60) return false;
         }
@@ -69,9 +75,9 @@ public abstract class TargetGoal extends Goal {
     }
 
     protected boolean suitable(@Nullable LivingEntity target, boolean includeInvincibles) {
-        if (!suitable(owner, target, includeInvincibles, checkSight)) return false;
+        if (!suitable(owner, target, includeInvincibles, checkSight.getAsBoolean())) return false;
         if (!owner.withinHome(MobEntity.cell(target.getPosition()))) return false;
-        if (nearbyOnly) {
+        if (nearbyOnly.getAsBoolean()) {
             if (--searchDelay <= 0) searchStatus = 0;
             if (searchStatus == 0) searchStatus = easilyReached(target) ? 1 : 2;
             return searchStatus != 2;

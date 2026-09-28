@@ -17,6 +17,12 @@ public final class NearestAttackableTargetGoal extends TargetGoal {
         mutexBits(1);
     }
 
+    /** On the kind's {@code targetSight} and {@code targetNearbyOnly}, read as they stand. */
+    public NearestAttackableTargetGoal(MobEntity owner) {
+        super(owner, owner::targetSight, owner::targetNearbyOnly);
+        mutexBits(1);
+    }
+
     private boolean selectable(LivingEntity candidate) {
         if (!owner.targetSelector().test(candidate)) return false;
         if (candidate instanceof Player p) {

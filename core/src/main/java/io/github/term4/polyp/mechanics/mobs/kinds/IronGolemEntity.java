@@ -47,7 +47,7 @@ public final class IronGolemEntity extends MobEntity {
         goalSelector().add(7, new WatchClosestGoal(this, e -> e instanceof Player, 6.0f));
         goalSelector().add(8, new LookIdleGoal(this));
         targetGoals().add(2, new HurtByTargetGoal(this, false));
-        targetGoals().add(3, new NearestAttackableTargetGoal(this, targetSight(), targetNearbyOnly()));
+        targetGoals().add(3, new NearestAttackableTargetGoal(this));
     }
 
     public boolean playerCreated() {

@@ -216,7 +216,9 @@ public final class PrimedTnt extends MechanicsEntity {
         double kickX = floats ? (double) (-(float) Math.sin(angle) * 0.02f) : -Math.sin(angle) * 0.02;
         double kickZ = floats ? (double) (-(float) Math.cos(angle) * 0.02f) : -Math.cos(angle) * 0.02;
         tnt.setVelocity(new Vec(kickX, VelocityConfig.widen(0.2), kickZ).mul(TPS));
-        TntPrimeEvent event = new TntPrimeEvent(tnt, world, clearPos, igniter, cause);
+        // a placement has a cell too, the one its block never fills; a free spawn has none
+        Point cell = clearPos != null ? clearPos : cause == TntPrimeEvent.Cause.PLACEMENT ? tntBlock : null;
+        TntPrimeEvent event = new TntPrimeEvent(tnt, world, cell, igniter, cause);
         EventDispatcher.call(event);
         if (event.isCancelled()) return null;
         if (clearPos != null) {
