@@ -187,8 +187,10 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
     private boolean sprintEcho(EntityAttributesPacket packet) {
         for (EntityAttributesPacket.Property property : packet.properties()) {
             EntityAttributesPacket.Property known = attributesKnown.get(property.attribute().key());
-            // never sent: the client holds the default, which is also what a lazily created instance first sends
-            double knownValue = known != null ? known.value() : property.attribute().defaultValue();
+            // never sent: the client holds this type's default (a player's speed is 0.1, the registry's 0.7), which is
+            // also what a lazily created instance first sends
+            double knownValue = known != null ? known.value()
+                    : getEntityType().defaultAttributes().getOrDefault(property.attribute(), property.attribute().defaultValue());
             List<AttributeModifier> knownModifiers = known != null ? known.modifiers() : List.of();
             if (knownValue != property.value() || !butSprint(knownModifiers).equals(butSprint(property.modifiers()))) return false;
         }

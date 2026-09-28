@@ -28,9 +28,11 @@ class SelfAttributeEchoTest extends HeadlessServerTest {
         try {
             OptimizedPlayer op = (OptimizedPlayer) p.player;
             p.sent.clear();
+            // a fresh player's speed instance is born in the toggle: its first packet carries the player default
             op.suppressSelf(() -> op.setSprinting(true));
             op.suppressSelf(() -> op.setSprinting(false));
-            assertTrue(p.sent(EntityAttributesPacket.class).isEmpty(), "the client applied its own sprint boost");
+            assertTrue(p.sent(EntityAttributesPacket.class).isEmpty(),
+                    "the client applied its own sprint boost: " + p.sent(EntityAttributesPacket.class));
         } finally {
             p.player.remove();
         }

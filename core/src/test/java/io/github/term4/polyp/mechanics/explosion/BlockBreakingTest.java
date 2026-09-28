@@ -389,11 +389,11 @@ class BlockBreakingTest extends HeadlessServerTest {
             assertNotNull(b, preset.name() + " inherits vanilla18's block breaking");
             assertEquals(BlockBreaking.Model.RAY_1_8, b.model(), preset.name() + " keeps the 1.8 ray for a sourceless blast");
         }
-        // both keep the raw 1.8 table (mmc18's scaling lives in the charge, not the resistance); only mmc18 drops nothing
+        // both keep the raw 1.8 table (mmc18's scaling lives in the charge, not the resistance) and neither drops
         BlockBreaking hy = FieldValue.resolve(io.github.term4.polyp.presets.hypixel.Explosion.config().blockBreaking, ctx);
         BlockBreaking polyp = FieldValue.resolve(io.github.term4.polyp.presets.mmc18.Explosion.config().blockBreaking, ctx);
         assertEquals(0.5, hy.resistance(Block.PISTON, ctx), 1e-9);
-        assertEquals(BlockBreaking.Interaction.DESTROY_WITH_DECAY, hy.interaction());
+        assertEquals(BlockBreaking.Interaction.DESTROY_NO_DROPS, hy.interaction());
         assertEquals(0.5, polyp.resistance(Block.PISTON, ctx), 1e-9);
         assertEquals(BlockBreaking.Interaction.DESTROY_NO_DROPS, polyp.interaction());
         // fireScope must survive builder(base) WITHOUT being re-set - the copy-ctor omission guard (bit twice before)

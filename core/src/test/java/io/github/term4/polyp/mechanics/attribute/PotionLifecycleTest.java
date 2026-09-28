@@ -77,18 +77,34 @@ class PotionLifecycleTest extends HeadlessServerTest {
     }
 
     @Test
-    void deathClearsEffectsAndTheirModifiers() {
-        // Minestom's kill() leaves effects intact; the death path clears them (DeathConfig.clearEffects, default on)
-        LivingEntity e = zombie(new Pos(0, 64, 66));
-        double base = e.getAttributeValue(Attribute.MOVEMENT_SPEED);
+    void aPlayersDeathClearsEffects() {
+        // Minestom's kill() leaves effects intact; the death path clears a player's (DeathConfig.clearEffects, default on)
+        FakePlayer p = FakePlayer.connect(instance, new Pos(0, 64, 66), "PotionDeath");
+        try {
+            LivingEntity e = p.player;
+            double base = e.getAttributeValue(Attribute.MOVEMENT_SPEED);
+            PotionEffect speed = PotionEffect.fromKey(Speed.KEY);
+            assertNotNull(speed, "speed effect");
+            e.addEffect(new Potion(speed, 0, 600));
+            assertEquals(base * 1.2, e.getAttributeValue(Attribute.MOVEMENT_SPEED), 1e-9);
+
+            e.kill();
+            assertTrue(e.getActiveEffects().isEmpty(), "death clears active effects");
+            assertEquals(base, e.getAttributeValue(Attribute.MOVEMENT_SPEED), 1e-9);
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void aMobsDeathKeepsEffects() {
+        // the corpse keeps its swirl for the death animation (captured)
+        LivingEntity e = zombie(new Pos(0, 64, 67));
         PotionEffect speed = PotionEffect.fromKey(Speed.KEY);
         assertNotNull(speed, "speed effect");
         e.addEffect(new Potion(speed, 0, 600));
-        assertEquals(base * 1.2, e.getAttributeValue(Attribute.MOVEMENT_SPEED), 1e-9);
-
         e.kill();
-        assertTrue(e.getActiveEffects().isEmpty(), "death clears active effects");
-        assertEquals(base, e.getAttributeValue(Attribute.MOVEMENT_SPEED), 1e-9);
+        assertFalse(e.getActiveEffects().isEmpty(), "a mob's death keeps its effects");
     }
 
     /**
