@@ -670,6 +670,23 @@ class InventorySyncTest extends HeadlessServerTest {
     }
 
     @Test
+    void aLegacyCreativeClearIsEchoed() {
+        FakePlayer p = join("SyncCClear", LEGACY);
+        try {
+            p.player.setGameMode(GameMode.CREATIVE);
+            p.player.getInventory().setItemStack(0, ItemStack.of(Material.STONE, 64));
+            sync(p).broadcast();
+            p.sent.clear();
+            feed(p, new ClientCreativeInventoryActionPacket(HOTBAR_0, ItemStack.AIR));
+            assertTrue(p.player.getInventory().getItemStack(0).isAir());
+            assertTrue(p.sent(SetSlotPacket.class).stream().anyMatch(s -> s.slot() == HOTBAR_0 && s.itemStack().isAir()),
+                    "a 1.8 client clears nothing itself: the slot is echoed, as vanilla's next tick does");
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
     void forgettingResendsAll() {
         FakePlayer p = join("SyncForget", MODERN);
         try {

@@ -370,6 +370,9 @@ public final class InventorySync {
 
     void creative(short windowSlot, @NotNull ItemStack shown) {
         if (windowSlot < 1 || windowSlot >= PlayerInventory.INVENTORY_SIZE) return; // 0 is the result, -1 a drop
+        // before 1.17 the client keeps showing what it was last sent (a shift-click on the destroy slot clears
+        // nothing locally) and vanilla's next tick echoes the change; from 1.17 the client set the slot itself
+        if (protocol() < REPORTS_CLICKS_PROTOCOL) return;
         synchronized (this) {
             ItemStack.Hash hash = ItemStack.Hash.of(shown, MinecraftServer.process());
             inventoryWindow.slot(windowSlot).reported(hash);

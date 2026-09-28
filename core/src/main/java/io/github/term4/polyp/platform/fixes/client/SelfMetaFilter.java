@@ -35,7 +35,7 @@ public final class SelfMetaFilter {
         return this;
     }
 
-    /** Suppresses {@code EntityAttributesPacket} echoes (the movement-speed update on sprint start/stop). */
+    /** Suppresses the sprint toggle's {@code EntityAttributesPacket} echo; any other attribute change goes through. */
     public SelfMetaFilter suppressAttributes(boolean suppress) {
         this.suppressAttributes = suppress;
         return this;

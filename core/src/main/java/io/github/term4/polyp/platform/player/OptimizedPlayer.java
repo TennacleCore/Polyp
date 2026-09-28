@@ -38,6 +38,12 @@ import net.minestom.server.network.packet.server.SendablePacket;
 import net.minestom.server.network.packet.server.play.EntityEquipmentPacket;
 import net.minestom.server.network.packet.server.play.EntityAttributesPacket;
 import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
+import net.kyori.adventure.key.Key;
+import net.minestom.server.entity.attribute.AttributeModifier;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minestom.server.network.packet.server.play.UpdateHealthPacket;
 import net.minestom.server.network.player.GameProfile;
 import net.minestom.server.network.player.PlayerConnection;
@@ -64,6 +70,9 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
 
     private @Nullable SelfMetaFilter selfMetaFilter = SelfMetaFilter.defaultPlayerFilter();
     private boolean processingClientInput = false;
+    private static final Key SPRINTING = Key.key("sprinting"); // LivingEntity's, private there
+    /** What this client holds per attribute, keyed by the attribute's key. */
+    private final Map<Key, EntityAttributesPacket.Property> attributesKnown = new ConcurrentHashMap<>();
     private int positionBroadcastInterval = 1;
     private boolean selfPlacing = false;
     private final CompatState compat = new CompatState();
@@ -147,12 +156,39 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
             }
             if (packet instanceof EntityAttributesPacket attr
                     && attr.entityId() == getEntityId()
-                    && selfMetaFilter.suppressAttributes()) {
+                    && selfMetaFilter.suppressAttributes()
+                    && sprintEcho(attr)) {
+                remember(attr);
                 sendPacketToViewers(packet);
                 return;
             }
         }
         super.sendPacketToViewersAndSelf(packet);
+    }
+
+    // a change to nothing but the sprint modifier: the client applied that one itself. Anything else (a potion's
+    // speed push under a use-item packet) is the server's to send, or the client never slows down
+    private boolean sprintEcho(EntityAttributesPacket packet) {
+        for (EntityAttributesPacket.Property property : packet.properties()) {
+            EntityAttributesPacket.Property known = attributesKnown.get(property.attribute().key());
+            // never sent: the client holds the default, which is also what a lazily created instance first sends
+            double knownValue = known != null ? known.value() : property.attribute().defaultValue();
+            List<AttributeModifier> knownModifiers = known != null ? known.modifiers() : List.of();
+            if (knownValue != property.value() || !butSprint(knownModifiers).equals(butSprint(property.modifiers()))) return false;
+        }
+        return true;
+    }
+
+    private static Set<AttributeModifier> butSprint(List<AttributeModifier> modifiers) {
+        Set<AttributeModifier> out = new HashSet<>(modifiers);
+        out.removeIf(modifier -> modifier.id().equals(SPRINTING));
+        return out;
+    }
+
+    private void remember(EntityAttributesPacket packet) {
+        for (EntityAttributesPacket.Property property : packet.properties()) {
+            attributesKnown.put(property.attribute().key(), property);
+        }
     }
 
     public @NotNull InventorySync inventorySync() { return inventorySync; }
@@ -162,6 +198,7 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         // a silent hit swallows its own health echo here rather than from PlayerPacketOutEvent: one listener on
         // that event costs the server an extract, an allocation and a dispatch for EVERY outgoing packet
         if (HurtSuppression.swallows(this, packet)) return;
+        if (packet instanceof EntityAttributesPacket attr && attr.entityId() == getEntityId()) remember(attr);
         // holds the client's food gate shut against ANY server re-send (eat, regen, exhaustion) while the fix is engaged
         if (compat.activeSwimFix() == CompatConfig.SwimSuppression.FOOD
                 && packet instanceof UpdateHealthPacket uh && uh.food() > 6) {
