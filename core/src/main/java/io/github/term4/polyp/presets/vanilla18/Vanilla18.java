@@ -47,6 +47,7 @@ public final class Vanilla18 {
                 .set(MechanicsKeys.ITEMS, Items.registry())
                 .set(MechanicsKeys.VRI, VriConfig.all(BlockDrops.VANILLA_18))
                 .set(MechanicsKeys.FX, Fx.vanilla18())
+                .set(MechanicsKeys.MOBS, Mobs.config())
                 .build();
     }
 

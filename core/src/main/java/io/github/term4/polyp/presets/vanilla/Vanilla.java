@@ -33,6 +33,7 @@ public final class Vanilla {
                 .set(MechanicsKeys.ITEMS, Items.registry())
                 .set(MechanicsKeys.VRI, VriConfig.all())
                 .set(MechanicsKeys.FX, Fx.modern())
+                .set(MechanicsKeys.MOBS, Mobs.config())
                 .build();
     }
 }

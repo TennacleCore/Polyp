@@ -45,7 +45,12 @@ public interface FxEffect {
 
     /** A world event (block break particles, etc.) the client renders from {@code data} at the anchor. */
     static @NotNull FxEffect worldEvent(int id, int data) {
-        return (ctx, to, at, seed) -> to.sendPacket(new WorldEventPacket(id, at, data, false));
+        return worldEvent(id, data, false);
+    }
+
+    /** {@code global}: at full volume wherever the listener stands (1.8 playBroadcastSound). */
+    static @NotNull FxEffect worldEvent(int id, int data, boolean global) {
+        return (ctx, to, at, seed) -> to.sendPacket(new WorldEventPacket(id, at, data, global));
     }
 
     /** An animation on the context's source entity. */

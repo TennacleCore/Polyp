@@ -12,6 +12,7 @@ import io.github.term4.polyp.mechanics.damage.types.burning.LavaDamage;
 import io.github.term4.polyp.mechanics.damage.types.cactus.CactusDamage;
 import io.github.term4.polyp.mechanics.damage.types.fall.FallDamageConfig;
 import io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamageConfig;
+import io.github.term4.polyp.mechanics.damage.types.mob.MobDamage;
 import io.github.term4.polyp.mechanics.damage.types.starvation.StarvationDamage;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.potion.PotionEffect;
@@ -36,7 +37,8 @@ public final class Damage {
                         drownDamage(),
                         suffocationDamage(),
                         starvationDamage(),
-                        playerAttackDamage()
+                        playerAttackDamage(),
+                        mobAttackDamage()
                 )
                 .build();
     }
@@ -110,6 +112,11 @@ public final class Damage {
     /** Produced by the hunger food tick; STARVE ignores armor and charges no exhaustion. */
     private static DamageTypeConfig starvationDamage() {
         return DamageTypeConfig.builder(StarvationDamage.KEY).baseAmount(1.0).bypassArmor(true).build();
+    }
+
+    // the mob delivers its own knockback (1.8 attackEntityAsMob), so no hurt velocity on top
+    private static DamageTypeConfig mobAttackDamage() {
+        return DamageTypeConfig.builder(MobDamage.KEY).ownsVelocityBroadcast(true).build();
     }
 
     private static MeleeDamageConfig playerAttackDamage() {

@@ -15,6 +15,8 @@ import net.minestom.server.instance.block.BlockSoundType;
 import net.minestom.server.worldevent.WorldEvent;
 import net.minestom.server.network.packet.server.play.EntityAnimationPacket;
 import net.minestom.server.particle.Particle;
+import net.minestom.server.network.packet.server.play.ParticlePacket;
+import io.github.term4.polyp.mechanics.mobs.MobSound;
 import net.minestom.server.sound.SoundEvent;
 import org.jetbrains.annotations.NotNull;
 
@@ -92,6 +94,18 @@ public final class Fx {
     /** A container's lid going up or down; the block rides {@code detail}. */
     public static final Key CONTAINER_OPEN = Key.key("polyp:container_open");
     public static final Key CONTAINER_CLOSE = Key.key("polyp:container_close");
+    /** A mob's own sounds; a rolled {@link MobSound} rides {@code detail}. */
+    public static final Key MOB_AMBIENT = Key.key("polyp:mob_ambient");
+    public static final Key MOB_HURT = Key.key("polyp:mob_hurt");
+    public static final Key MOB_DEATH = Key.key("polyp:mob_death");
+    public static final Key MOB_STEP = Key.key("polyp:mob_step");
+    public static final Key MOB_ATTACK = Key.key("polyp:mob_attack");
+    /** The golem's footfall dust; the block under it rides {@code detail}. */
+    public static final Key MOB_WALK_DUST = Key.key("polyp:mob_walk_dust");
+    public static final Key DRAGON_BREAK = Key.key("polyp:dragon_break");
+    /** The roar the whole world hears on the first death tick. */
+    public static final Key DRAGON_DEATH = Key.key("polyp:dragon_death");
+    public static final Key DRAGON_DEATH_BURST = Key.key("polyp:dragon_death_burst");
 
     /**
      * Plays the fx registered for {@code key} in {@code ctx.source()}'s scope, firing the cancellable
@@ -164,7 +178,35 @@ public final class Fx {
                 .register(BLOCK_BREAK, breakEffect())
                 .register(BLOCK_BREAK_REFUSED, breakEffect())
                 .register(CONTAINER_OPEN, containerSound(true))
-                .register(CONTAINER_CLOSE, containerSound(false));
+                .register(CONTAINER_CLOSE, containerSound(false))
+                .register(MOB_AMBIENT, mobSound())
+                .register(MOB_HURT, mobSound())
+                .register(MOB_DEATH, mobSound())
+                .register(MOB_STEP, mobSound())
+                .register(MOB_ATTACK, mobSound())
+                .register(MOB_WALK_DUST, walkDust())
+                .register(DRAGON_BREAK, FxHandler.particle(Particle.EXPLOSION, 1, 0, 0f))
+                .register(DRAGON_DEATH, ctx -> ctx.emit(Recipients.WATCHERS, FxEffect.worldEvent(WorldEvent.SOUND_DRAGON_DEATH.id(), 0, true)))
+                .register(DRAGON_DEATH_BURST, FxHandler.particle(Particle.EXPLOSION_EMITTER, 1, 0, 0f));
+    }
+
+    private static @NotNull FxHandler mobSound() {
+        return ctx -> {
+            MobSound s = ctx.detail(MobSound.class);
+            if (s != null) ctx.entitySound(s.sound(), Sound.Source.HOSTILE, s.volume(), s.pitch());
+        };
+    }
+
+    // 1.8 spawnParticle(BLOCK_CRACK, ...): one particle thrown sideways at up to 2 b/t, 0.5 up
+    private static @NotNull FxHandler walkDust() {
+        return ctx -> {
+            Block block = ctx.detail(Block.class);
+            if (block == null) return;
+            var random = ThreadLocalRandom.current();
+            float vx = (float) (4.0 * (random.nextFloat() - 0.5)), vz = (float) ((random.nextFloat() - 0.5) * 4.0);
+            ctx.emit(Recipients.WATCHERS, (c, to, at, seed) -> to.sendPacket(new ParticlePacket(
+                    Particle.BLOCK.withBlock(block), at.x(), at.y(), at.z(), vx, 0.5f, vz, 1f, 0)));
+        };
     }
 
     // 1.8 TileEntityChest.update: random.chestopen / chestclosed 0.5F, pitch rand*0.1+0.9, to everyone near; a

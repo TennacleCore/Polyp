@@ -13,6 +13,7 @@ import io.github.term4.polyp.mechanics.damage.types.explosion.ExplosionDamage;
 import io.github.term4.polyp.mechanics.damage.types.fall.FallDamage;
 import io.github.term4.polyp.mechanics.damage.types.generic.GenericDamage;
 import io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage;
+import io.github.term4.polyp.mechanics.damage.types.mob.MobDamage;
 import io.github.term4.polyp.mechanics.damage.types.projectile.ProjectileDamage;
 import net.kyori.adventure.key.Key;
 import org.jetbrains.annotations.Nullable;
@@ -105,6 +106,7 @@ public final class DamageTypeRegistry {
         register(GenericDamage.INSTANCE);
         register(ProjectileDamage.INSTANCE);
         register(FallDamage.INSTANCE);
+        register(MobDamage.INSTANCE);
         register(InFireDamage.INSTANCE);
         register(BurningDamage.INSTANCE);
         register(LavaDamage.INSTANCE);
