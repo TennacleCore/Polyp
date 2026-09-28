@@ -2,6 +2,7 @@ package io.github.term4.polyp.mechanics.containers;
 
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
+import io.github.term4.polyp.api.event.container.ContainerInsertEvent;
 import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
 import io.github.term4.polyp.presets.vanilla18.Containers;
 import io.github.term4.polyp.testsupport.FakePlayer;
@@ -17,12 +18,16 @@ import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.EventNode;
+import net.minestom.server.event.inventory.InventoryPreClickEvent;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerBlockInteractEvent;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.block.BlockFace;
+import net.minestom.server.inventory.AbstractInventory;
 import net.minestom.server.inventory.Inventory;
+import net.minestom.server.inventory.PlayerInventory;
+import net.minestom.server.inventory.click.Click;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.network.packet.server.play.BlockActionPacket;
@@ -311,8 +316,8 @@ class ContainerSystemTest extends HeadlessServerTest {
     }
     @Test
     void anOpeningCanBeRefused() {
-        BlockVec pos = new BlockVec(20, Y, Z);
-        FakePlayer p = FakePlayer.connect(instance, new Pos(20.5, Y, Z + 2.5), "ChestRefused");
+        BlockVec pos = new BlockVec(44, Y, Z);
+        FakePlayer p = FakePlayer.connect(instance, new Pos(44.5, Y, Z + 2.5), "ChestRefused");
         var refuse = net.minestom.server.event.EventListener.of(io.github.term4.polyp.api.event.container.ContainerOpenEvent.class,
                 e -> { if (e.getPlayer() == p.player) e.setCancelled(true); });
         MinecraftServer.getGlobalEventHandler().addListener(refuse);
@@ -322,14 +327,50 @@ class ContainerSystemTest extends HeadlessServerTest {
             assertNull(p.player.getOpenInventory(), "nothing opens");
         } finally {
             MinecraftServer.getGlobalEventHandler().removeListener(refuse);
+            instance.setBlock(pos, Block.AIR);
             p.player.remove();
         }
     }
 
     @Test
+    void anItemCanBeRefused() {
+        BlockVec pos = new BlockVec(70, Y, Z);
+        FakePlayer p = FakePlayer.connect(instance, new Pos(70.5, Y, Z + 2.5), "ChestGuard");
+        var refuse = net.minestom.server.event.EventListener.of(ContainerInsertEvent.class, e -> {
+            if (e.getPlayer() == p.player && e.item().material() == Material.SHEARS) e.setCancelled(true);
+        });
+        MinecraftServer.getGlobalEventHandler().addListener(refuse);
+        try {
+            instance.setBlock(pos, Block.CHEST.withProperty("facing", "north"));
+            click(p, pos);
+            PlayerInventory inv = p.player.getInventory();
+            inv.setItemStack(0, ItemStack.of(Material.SHEARS));
+            inv.setItemStack(1, ItemStack.of(Material.STICK));
+            assertTrue(preClick(inv, p, new Click.LeftShift(0)).isCancelled(), "shifted in from the player's half");
+            assertFalse(preClick(inv, p, new Click.LeftShift(1)).isCancelled());
+            assertTrue(preClick(window(p), p, new Click.HotbarSwap(0, 5)).isCancelled(), "a number key over a chest slot");
+            inv.setCursorItem(ItemStack.of(Material.SHEARS));
+            assertTrue(preClick(window(p), p, new Click.Left(3)).isCancelled(), "put down off the cursor");
+            assertFalse(preClick(inv, p, new Click.Left(9)).isCancelled(), "the player's own half is theirs");
+        } finally {
+            p.player.getInventory().setCursorItem(ItemStack.AIR);
+            p.player.closeInventory();
+            MinecraftServer.getGlobalEventHandler().removeListener(refuse);
+            instance.setBlock(pos, Block.AIR);
+            p.player.remove();
+        }
+    }
+
+    private static InventoryPreClickEvent preClick(AbstractInventory inventory, FakePlayer p, Click click) {
+        InventoryPreClickEvent e = new InventoryPreClickEvent(inventory, p.player, click);
+        EventDispatcher.call(e);
+        return e;
+    }
+
+    @Test
     void setAndInsertReachAnOpenWindow() {
-        BlockVec pos = new BlockVec(24, Y, Z);
-        FakePlayer p = FakePlayer.connect(instance, new Pos(24.5, Y, Z + 2.5), "ChestFiller");
+        BlockVec pos = new BlockVec(54, Y, Z);
+        FakePlayer p = FakePlayer.connect(instance, new Pos(54.5, Y, Z + 2.5), "ChestFiller");
         try {
             instance.setBlock(pos, Block.CHEST.withProperty("facing", "north"));
             assertEquals(key(pos), containers.keyAt(world, pos, p.player));
@@ -344,6 +385,9 @@ class ContainerSystemTest extends HeadlessServerTest {
             assertEquals(Material.GOLD_INGOT, window(p).getItemStack(2).material(), "live in the open window");
             assertEquals(3, containers.contents(world, key(pos))[2].amount());
         } finally {
+            p.player.closeInventory();
+            containers.restore(world, key(pos), new ItemStack[0]);
+            instance.setBlock(pos, Block.AIR);
             p.player.remove();
         }
     }

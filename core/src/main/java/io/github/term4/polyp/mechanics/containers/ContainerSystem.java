@@ -4,6 +4,7 @@ import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.ScopedSystem;
 import io.github.term4.polyp.api.event.container.ContainerChangeEvent;
+import io.github.term4.polyp.api.event.container.ContainerInsertEvent;
 import io.github.term4.polyp.api.event.container.ContainerOpenEvent;
 import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
 import io.github.term4.polyp.fx.Fx;
@@ -24,6 +25,7 @@ import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.inventory.InventoryCloseEvent;
 import net.minestom.server.event.inventory.InventoryItemChangeEvent;
+import net.minestom.server.event.inventory.InventoryPreClickEvent;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerBlockInteractEvent;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
@@ -31,6 +33,8 @@ import net.minestom.server.instance.block.Block;
 import net.minestom.server.inventory.AbstractInventory;
 import net.minestom.server.inventory.Inventory;
 import net.minestom.server.inventory.InventoryType;
+import net.minestom.server.inventory.PlayerInventory;
+import net.minestom.server.inventory.click.Click;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.network.packet.server.play.BlockActionPacket;
 import net.minestom.server.utils.Direction;
@@ -67,6 +71,7 @@ public final class ContainerSystem extends ScopedSystem<ContainersConfig> {
         node = EventNode.all("polyp:containers");
         node.addListener(PlayerBlockInteractEvent.class, this::onInteract);
         node.addListener(InventoryItemChangeEvent.class, this::onChange);
+        node.addListener(InventoryPreClickEvent.class, this::onClick);
         node.addListener(InventoryCloseEvent.class, this::onClose);
         node.addListener(PlayerBlockBreakEvent.class, e -> MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
             if (!e.isCancelled()) broken(MechanicsWorld.viewed(e.getPlayer()), e.getBlockPosition(), e.getBlock(), e.getPlayer());
@@ -274,6 +279,43 @@ public final class ContainerSystem extends ScopedSystem<ContainersConfig> {
         int slot = e.getSlot() % half;
         ContainerStore.of(window.world()).put(key, slot, half, e.getNewItem());
         EventDispatcher.call(new ContainerChangeEvent(window.world(), key, slot, e.getPreviousItem(), e.getNewItem()));
+    }
+
+    private record Incoming(ItemStack item, int slot) {}
+
+    private void onClick(InventoryPreClickEvent e) {
+        Player p = e.getPlayer();
+        AbstractInventory opened = p.getOpenInventory();
+        ContainerStore.Window window = opened != null ? open.get(opened) : null;
+        if (window == null) return;
+        Incoming in = incoming(e.getClick(), e.getInventory() == window.inventory(), p);
+        if (in == null || in.item().isAir()) return;
+        String key = window.keys().get(Math.min(in.slot() / window.half(), window.keys().size() - 1));
+        ContainerInsertEvent insert = new ContainerInsertEvent(window.world(), key, in.item(), p);
+        EventDispatcher.call(insert);
+        if (insert.isCancelled()) e.setCancelled(true);
+    }
+
+    // Minestom sections a click into one inventory: a shift from the player's half lands in the container's
+    private static @Nullable Incoming incoming(Click click, boolean inWindow, Player p) {
+        PlayerInventory inv = p.getInventory();
+        ItemStack cursor = inv.getCursorItem();
+        if (!inWindow) {
+            return switch (click) {
+                case Click.LeftShift(int slot) -> new Incoming(inv.getItemStack(slot), 0);
+                case Click.RightShift(int slot) -> new Incoming(inv.getItemStack(slot), 0);
+                default -> null;
+            };
+        }
+        return switch (click) {
+            case Click.Left(int slot) -> new Incoming(cursor, slot);
+            case Click.Right(int slot) -> new Incoming(cursor, slot);
+            // the window's own slots number first
+            case Click.Drag drag -> new Incoming(cursor, drag.slots().isEmpty() ? 0 : java.util.Collections.min(drag.slots()));
+            case Click.HotbarSwap(int hotbar, int slot) -> new Incoming(inv.getItemStack(hotbar), slot);
+            case Click.OffhandSwap(int slot) -> new Incoming(p.getItemInOffHand(), slot);
+            default -> null;
+        };
     }
 
     private void onClose(InventoryCloseEvent e) {
