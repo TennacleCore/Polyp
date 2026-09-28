@@ -58,6 +58,9 @@ final class Spread {
         }
     }
 
+    // an unloaded chunk reads as bedrock: nothing enters it, nothing in it counts, the slope search stops there
+    private static final Block EDGE = Block.BEDROCK;
+
     private final FluidSystem system;
     private final Random random = new Random();
 
@@ -67,6 +70,10 @@ final class Spread {
 
     static BlockVec step(BlockVec pos, Direction d) {
         return pos.add(d.normalX(), d.normalY(), d.normalZ());
+    }
+
+    private static Block at(MechanicsWorld world, BlockVec pos) {
+        return world.isChunkLoaded(pos) ? world.getBlock(pos) : EDGE;
     }
 
     static int level(Block block) {
@@ -92,7 +99,7 @@ final class Spread {
             int sources = 0;
             Passage passage = r.passage();
             for (Direction d : Direction.HORIZONTAL) {
-                Block side = world.getBlock(step(pos, d));
+                Block side = at(world, step(pos, d));
                 if (!passage.through(r.ctx, block, d, side)) continue;
                 int n = r.level(side);
                 if (n < 0) continue;
@@ -102,11 +109,11 @@ final class Spread {
             }
             int next = lowest + drop;
             if (next >= 8 || lowest < 0) next = -1;
-            Block aboveBlock = world.getBlock(pos.add(0, 1, 0));
+            Block aboveBlock = at(world, pos.add(0, 1, 0));
             int above = passage.through(r.ctx, block, Direction.UP, aboveBlock) ? r.level(aboveBlock) : -1;
             if (above >= 0) next = above >= 8 ? above : above + 8;
             if (sources >= r.sourceNeighbors() && r.infiniteSource()) {
-                Block below = world.getBlock(pos.add(0, -1, 0));
+                Block below = at(world, pos.add(0, -1, 0));
                 if (below.solid() || r.level(below) == 0) next = 0;
             }
             if (r.hesitates() && level < 8 && next < 8 && next > level && random.nextInt(4) != 0) rate *= 4;
@@ -122,7 +129,7 @@ final class Spread {
         }
         if (level < 0) return;
         BlockVec under = pos.add(0, -1, 0);
-        Block underBlock = world.getBlock(under);
+        Block underBlock = at(world, under);
         Mixing mixing = r.mixing();
         boolean fallsOnto = mixing != null && r.reacts(mixing, underBlock) && mixing.underFlow() != null
                 && r.flows().allowed(r.ctx, Direction.DOWN, under);
@@ -146,14 +153,14 @@ final class Spread {
         if (spread >= 8) return;
         for (Direction d : directions(world, pos, r, block)) {
             BlockVec to = step(pos, d);
-            flowInto(world, pos, r, block, d, to, world.getBlock(to), spread, rate);
+            flowInto(world, pos, r, block, d, to, at(world, to), spread, rate);
         }
     }
 
     // FlowingFluid.sourceNeighborCount
     private int sources(MechanicsWorld world, BlockVec pos, Rules r) {
         int n = 0;
-        for (Direction d : Direction.HORIZONTAL) if (r.level(world.getBlock(step(pos, d))) == 0) ++n;
+        for (Direction d : Direction.HORIZONTAL) if (r.level(at(world, step(pos, d))) == 0) ++n;
         return n;
     }
 
@@ -171,7 +178,7 @@ final class Spread {
         if (mixing == null) return null;
         for (Direction d : Direction.values()) {
             if (d == Direction.DOWN) continue;
-            if (r.reacts(mixing, world.getBlock(step(pos, d)))) return mixing.beside(r.level(block));
+            if (r.reacts(mixing, at(world, step(pos, d)))) return mixing.beside(r.level(block));
         }
         return null;
     }
@@ -226,10 +233,10 @@ final class Spread {
         Passage passage = r.passage();
         for (Direction d : Direction.HORIZONTAL) {
             BlockVec to = step(pos, d);
-            Block toBlock = world.getBlock(to);
+            Block toBlock = at(world, to);
             if (!flows.allowed(r.ctx, d, to)) continue;
             if (!enterable(r, toBlock) || !passage.through(r.ctx, at, d, toBlock)) continue;
-            int cost = hole(r, toBlock, world.getBlock(to.add(0, -1, 0))) ? 0 : cost(world, to, toBlock, 1, d.opposite(), r, reach);
+            int cost = hole(r, toBlock, at(world, to.add(0, -1, 0))) ? 0 : cost(world, to, toBlock, 1, d.opposite(), r, reach);
             if (cost < best) out.clear();
             if (cost <= best) {
                 out.add(d);
@@ -251,9 +258,9 @@ final class Spread {
         for (Direction d : Direction.HORIZONTAL) {
             if (d == from) continue;
             BlockVec to = step(pos, d);
-            Block toBlock = world.getBlock(to);
+            Block toBlock = at(world, to);
             if (!enterable(r, toBlock) || !passage.through(r.ctx, at, d, toBlock)) continue;
-            if (hole(r, toBlock, world.getBlock(to.add(0, -1, 0)))) return distance;
+            if (hole(r, toBlock, at(world, to.add(0, -1, 0)))) return distance;
             if (distance < reach) {
                 int further = cost(world, to, toBlock, distance + 1, d.opposite(), r, reach);
                 if (further < best) best = further;
