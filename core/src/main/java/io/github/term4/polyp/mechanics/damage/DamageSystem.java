@@ -150,7 +150,8 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
             DeathContext ctx = new DeathContext(dead);
             DeathConfig death = effectiveDeath(polyp.profiles().resolve(dead, MechanicsKeys.DEATH), ctx);
             if (dead instanceof Player p) DeathDrops.spill(p, death, ctx);
-            if (deathFlag(death != null ? death.clearEffects(ctx) : null)) dead.clearEffects();
+            // a player's (EntityPlayerMP.onDeath); a mob's corpse keeps its swirl for its animation (captured)
+            if (dead instanceof Player && deathFlag(death != null ? death.clearEffects(ctx) : null)) dead.clearEffects();
             if (deathFlag(death != null ? death.resetMechanicsState(ctx) : null)) resetMechanicsState(dead);
             // Minestom keeps the health-0 entity in the world (1.8/Via replays the death smoke on chunk reload); hide it
             // only AFTER the animation plays, and guard so a fast respawn doesn't hide the live player
