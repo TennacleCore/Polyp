@@ -584,6 +584,20 @@ class InventorySyncTest extends HeadlessServerTest {
     }
 
     @Test
+    void closedTokenVanishes() {
+        FakePlayer p = join("SyncCursorToken", MODERN);
+        try {
+            sync(p).cursorOnClose(PlayerConfig.CursorOnClose.RETURN);
+            carry(p, ItemStack.of(Material.BOW).withTag(InventorySync.CURSOR_TOKEN, true));
+            feed(p, new ClientCloseWindowPacket((byte) 0));
+            assertTrue(p.player.getInventory().getCursorItem().isAir());
+            for (int i = 0; i < 36; i++) assertTrue(p.player.getInventory().getItemStack(i).isAir(), "never put back");
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    @Test
     void closedCursorStays() {
         FakePlayer p = join("SyncCursorKeep", LEGACY);
         try {

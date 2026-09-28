@@ -46,6 +46,7 @@ import net.minestom.server.network.packet.server.play.SetSlotPacket;
 import net.minestom.server.network.packet.server.play.StartConfigurationPacket;
 import net.minestom.server.network.packet.server.play.WindowItemsPacket;
 import net.minestom.server.utils.inventory.PlayerInventoryUtils;
+import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -60,6 +61,9 @@ import java.util.Map;
  * out and becomes what the client shows.
  */
 public final class InventorySync {
+
+    /** On a screen's stand-in held on the cursor (a category being placed): at a close it is gone, never dropped or put back. */
+    public static final Tag<Boolean> CURSOR_TOKEN = Tag.Boolean("polyp:cursor-token").defaultValue(false);
 
     /** 1.8: clicks are followed with its own click logic ({@link LegacyClicks}). */
     private static final int LEGACY_PROTOCOL = 47;
@@ -534,6 +538,10 @@ public final class InventorySync {
         }
         PlayerInventory inventory = player.getInventory();
         ItemStack carried = inventory.getCursorItem();
+        if (carried.getTag(CURSOR_TOKEN)) {
+            inventory.setCursorItem(ItemStack.AIR);
+            return;
+        }
         if (rule == null || carried.isAir()) return;
         inventory.setCursorItem(ItemStack.AIR);
         if (rule == PlayerConfig.CursorOnClose.RETURN) carried = PlaceBack.into(player, carried);
