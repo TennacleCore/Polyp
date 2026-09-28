@@ -231,8 +231,8 @@ public final class Projectiles {
                 .knockback(Knockback.arrow()).build();
         return ProjectileConfig.builder(base)
                 // no per-type floor: the minemen broadcast vy floor rides the profile's VELOCITY member
-                .typeConfigs(fireball, splash, bobber, snowball, egg, pearl, arrow,
-                        ProjectileTypeConfig.builder(fireball).key(FIREBALL).build())
+                .typeConfigs(fireball, splash, bobber, snowball, egg, pearl, arrow)
+                .variant(FIREBALL, fireball)
                 .shootables(new PseudoHook.Installer())
                 .useItemAimSync(true) // MineMen launches on the CLICK-time aim (in-game: flick-throws never desync)
                 .build();

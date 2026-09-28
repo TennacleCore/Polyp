@@ -83,7 +83,8 @@ public final class Projectiles {
                 .teleportDamage(0.0) // BedWars pearls deal none; SkyWars keep vanilla 5 - per-mode configs differ in knobs
                 .build();
         return ProjectileConfig.builder(base)
-                .typeConfigs(bwFireball, bwPearl, ProjectileTypeConfig.builder(bwFireball).key(FIREBALL).build())
+                .typeConfigs(bwFireball, bwPearl)
+                .variant(FIREBALL, bwFireball)
                 .build();
     }
 }

@@ -33,7 +33,7 @@ class ItemKindTest extends HeadlessServerTest {
     @Test
     void aStampedThrowResolvesItsVariant() {
         ProjectileConfig cfg = ProjectileConfig.builder(Projectiles.config())
-                .typeConfigs(ProjectileTypeConfig.builder(Key.key("test:lobbed")).gravity(0.25).build())
+                .variant(Key.key("test:lobbed"), ProjectileTypeConfig.builder(Fireball.KEY).gravity(0.25).build())
                 .build();
         ItemStack lobbed = ItemKind.stamp(ItemStack.of(Material.FIRE_CHARGE), Key.key("test:lobbed"));
         ProjectileSnapshot snap = ProjectileSnapshot.of(null, Fireball.INSTANCE).withConfig(cfg);

@@ -68,9 +68,8 @@ public final class ProjectileConfigResolver {
                     cfg != null ? cfg.defaults() : null,
                     cfg != null ? cfg.typeConfig(snap.type().key()) : null,
                     this);
-            // a stamped item's kind over the type's entry: the config it registers under that key is the variant
             Key kind = cfg != null ? ItemKind.of(snap.item()) : null;
-            ProjectileTypeConfig variant = kind != null ? cfg.typeConfig(kind) : null;
+            ProjectileTypeConfig variant = kind != null ? cfg.variant(kind) : null;
             return variant != null ? variant.fromBase(layered).withOverlay(this) : layered;
         }
     }

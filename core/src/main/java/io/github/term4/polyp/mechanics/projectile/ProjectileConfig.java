@@ -24,6 +24,8 @@ public final class ProjectileConfig extends Config<ProjectileContext, Projectile
     public final @Nullable ProjectileTypeConfig defaults;
     /** Per-type config overrides, keyed by {@link ProjectileTypeConfig#key()}. */
     public final Map<Key, ProjectileTypeConfig> typeConfigs;
+    /** A stamped item's own knobs over its type's, keyed by the kind ({@code ItemKind}); no type is armed by these. */
+    public final Map<Key, ProjectileTypeConfig> variants;
     /** Item launchers (e.g. {@code Bow}) this config installs. Read once at install, from the global profile. */
     public final List<Shootable> shootables;
     /** Sync a LEGACY client's use-item aim to the click: the 1.8 use packet carries no rotation, so Via fills the
@@ -35,6 +37,7 @@ public final class ProjectileConfig extends Config<ProjectileContext, Projectile
         super(b.subConfig);
         this.defaults = b.defaults;
         this.typeConfigs = Map.copyOf(b.typeConfigs);
+        this.variants = Map.copyOf(b.variants);
         this.shootables = List.copyOf(b.shootables);
         this.useItemAimSync = b.useItemAimSync;
     }
@@ -44,6 +47,8 @@ public final class ProjectileConfig extends Config<ProjectileContext, Projectile
 
     /** Per-type config for {@code key}, or {@code null} if none registered. */
     public @Nullable ProjectileTypeConfig typeConfig(Key key) { return typeConfigs.get(key); }
+    /** The variant for a stamped kind, or {@code null} if none registered. */
+    public @Nullable ProjectileTypeConfig variant(Key kind) { return variants.get(kind); }
 
     public List<Shootable> shootables() { return shootables; }
 
@@ -51,6 +56,8 @@ public final class ProjectileConfig extends Config<ProjectileContext, Projectile
     public ProjectileConfig fromBase(ProjectileConfig base) {
         Map<Key, ProjectileTypeConfig> merged = new LinkedHashMap<>(base.typeConfigs);
         merged.putAll(typeConfigs);
+        Map<Key, ProjectileTypeConfig> mergedVariants = new LinkedHashMap<>(base.variants);
+        mergedVariants.putAll(variants);
         List<Shootable> mergedShootables = new ArrayList<>(base.shootables);
         mergedShootables.addAll(shootables);
         ProjectileTypeConfig mergedDefaults = defaults == null ? base.defaults
@@ -59,6 +66,7 @@ public final class ProjectileConfig extends Config<ProjectileContext, Projectile
                 .subConfig(subConfig != null ? subConfig : base.subConfig)
                 .defaults(mergedDefaults)
                 .typeConfigs(merged)
+                .variants(mergedVariants)
                 .shootables(mergedShootables);
         b.useItemAimSync = useItemAimSync != null ? useItemAimSync : base.useItemAimSync;
         return b.build();
@@ -72,11 +80,12 @@ public final class ProjectileConfig extends Config<ProjectileContext, Projectile
         private Function<ProjectileContext, ProjectileConfig> subConfig;
         private @Nullable ProjectileTypeConfig defaults;
         private final Map<Key, ProjectileTypeConfig> typeConfigs = new LinkedHashMap<>();
+        private final Map<Key, ProjectileTypeConfig> variants = new LinkedHashMap<>();
         private final List<Shootable> shootables = new ArrayList<>();
         private @Nullable Boolean useItemAimSync;
 
         Builder() {}
-        Builder(ProjectileConfig c) { subConfig = c.subConfig; defaults = c.defaults; typeConfigs.putAll(c.typeConfigs); shootables.addAll(c.shootables); useItemAimSync = c.useItemAimSync; }
+        Builder(ProjectileConfig c) { subConfig = c.subConfig; defaults = c.defaults; typeConfigs.putAll(c.typeConfigs); variants.putAll(c.variants); shootables.addAll(c.shootables); useItemAimSync = c.useItemAimSync; }
 
         public Builder subConfig(Function<ProjectileContext, ProjectileConfig> fn) { subConfig = fn; return this; }
         /** Sets the generic base config every type inherits (its knobs apply unless a per-type entry overrides them). */
@@ -89,6 +98,9 @@ public final class ProjectileConfig extends Config<ProjectileContext, Projectile
         }
 
         Builder typeConfigs(Map<Key, ProjectileTypeConfig> cfgs) { typeConfigs.putAll(cfgs); return this; }
+        /** The knobs a stack stamped {@code kind} throws with, over its type's. */
+        public Builder variant(Key kind, ProjectileTypeConfig cfg) { variants.put(kind, cfg); return this; }
+        Builder variants(Map<Key, ProjectileTypeConfig> cfgs) { variants.putAll(cfgs); return this; }
 
         /** Adds item launchers (the item-&gt;projectile bindings, e.g. {@code new Bow()}) this config installs. */
         public Builder shootables(Shootable... s) { for (Shootable sh : s) shootables.add(sh); return this; }
