@@ -46,6 +46,11 @@ public final class VriConfig {
 
     public static Builder builder() { return new Builder(); }
 
+    /** {@link #all()} with {@code drops} in place of the loot tables' modern reading. */
+    public static VriConfig all(BlockDrops.DropRule drops) {
+        return all().toBuilder().blockDrops(drops).build();
+    }
+
     /** Everything on: {@link BlockDrops#VANILLA} drops, item physics from the profile. */
     public static VriConfig all() {
         return builder().blockBreakProgress(true)

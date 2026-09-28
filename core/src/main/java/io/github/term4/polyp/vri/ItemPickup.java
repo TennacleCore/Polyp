@@ -1,6 +1,7 @@
 package io.github.term4.polyp.vri;
 
 import io.github.term4.polyp.Polyp;
+import io.github.term4.polyp.api.event.item.ItemPickupEvent;
 import io.github.term4.polyp.vri.VriConfig;
 import io.github.term4.polyp.fx.FxContext;
 import io.github.term4.polyp.fx.Fx;
@@ -8,6 +9,7 @@ import io.github.term4.polyp.world.WorldPolicy;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.Event;
+import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.item.PickupItemEvent;
 import org.jetbrains.annotations.NotNull;
@@ -33,7 +35,9 @@ public final class ItemPickup {
                 e.setCancelled(true);
                 return;
             }
-            if (!player.getInventory().addItemStack(e.getItemStack())) {
+            ItemPickupEvent taking = new ItemPickupEvent(player, e.getItemEntity());
+            EventDispatcher.call(taking);
+            if (taking.isCancelled() || !player.getInventory().addItemStack(taking.stack())) {
                 e.setCancelled(true);
                 return;
             }

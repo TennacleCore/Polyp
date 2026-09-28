@@ -7,6 +7,8 @@ import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Player;
+import net.minestom.server.instance.block.Block;
+import net.minestom.server.instance.block.BlockSoundType;
 import net.minestom.server.network.packet.server.play.EntityAnimationPacket;
 import net.minestom.server.network.packet.server.play.ParticlePacket;
 import net.minestom.server.network.packet.server.play.SoundEffectPacket;
@@ -60,6 +62,16 @@ public interface FxEffect {
         };
     }
 
+    /** The context's block detail placed: its own place sound as vanilla {@code BlockItem.place} plays it. */
+    static @NotNull FxEffect placeSound() {
+        return (ctx, to, at, seed) -> {
+            Block block = ctx.detail(Block.class);
+            BlockSoundType st = block != null ? block.blockSoundType() : null;
+            if (st == null || st.placeSound() == null) return;
+            sound(st.placeSound(), Sound.Source.BLOCK, (st.volume() + 1.0f) / 2.0f, st.pitch() * 0.8f).send(ctx, to, at, seed);
+        };
+    }
+
     /**
      * The data vocabulary: EFFECTS here and AUDIENCES in {@link Recipients}, composed by {@code to(audience,
      * effect)} - a new audience works with every effect and vice versa, so the two never multiply out. A bare
@@ -72,6 +84,7 @@ public interface FxEffect {
                 soundOf(args.arity(4), 0), args.enumOf(1, Sound.Source.class), args.flt(2), args.flt(3)));
         FieldFns.register(FxEffect.class, "particle(id, count, spread, speed)", "a particle burst", args -> particle(
                 particleOf(args.arity(4), 0), args.integer(1), args.dbl(2), args.flt(3)));
+        FieldFns.register(FxEffect.class, "place-sound", "the placed block's own place sound", args -> placeSound());
         FieldFns.register(FxEffect.class, "animation(name)", "an animation on the source entity",
                 args -> animation(args.arity(1).enumOf(0, EntityAnimationPacket.Animation.class)));
         FieldFns.register(FxEffect.class, "target-animation(name)", "an animation on the target entity",

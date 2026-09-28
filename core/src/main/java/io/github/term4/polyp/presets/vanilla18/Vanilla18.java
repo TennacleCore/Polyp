@@ -5,6 +5,7 @@ import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.api.event.attack.AttackEvent;
 import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.entity.DroppedItemEntity;
+import io.github.term4.polyp.vri.BlockDrops;
 import io.github.term4.polyp.vri.VriConfig;
 import io.github.term4.polyp.mechanics.attack.AttackConfig;
 import io.github.term4.polyp.mechanics.damage.DamageConfig;
@@ -44,7 +45,7 @@ public final class Vanilla18 {
                 .set(MechanicsKeys.TNT, Tnt.config())
                 .set(MechanicsKeys.HUNGER, Hunger.config())
                 .set(MechanicsKeys.ITEMS, Items.registry())
-                .set(MechanicsKeys.VRI, VriConfig.all())
+                .set(MechanicsKeys.VRI, VriConfig.all(BlockDrops.VANILLA_18))
                 .set(MechanicsKeys.FX, Fx.vanilla18())
                 .build();
     }

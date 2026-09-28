@@ -27,13 +27,17 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Block drops - Minestom drops nothing on break. First-match {@link DropRule} chain over a {@link DropContext}:
- * {@code chain(REQUIRE_CORRECT_TOOL, myOres, IDENTITY)}. Vanilla spawn: blockPos + rand*0.5+0.25 per axis,
+ * {@code chain(REQUIRE_CORRECT_TOOL, myOres, LOOT)}. Vanilla spawn: blockPos + rand*0.5+0.25 per axis,
  * motion (rand*0.2-0.1, 0.2, ..) b/t, 10t pickup delay; creative/spectator drop nothing.
  */
 public final class BlockDrops {
 
-    /** {@link #correctTool} = the 26.1 gate: no tool required or the held {@code minecraft:tool} is
-     *  correct-for-drops (1.8's table differs - custom rule for exact legacy harvesting). */
+    /**
+     * {@link #correctTool} = the 26.1 gate: no tool required or the held {@code minecraft:tool} is correct for
+     * drops. 1.8 gated by material ({@code rock}, {@code iron}, {@code anvil}, {@code snow}, {@code craftedSnow}
+     * and {@code barrier} want a tool) and {@code ItemPickaxe.canHarvestBlock}'s levels; the block tags say the
+     * same of every block 1.8 had, so one gate serves both eras.
+     */
     public record DropContext(@NotNull Player player, @NotNull Block block, @NotNull ItemStack tool,
                               int fortune, boolean silkTouch, boolean correctTool) {}
 
@@ -52,6 +56,15 @@ public final class BlockDrops {
     /** Vanilla harvest gate: a block that requires a tool drops nothing without the correct one; otherwise passes. */
     public static final DropRule REQUIRE_CORRECT_TOOL = ctx -> ctx.correctTool() ? null : List.of();
 
+    /** The vanilla loot tables ({@link BlockLoot}): glass drops nothing, stone cobblestone, a block with no table nothing. */
+    public static final DropRule LOOT = ctx -> {
+        BlockLoot.Table table = BlockLoot.of(ctx.block().key());
+        return table == null ? List.of() : BlockLoot.drops(table, ctx);
+    };
+
+    /** Where 1.8's drops differ from the tables ({@link LegacyLoot}); passes on every other block. */
+    public static final DropRule LOOT_18 = LegacyLoot::drops;
+
     /** First-match chain; an exhausted chain drops nothing. */
     public static DropRule chain(DropRule... rules) {
         return ctx -> {
@@ -63,8 +76,18 @@ public final class BlockDrops {
         };
     }
 
-    /** Correct-tool gate, then the block's own item. */
-    public static final DropRule VANILLA = chain(REQUIRE_CORRECT_TOOL, IDENTITY);
+    /** Correct-tool gate, then the loot tables. */
+    public static final DropRule VANILLA = chain(REQUIRE_CORRECT_TOOL, LOOT);
+
+    /** {@link #VANILLA} with 1.8's own drops where they differed. */
+    public static final DropRule VANILLA_18 = chain(REQUIRE_CORRECT_TOOL, LOOT_18, LOOT);
+
+    /** The break of {@code block} by {@code player} holding {@code tool}, as the rules read it. */
+    public static @NotNull DropContext context(@NotNull Player player, @NotNull Block block, @NotNull ItemStack tool) {
+        Tool component = tool.get(DataComponents.TOOL);
+        boolean correct = !block.requiresTool() || (component != null && component.isCorrectForDrops(block.registryKey()));
+        return new DropContext(player, block, tool, Enchants.level(tool, FORTUNE), Enchants.level(tool, SILK_TOUCH) > 0, correct);
+    }
 
     private static final Key FORTUNE = Key.key("minecraft:fortune");
     private static final Key SILK_TOUCH = Key.key("minecraft:silk_touch");
@@ -84,14 +107,7 @@ public final class BlockDrops {
             DropRule rule = FieldValue.resolve(cfg.blockDrops, scope);
             if (rule == null) return;
 
-            ItemStack tool = e.getPlayer().getItemInMainHand();
-            Tool component = tool.get(DataComponents.TOOL);
-            boolean correct = !e.getBlock().requiresTool()
-                    || (component != null && component.isCorrectForDrops(e.getBlock().registryKey()));
-            DropContext ctx = new DropContext(e.getPlayer(), e.getBlock(), tool,
-                    Enchants.level(tool, FORTUNE), Enchants.level(tool, SILK_TOUCH) > 0, correct);
-
-            List<ItemStack> drops = rule.drops(ctx);
+            List<ItemStack> drops = rule.drops(context(e.getPlayer(), e.getBlock(), e.getPlayer().getItemInMainHand()));
             if (drops == null) return;
             var rnd = ThreadLocalRandom.current();
             for (ItemStack stack : drops) {
