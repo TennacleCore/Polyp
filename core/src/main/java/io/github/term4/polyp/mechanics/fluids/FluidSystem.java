@@ -3,12 +3,16 @@ package io.github.term4.polyp.mechanics.fluids;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.ScopedSystem;
+import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
+import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.entity.DroppedItemEntity;
 import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.fx.FxContext;
 import io.github.term4.polyp.mechanics.fluids.FluidsConfigResolver.FluidContext;
 import io.github.term4.polyp.util.tick.TickPhase;
 import io.github.term4.polyp.util.tick.TickSystem;
+import io.github.term4.polyp.vri.BlockDrops.DropContext;
+import io.github.term4.polyp.vri.BlockDrops.DropRule;
 import io.github.term4.polyp.world.MechanicsWorld;
 import net.kyori.adventure.key.Key;
 import net.minestom.server.MinecraftServer;
@@ -24,7 +28,6 @@ import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockManager;
 import net.minestom.server.instance.block.rule.BlockPlacementRule;
 import net.minestom.server.item.ItemStack;
-import net.minestom.server.item.Material;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,9 +39,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Water and lava that flow: 1.8's scheduled liquid ticks on each world's own clock, the rules per fluid as knobs, a
+ * Water and lava that flow: scheduled liquid ticks on each world's own clock, the rules per fluid as knobs, a
  * neighbor change waking a still fluid through Minestom's placement-rule hook, and buckets. Nothing ticks
  * randomly here (lava lights no fires).
  */
@@ -82,13 +86,20 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
         BlockManager manager = MinecraftServer.getBlockManager();
         for (Key key : config.fluids.keySet()) {
             Block fluid = Block.fromKey(key);
-            if (fluid == null) continue;
-            BlockPlacementRule previous = manager.getBlockPlacementRule(fluid);
-            if (previous instanceof FluidPlacementRule ours) previous = ours.previous; // a re-install
-            manager.registerBlockPlacementRule(new FluidPlacementRule(fluid, previous, system));
+            if (fluid != null) hook(manager, fluid, system);
+        }
+        // a block holding water wakes like a fluid; whether that water counts is the world's knob
+        for (Block block : Block.values()) {
+            if (block.getProperty("waterlogged") != null) hook(manager, block, system);
         }
         system.ticker = TickSystem.register(TickPhase.DEFAULT, ctx -> system.tick(ctx.world()));
         return system;
+    }
+
+    private static void hook(BlockManager manager, Block block, FluidSystem system) {
+        BlockPlacementRule previous = manager.getBlockPlacementRule(block);
+        if (previous instanceof FluidPlacementRule ours) previous = ours.previous; // a re-install
+        manager.registerBlockPlacementRule(new FluidPlacementRule(block, previous, system));
     }
 
     @Override
@@ -107,20 +118,34 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
         return scoped != null ? scoped : config();
     }
 
-    FluidContext context(MechanicsWorld world, @Nullable BlockVec pos, @Nullable Block block) {
-        return context(world, pos, block, null);
+    FluidContext context(MechanicsWorld world, @Nullable BlockVec pos, @Nullable Block fluid, @Nullable Entity actor) {
+        return new FluidContext(world, pos, fluid, actor, services());
     }
 
-    FluidContext context(MechanicsWorld world, @Nullable BlockVec pos, @Nullable Block block, @Nullable Entity actor) {
-        return new FluidContext(world, pos, block, actor, services());
-    }
-
-    /** The context's fluid's knobs for its world, or null when the block there is no fluid the config knows. */
+    /** The context's fluid's knobs for its world, or null when the config knows no such fluid. */
     @Nullable FluidConfig configFor(FluidContext ctx) {
         if (ctx.block() == null) return null;
         FluidsConfig cfg = configFor(ctx.world()).withOverlay(ctx);
         FluidConfig fluid = cfg.fluid(ctx.block());
         return fluid != null ? fluid.withOverlay(ctx) : null;
+    }
+
+    boolean waterlogging(MechanicsWorld world, @Nullable BlockVec pos, @Nullable Entity actor) {
+        FluidContext ctx = context(world, pos, null, actor);
+        return FieldValue.resolve(configFor(world).withOverlay(ctx).waterlogging, ctx, false);
+    }
+
+    /** The fluid {@code block} carries at {@code pos} with its knobs, or null when it carries none the config knows. */
+    @Nullable Spread.Rules rules(MechanicsWorld world, BlockVec pos, Block block, @Nullable Entity actor) {
+        boolean waterlogging = waterlogging(world, pos, actor);
+        Block fluid = Fluids.fluidOf(block, waterlogging);
+        return fluid == null ? null : rulesOf(world, pos, fluid, waterlogging, actor);
+    }
+
+    @Nullable Spread.Rules rulesOf(MechanicsWorld world, BlockVec pos, Block fluid, boolean waterlogging, @Nullable Entity actor) {
+        FluidContext ctx = context(world, pos, fluid, actor);
+        FluidConfig cfg = configFor(ctx);
+        return cfg == null ? null : new Spread.Rules(ctx, cfg, fluid, waterlogging);
     }
 
     // ---- the clock
@@ -149,17 +174,16 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
         placed(world, pos);
     }
 
-    /** A neighbor of the fluid at {@code pos} changed (1.8 onNeighborBlockChange): what it turns into now, or null and a tick. */
+    /** A neighbor of {@code pos} changed (1.8 onNeighborBlockChange): what its fluid turns into now, or null and a tick. */
     @Nullable Block changed(MechanicsWorld world, BlockVec pos, Block block) {
-        FluidContext ctx = context(world, pos, block);
-        FluidConfig cfg = configFor(ctx);
-        if (cfg == null || !io.github.term4.polyp.config.FieldValue.resolve(cfg.updates, ctx, true)) return null;
-        Block mixed = spread.mixedInto(world, pos, block, cfg, ctx);
+        Spread.Rules r = rules(world, pos, block, null);
+        if (r == null || !r.updates()) return null;
+        Block mixed = spread.mixedInto(world, pos, block, r);
         if (mixed != null) {
             mixed(world, pos);
             return mixed;
         }
-        schedule(world, pos, io.github.term4.polyp.config.FieldValue.resolve(cfg.tickRate, ctx, 5));
+        schedule(world, pos, r.tickRate());
         return null;
     }
 
@@ -175,10 +199,18 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
         Fx.play(services(), Fx.FLUID_MIX, FxContext.at(world, pos.add(0.5, 0.5, 0.5)));
     }
 
-    /** 1.8 dropBlockAsItem for what water runs over: the block itself, as a hand with no tool would get it. */
-    void wash(MechanicsWorld world, BlockVec pos, Block block) {
-        Material material = block.material();
-        if (material == null) return;
-        DroppedItemEntity.spawn(world, new Pos(pos.x() + 0.5, pos.y() + 0.5, pos.z() + 0.5), Vec.ZERO, ItemStack.of(material), null, 10);
+    /** What the fluid runs over drops by {@code rule}, as a bare hand with no one holding it. */
+    void wash(MechanicsWorld world, BlockVec pos, Block block, @Nullable DropRule rule) {
+        if (rule == null) return;
+        List<ItemStack> drops = rule.drops(new DropContext(null, block, ItemStack.AIR, 0, false, true));
+        if (drops == null) return;
+        var rnd = ThreadLocalRandom.current();
+        for (ItemStack stack : drops) {
+            if (stack.isAir()) continue;
+            DroppedItemEntity.spawn(world,
+                    new Pos(pos.x() + rnd.nextDouble() * 0.5 + 0.25, pos.y() + rnd.nextDouble() * 0.5 + 0.25, pos.z() + rnd.nextDouble() * 0.5 + 0.25),
+                    new Vec(rnd.nextDouble() * 0.2 - 0.1, 0.2, rnd.nextDouble() * 0.2 - 0.1),
+                    stack, null, 10, ItemSpawnEvent.Cause.BLOCK_DROP, null);
+        }
     }
 }

@@ -71,7 +71,8 @@ public final class MeleeAttackGoal extends Goal {
             if (!attacker.navigation().moveTo(target, speed)) delayCounter += 15;
         }
         attackTick = Math.max(attackTick - 1, 0);
-        if (attackTick <= 0 && attacker.reach().test(attacker, target)) {
+        if (attackTick <= 0 && attacker.reach().test(attacker, target)
+                && (!attacker.attackNeedsSight() || attacker.senses().canSee(target))) {
             attackTick = attacker.attackInterval();
             attacker.attack(target);
         }

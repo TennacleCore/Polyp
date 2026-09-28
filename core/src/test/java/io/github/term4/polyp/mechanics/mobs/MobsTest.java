@@ -7,7 +7,13 @@ import io.github.term4.polyp.mechanics.damage.types.mob.MobDamage;
 import io.github.term4.polyp.mechanics.mobs.kinds.EnderDragonEntity;
 import io.github.term4.polyp.mechanics.mobs.kinds.IronGolemEntity;
 import io.github.term4.polyp.mechanics.mobs.kinds.SilverfishEntity;
+import io.github.term4.polyp.mechanics.mobs.ai.MeleeAttackGoal;
 import io.github.term4.polyp.mechanics.mobs.path.Path;
+import io.github.term4.polyp.mechanics.mobs.path.Pathing;
+import io.github.term4.polyp.MechanicsKeys;
+import io.github.term4.polyp.MechanicsProfile;
+import net.minestom.server.coordinate.BlockVec;
+import net.minestom.server.instance.InstanceContainer;
 import io.github.term4.polyp.presets.vanilla18.Attack;
 import io.github.term4.polyp.presets.vanilla18.Mobs;
 import io.github.term4.polyp.testsupport.FakePlayer;
@@ -29,11 +35,12 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The 1.8 mobs on the flat floor: a hunt, a golem's lift, the dragon's parts, the difficulty and a path. */
+/** The mobs on the flat floor: a hunt, a golem's lift, the dragon's parts, the difficulty, and the two eras' paths and swings. */
 class MobsTest extends HeadlessServerTest {
 
     private static final int Z = 900;
@@ -150,6 +157,52 @@ class MobsTest extends HeadlessServerTest {
             assertTrue(pillar == null || pillar.finalPoint().y != 66, "a two-block pillar is not");
         } finally {
             fish.remove();
+        }
+    }
+
+    @Test
+    void modernWalksDiagonals() {
+        int z = Z;
+        SilverfishEntity fish = SilverfishEntity.spawn(mobs, world, new Pos(84.5, 64, z + 0.5));
+        try {
+            awaitSpawn(fish);
+            tick(fish, 2);
+            BlockVec to = new BlockVec(90, 64, z + 6);
+            Path legacy = Pathing.LEGACY.toBlock(fish.navigation(), to);
+            Path modern = Pathing.MODERN.toBlock(fish.navigation(), to);
+            assertNotNull(legacy);
+            assertNotNull(modern);
+            assertEquals(13, legacy.length(), "1.8 walks the two legs, a cell at a time");
+            assertTrue(modern.length() <= 8, "26.1 cuts the corner: " + modern.length());
+            assertEquals(90, modern.finalPoint().x);
+        } finally {
+            fish.remove();
+        }
+    }
+
+    @Test
+    void aSwingBehindGlassNeedsSightOnlyModern() {
+        assertTrue(swingThroughPane(io.github.term4.polyp.presets.vanilla18.Mobs.config()), "1.8 swings through the pane");
+        assertFalse(swingThroughPane(io.github.term4.polyp.presets.vanilla.Mobs.config()), "26.1 wants an eye line");
+    }
+
+    // a golem beside a pane column with a zombie just past it: in reach either era, in sight in neither
+    private static boolean swingThroughPane(MobsConfig cfg) {
+        InstanceContainer inst = flatInstance(MechanicsProfile.builder().set(MechanicsKeys.MOBS, cfg).build());
+        MechanicsWorld w = MechanicsWorld.of(inst);
+        for (int y = 64; y <= 66; y++) inst.setBlock(2, y, 0, Block.GLASS_PANE);
+        LivingEntity zombie = zombie(new Pos(2.9, 64, 0.5));
+        IronGolemEntity golem = IronGolemEntity.spawn(mobs, w, new Pos(1.7, 64, 0.5), false);
+        try {
+            awaitSpawn(golem);
+            golem.attackTarget(zombie);
+            MeleeAttackGoal goal = new MeleeAttackGoal(golem, 1.0, true);
+            float before = zombie.getHealth();
+            for (int i = 0; i < 3 && zombie.getHealth() == before; i++) goal.updateTask();
+            return zombie.getHealth() < before;
+        } finally {
+            golem.remove();
+            zombie.remove();
         }
     }
 

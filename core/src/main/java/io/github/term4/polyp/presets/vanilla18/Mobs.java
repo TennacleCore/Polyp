@@ -11,6 +11,7 @@ import io.github.term4.polyp.mechanics.mobs.PartDamage;
 import io.github.term4.polyp.mechanics.mobs.Sides;
 import io.github.term4.polyp.mechanics.mobs.Targets;
 import io.github.term4.polyp.mechanics.mobs.kinds.IronGolemEntity;
+import io.github.term4.polyp.mechanics.mobs.path.Pathing;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
@@ -45,9 +46,11 @@ public final class Mobs {
                 .defaults(MobKindConfig.builder()
                         .followRange(16.0)
                         .stepHeight(0.6)
+                        .pathing(Pathing.LEGACY)
                         .knockbackResistance(0.0)
                         .attackInterval(20)
                         .reach(MeleeReach.LEGACY)
+                        .attackNeedsSight(false)
                         .attackLift(0.0)
                         .targetChance(10)
                         .targetSight(true)

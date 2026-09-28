@@ -4,6 +4,7 @@ import io.github.term4.polyp.codegen.GenerateBuilder;
 import io.github.term4.polyp.config.Config;
 import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.mechanics.mobs.MobsConfigResolver.MobContext;
+import io.github.term4.polyp.mechanics.mobs.path.Pathing;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.Nullable;
@@ -26,10 +27,13 @@ public final class MobKindConfig extends Config<MobContext, MobKindConfig> {
     public final @Nullable FieldValue<MobContext, Double> followRange;
     public final @Nullable FieldValue<MobContext, Double> knockbackResistance;
     public final @Nullable FieldValue<MobContext, Double> stepHeight;
+    public final @Nullable FieldValue<MobContext, Pathing> pathing;
     /** The swing's base damage; rolled per hit (the golem's 7 + rand(15)). */
     public final @Nullable FieldValue<MobContext, Float> attackDamage;
     public final @Nullable FieldValue<MobContext, Integer> attackInterval;
     public final @Nullable FieldValue<MobContext, MeleeReach> reach;
+    /** A swing needs an eye line to the target (26.1); 1.8 swings through walls. */
+    public final @Nullable FieldValue<MobContext, Boolean> attackNeedsSight;
     /** Extra upward motion on a landed swing (the golem's 0.4). */
     public final @Nullable FieldValue<MobContext, Double> attackLift;
     public final @Nullable FieldValue<MobContext, MobSound> attackSound;
@@ -74,9 +78,11 @@ public final class MobKindConfig extends Config<MobContext, MobKindConfig> {
         this.followRange = b.followRange;
         this.knockbackResistance = b.knockbackResistance;
         this.stepHeight = b.stepHeight;
+        this.pathing = b.pathing;
         this.attackDamage = b.attackDamage;
         this.attackInterval = b.attackInterval;
         this.reach = b.reach;
+        this.attackNeedsSight = b.attackNeedsSight;
         this.attackLift = b.attackLift;
         this.attackSound = b.attackSound;
         this.targetChance = b.targetChance;

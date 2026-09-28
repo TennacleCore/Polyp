@@ -1,6 +1,6 @@
 package io.github.term4.polyp.mechanics.mobs.path;
 
-/** 1.8 PathPoint. */
+/** A node: 1.8 PathPoint's fields, plus the cost and type the typed walker adds. */
 public final class PathPoint {
 
     public final int x;
@@ -13,6 +13,9 @@ public final class PathPoint {
     float distanceToTarget;
     PathPoint previous;
     boolean visited;
+    float walkedDistance;
+    float costMalus;
+    PathType type = PathType.BLOCKED;
 
     public PathPoint(int x, int y, int z) {
         this.x = x;
@@ -35,7 +38,13 @@ public final class PathPoint {
         return dx * dx + dy * dy + dz * dz;
     }
 
+    public float distanceManhattan(PathPoint other) {
+        return Math.abs(other.x - x) + Math.abs(other.y - y) + Math.abs(other.z - z);
+    }
+
     public boolean isAssigned() { return index >= 0; }
+
+    public PathType type() { return type; }
 
     @Override
     public boolean equals(Object o) {

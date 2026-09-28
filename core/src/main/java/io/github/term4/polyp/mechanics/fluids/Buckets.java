@@ -27,8 +27,8 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * 1.8 ItemBucket: a use is a ray from the eyes, five blocks; a full bucket pours into the cell past the hit face, an
- * empty one scoops the source it hits. Both go through the player's own place and break events, so a game's rules
- * see them as any placement.
+ * empty one scoops the source it hits, a block holding water included. Both go through the player's own place and
+ * break events, so a game's rules see them as any placement.
  */
 final class Buckets {
 
@@ -49,14 +49,15 @@ final class Buckets {
         if (player.getInstance() == null) return;
         MechanicsWorld world = MechanicsWorld.viewed(player);
         FluidContext ctx = system.context(world, null, null, player);
-        FluidsConfig cfg = system.configFor(world);
+        FluidsConfig cfg = system.configFor(world).withOverlay(ctx);
         if (!FieldValue.resolve(cfg.buckets, ctx, true)) return;
         double reach = FieldValue.resolve(cfg.bucketReach, ctx, 5.0);
         if (reach <= 0) reach = player.getAttributeValue(Attribute.BLOCK_INTERACTION_RANGE);
+        boolean waterlogging = FieldValue.resolve(cfg.waterlogging, ctx, false);
         Hit hit = trace(world, player, reach, empty);
         if (hit == null) return;
-        if (empty) scoop(world, player, e.getHand(), hit);
-        else pour(world, player, e.getHand(), fluid, hit);
+        if (empty) scoop(world, player, e.getHand(), hit, waterlogging);
+        else pour(world, player, e.getHand(), fluid, hit, waterlogging);
     }
 
     private static @Nullable Block fluidOf(Material material) {
@@ -65,30 +66,39 @@ final class Buckets {
         return null;
     }
 
-    // 1.8 tryPlaceContainedLiquid: only into air or a block with nothing solid to it
-    private void pour(MechanicsWorld world, Player player, PlayerHand hand, Block fluid, Hit hit) {
-        BlockVec at = hit.cell().relative(hit.face());
+    // 1.8 tryPlaceContainedLiquid: only into air or a block with nothing solid to it; 26.1 fills the clicked block
+    // when it can hold water
+    private void pour(MechanicsWorld world, Player player, PlayerHand hand, Block fluid, Hit hit, boolean waterlogging) {
+        boolean water = waterlogging && fluid.compare(Block.WATER);
+        BlockVec at = water && Fluids.waterloggable(world.getBlock(hit.cell())) ? hit.cell() : hit.cell().relative(hit.face());
         Block there = world.getBlock(at);
-        if (!there.air() && there.solid()) return;
-        var event = new PlayerBlockPlaceEvent(player, player.getInstance(), fluid, hit.face(), at,
+        boolean container = water && Fluids.waterloggable(there);
+        if (!container && !there.air() && there.solid()) return;
+        Block landing = container ? there.withProperty("waterlogged", "true") : fluid;
+        var event = new PlayerBlockPlaceEvent(player, player.getInstance(), landing, hit.face(), at,
                 new Pos(0.5, 0.5, 0.5), hand);
         EventDispatcher.call(event);
         if (event.isCancelled()) return;
-        if (!there.air() && !there.liquid()) system.wash(world, at, there);
-        system.set(world, at, fluid);
+        if (!container && !there.air() && !there.liquid()) {
+            Spread.Rules r = system.rulesOf(world, at, fluid, waterlogging, player);
+            system.wash(world, at, there, r != null ? r.washes() : null);
+        }
+        system.set(world, at, landing);
         system.placed(world, at);
         Fx.play(system.services(), Fx.BUCKET_EMPTY, FxContext.at(world, at.add(0.5, 0.5, 0.5), player));
         if (player.getGameMode() != GameMode.CREATIVE) hold(player, hand, ItemStack.of(Material.BUCKET));
     }
 
-    private void scoop(MechanicsWorld world, Player player, PlayerHand hand, Hit hit) {
+    private void scoop(MechanicsWorld world, Player player, PlayerHand hand, Hit hit, boolean waterlogging) {
         Block source = world.getBlock(hit.cell());
-        if (!source.liquid() || Spread.level(source) != 0) return;
+        boolean inside = waterlogging && Fluids.waterlogged(source);
+        if (!inside && (!source.liquid() || Spread.level(source) != 0)) return;
         Material filled = source.compare(Block.LAVA) ? Material.LAVA_BUCKET : Material.WATER_BUCKET;
-        var event = new PlayerBlockBreakEvent(player, player.getInstance(), source, Block.AIR, hit.cell(), hit.face());
+        Block emptied = inside ? source.withProperty("waterlogged", "false") : Block.AIR;
+        var event = new PlayerBlockBreakEvent(player, player.getInstance(), source, emptied, hit.cell(), hit.face());
         EventDispatcher.call(event);
         if (event.isCancelled()) return;
-        system.set(world, hit.cell(), Block.AIR);
+        system.set(world, hit.cell(), emptied);
         Fx.play(system.services(), Fx.BUCKET_FILL, FxContext.at(world, hit.cell().add(0.5, 0.5, 0.5), player));
         if (player.getGameMode() == GameMode.CREATIVE) return;
         ItemStack held = hand == PlayerHand.MAIN ? player.getItemInMainHand() : player.getItemInOffHand();

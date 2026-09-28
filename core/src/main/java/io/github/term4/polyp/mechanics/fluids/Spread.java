@@ -3,6 +3,7 @@ package io.github.term4.polyp.mechanics.fluids;
 import io.github.term4.polyp.api.event.fluid.FluidSpreadEvent;
 import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.mechanics.fluids.FluidsConfigResolver.FluidContext;
+import io.github.term4.polyp.vri.BlockDrops.DropRule;
 import io.github.term4.polyp.world.MechanicsWorld;
 import net.minestom.server.coordinate.BlockVec;
 import net.minestom.server.event.EventDispatcher;
@@ -14,8 +15,48 @@ import java.util.EnumSet;
 import java.util.Random;
 import java.util.Set;
 
-/** 1.8 BlockDynamicLiquid.updateTick and BlockLiquid.checkForMixing, over one fluid's knobs. */
+/** The liquid tick (1.8 BlockDynamicLiquid.updateTick, 26.1 FlowingFluid.tick) over one fluid's knobs. */
 final class Spread {
+
+    /** One cell's fluid and its knobs, resolved once. */
+    record Rules(FluidContext ctx, FluidConfig cfg, Block fluid, boolean waterlogging) {
+
+        private <T> T knob(@Nullable FieldValue<FluidContext, T> knob, T def) {
+            return FieldValue.resolve(knob, ctx, def);
+        }
+
+        boolean updates() { return knob(cfg.updates, true); }
+        int tickRate() { return knob(cfg.tickRate, 5); }
+        int dropOff() { return knob(cfg.dropOff, 1); }
+        int slopeDistance() { return knob(cfg.slopeDistance, 4); }
+        boolean infiniteSource() { return knob(cfg.infiniteSource, false); }
+        int sourceNeighbors() { return knob(cfg.sourceNeighbors, 2); }
+        boolean hesitates() { return knob(cfg.hesitates, false); }
+        @Nullable DropRule washes() { return knob(cfg.washes, null); }
+        Flow flows() { return knob(cfg.flows, Flow.ANY); }
+        Passage passage() { return knob(cfg.passage, Passage.LEGACY); }
+        boolean blocked(Block block) { return knob(cfg.blocked, Fluids.BLOCKED_18).test(block); }
+        boolean replaces(Block block) { return knob(cfg.replaces, Fluids.NONE).test(block); }
+        int fallingSideSources() { return knob(cfg.fallingSideSources, 0); }
+        @Nullable Mixing mixing() { return knob(cfg.mixing, null); }
+
+        /** The level of this fluid in {@code block}: a block holding water is a source; -1 for none of it. */
+        int level(Block block) {
+            if (block.compare(fluid)) return Spread.level(block);
+            return holdsWater() && Fluids.waterlogged(block) ? 0 : -1;
+        }
+
+        boolean carries(Block block) { return level(block) >= 0; }
+
+        /** A block that could take this fluid inside its own shape. */
+        boolean container(Block block) { return holdsWater() && Fluids.waterloggable(block); }
+
+        private boolean holdsWater() { return waterlogging && fluid.compare(Block.WATER); }
+
+        boolean reacts(Mixing mixing, Block block) {
+            return mixing.reacts(block) || waterlogging && mixing.other().compare(Block.WATER) && Fluids.waterlogged(block);
+        }
+    }
 
     private final FluidSystem system;
     private final Random random = new Random();
@@ -33,11 +74,6 @@ final class Spread {
         return level != null ? Integer.parseInt(level) : 0;
     }
 
-    /** 1.8 getLevel: the level when {@code block} is this fluid, else -1. */
-    private static int level(Block fluid, Block block) {
-        return block.compare(fluid) ? level(block) : -1;
-    }
-
     private static Block withLevel(Block fluid, int level) {
         return fluid.withProperty("level", Integer.toString(level));
     }
@@ -45,20 +81,20 @@ final class Spread {
     /** One scheduled tick of the fluid at {@code pos}. */
     void tick(MechanicsWorld world, BlockVec pos) {
         Block block = world.getBlock(pos);
-        FluidContext ctx = system.context(world, pos, block);
-        FluidConfig cfg = system.configFor(ctx);
-        if (cfg == null || !FieldValue.resolve(cfg.updates, ctx, true)) return;
-        if (mix(world, pos, block, cfg, ctx)) return;
-        Block fluid = block.defaultState();
-        int level = level(block);
-        int drop = FieldValue.resolve(cfg.dropOff, ctx, 1);
-        int rate = FieldValue.resolve(cfg.tickRate, ctx, 5);
-        Mixing mixing = FieldValue.resolve(cfg.mixing, ctx, null);
+        Rules r = system.rules(world, pos, block, null);
+        if (r == null || !r.updates()) return;
+        if (mix(world, pos, block, r)) return;
+        int level = r.level(block);
+        int drop = r.dropOff();
+        int rate = r.tickRate();
         if (level > 0) {
             int lowest = -100;
             int sources = 0;
+            Passage passage = r.passage();
             for (Direction d : Direction.HORIZONTAL) {
-                int n = level(fluid, world.getBlock(step(pos, d)));
+                Block side = world.getBlock(step(pos, d));
+                if (!passage.through(r.ctx, block, d, side)) continue;
+                int n = r.level(side);
                 if (n < 0) continue;
                 if (n == 0) ++sources;
                 if (n >= 8) n = 0;
@@ -66,114 +102,134 @@ final class Spread {
             }
             int next = lowest + drop;
             if (next >= 8 || lowest < 0) next = -1;
-            int above = level(fluid, world.getBlock(pos.add(0, 1, 0)));
+            Block aboveBlock = world.getBlock(pos.add(0, 1, 0));
+            int above = passage.through(r.ctx, block, Direction.UP, aboveBlock) ? r.level(aboveBlock) : -1;
             if (above >= 0) next = above >= 8 ? above : above + 8;
-            if (sources >= FieldValue.resolve(cfg.sourceNeighbors, ctx, 2) && FieldValue.resolve(cfg.infiniteSource, ctx, false)) {
+            if (sources >= r.sourceNeighbors() && r.infiniteSource()) {
                 Block below = world.getBlock(pos.add(0, -1, 0));
-                if (below.solid() || level(fluid, below) == 0) next = 0;
+                if (below.solid() || r.level(below) == 0) next = 0;
             }
-            if (FieldValue.resolve(cfg.hesitates, ctx, false) && level < 8 && next < 8 && next > level && random.nextInt(4) != 0) rate *= 4;
+            if (r.hesitates() && level < 8 && next < 8 && next > level && random.nextInt(4) != 0) rate *= 4;
             if (next != level) {
                 level = next;
                 if (next < 0) {
                     system.set(world, pos, Block.AIR);
                 } else {
-                    system.set(world, pos, withLevel(fluid, next));
+                    system.set(world, pos, withLevel(r.fluid, next));
                     system.schedule(world, pos, rate);
                 }
             }
         }
+        if (level < 0) return;
         BlockVec under = pos.add(0, -1, 0);
         Block underBlock = world.getBlock(under);
-        boolean fallsOnto = mixing != null && mixing.reacts(underBlock) && mixing.underFlow() != null
-                && FieldValue.resolve(cfg.flows, ctx, Flow.ANY).allowed(ctx, Direction.DOWN, under);
-        if (level >= 0 && (fallsOnto || canFlowInto(cfg, ctx, fluid, Direction.DOWN, under, underBlock))) {
+        Mixing mixing = r.mixing();
+        boolean fallsOnto = mixing != null && r.reacts(mixing, underBlock) && mixing.underFlow() != null
+                && r.flows().allowed(r.ctx, Direction.DOWN, under);
+        if (fallsOnto || canFlowInto(r, block, Direction.DOWN, under, underBlock)) {
             if (fallsOnto) {
-                system.set(world, under, mixing.underFlow());
+                if (underBlock.liquid()) system.set(world, under, mixing.underFlow());
                 system.mixed(world, under);
                 return;
             }
-            flowInto(world, pos, cfg, ctx, fluid, Direction.DOWN, under, underBlock, level >= 8 ? level : level + 8, rate);
-        } else if (level >= 0 && (level == 0 || blocked(cfg, ctx, underBlock))) {
-            int spread = level + drop;
-            if (level >= 8) spread = 1;
-            if (spread >= 8) return;
-            for (Direction d : directions(world, pos, cfg, ctx, fluid)) {
-                BlockVec to = step(pos, d);
-                flowInto(world, pos, cfg, ctx, fluid, d, to, world.getBlock(to), spread, rate);
-            }
+            flowInto(world, pos, r, block, Direction.DOWN, under, underBlock, level >= 8 ? level : level + 8, rate);
+            int need = r.fallingSideSources();
+            if (need > 0 && sources(world, pos, r) >= need) sides(world, pos, r, block, level, rate);
+        } else if (level == 0 || !hole(r, block, underBlock)) {
+            sides(world, pos, r, block, level, rate);
         }
+    }
+
+    private void sides(MechanicsWorld world, BlockVec pos, Rules r, Block block, int level, int rate) {
+        int spread = level + r.dropOff();
+        if (level >= 8) spread = 1;
+        if (spread >= 8) return;
+        for (Direction d : directions(world, pos, r, block)) {
+            BlockVec to = step(pos, d);
+            flowInto(world, pos, r, block, d, to, world.getBlock(to), spread, rate);
+        }
+    }
+
+    // FlowingFluid.sourceNeighborCount
+    private int sources(MechanicsWorld world, BlockVec pos, Rules r) {
+        int n = 0;
+        for (Direction d : Direction.HORIZONTAL) if (r.level(world.getBlock(step(pos, d))) == 0) ++n;
+        return n;
     }
 
     /** 1.8 onBlockAdded: a fresh fluid reacts or gets its first tick. */
     void placed(MechanicsWorld world, BlockVec pos) {
         Block block = world.getBlock(pos);
-        FluidContext ctx = system.context(world, pos, block);
-        FluidConfig cfg = system.configFor(ctx);
-        if (cfg == null || !FieldValue.resolve(cfg.updates, ctx, true)) return;
-        if (!mix(world, pos, block, cfg, ctx)) system.schedule(world, pos, FieldValue.resolve(cfg.tickRate, ctx, 5));
+        Rules r = system.rules(world, pos, block, null);
+        if (r == null || !r.updates()) return;
+        if (!mix(world, pos, block, r)) system.schedule(world, pos, r.tickRate());
     }
 
     /** What a fluid beside its {@link Mixing} partner turns into now, or null to stay a fluid. */
-    @Nullable Block mixedInto(MechanicsWorld world, BlockVec pos, Block block, FluidConfig cfg, FluidContext ctx) {
-        Mixing mixing = FieldValue.resolve(cfg.mixing, ctx, null);
+    @Nullable Block mixedInto(MechanicsWorld world, BlockVec pos, Block block, Rules r) {
+        Mixing mixing = r.mixing();
         if (mixing == null) return null;
         for (Direction d : Direction.values()) {
             if (d == Direction.DOWN) continue;
-            if (mixing.reacts(world.getBlock(step(pos, d)))) return mixing.beside(level(block));
+            if (r.reacts(mixing, world.getBlock(step(pos, d)))) return mixing.beside(r.level(block));
         }
         return null;
     }
 
-    private boolean mix(MechanicsWorld world, BlockVec pos, Block block, FluidConfig cfg, FluidContext ctx) {
-        Block into = mixedInto(world, pos, block, cfg, ctx);
+    private boolean mix(MechanicsWorld world, BlockVec pos, Block block, Rules r) {
+        Block into = mixedInto(world, pos, block, r);
         if (into == null) return false;
         system.set(world, pos, into);
         system.mixed(world, pos);
         return true;
     }
 
-    // 1.8 tryFlowInto
-    private void flowInto(MechanicsWorld world, BlockVec from, FluidConfig cfg, FluidContext ctx, Block fluid, Direction d,
-                          BlockVec to, Block toBlock, int level, int rate) {
-        if (!canFlowInto(cfg, ctx, fluid, d, to, toBlock)) return;
-        Block landing = withLevel(fluid, level);
+    // 1.8 tryFlowInto / 26.1 spreadTo: a container fills, anything else is washed out or fizzed away
+    private void flowInto(MechanicsWorld world, BlockVec from, Rules r, Block fromBlock, Direction d, BlockVec to, Block toBlock,
+                          int level, int rate) {
+        if (!canFlowInto(r, fromBlock, d, to, toBlock)) return;
+        boolean container = r.container(toBlock);
+        Block landing = container ? toBlock.withProperty("waterlogged", "true") : withLevel(r.fluid, level);
         FluidSpreadEvent event = new FluidSpreadEvent(world, from, to, d, landing, toBlock);
         EventDispatcher.call(event);
         if (event.isCancelled()) return;
-        if (!toBlock.air()) {
-            if (FieldValue.resolve(cfg.mixing, ctx, null) != null) system.mixed(world, to);
-            else if (FieldValue.resolve(cfg.washes, ctx, true)) system.wash(world, to, toBlock);
+        if (!toBlock.air() && !container) {
+            if (r.mixing() != null) system.mixed(world, to);
+            else system.wash(world, to, toBlock, r.washes());
         }
         system.set(world, to, landing);
         placed(world, to);
     }
 
-    // 1.8 canFlowInto over the knobs: never its own kind, another fluid only when `replaces` says (1.8 lava takes
-    // water, water never takes lava), never a blocked cell
-    private boolean canFlowInto(FluidConfig cfg, FluidContext ctx, Block fluid, Direction d, BlockVec to, Block toBlock) {
-        if (!FieldValue.resolve(cfg.flows, ctx, Flow.ANY).allowed(ctx, d, to)) return false;
-        if (toBlock.compare(fluid)) return false;
-        if (toBlock.liquid() && !FieldValue.resolve(cfg.replaces, ctx, Fluids.NONE).test(toBlock)) return false;
-        return !blocked(cfg, ctx, toBlock);
+    // never its own kind, another fluid only when `replaces` says, then the face, then the cell
+    private boolean canFlowInto(Rules r, Block from, Direction d, BlockVec to, Block toBlock) {
+        if (!r.flows().allowed(r.ctx, d, to)) return false;
+        if (r.carries(toBlock)) return false;
+        boolean container = r.container(toBlock);
+        if (!container && toBlock.liquid() && !r.replaces(toBlock)) return false;
+        if (!r.passage().through(r.ctx, from, d, toBlock)) return false;
+        return container || !r.blocked(toBlock);
     }
 
-    private static boolean blocked(FluidConfig cfg, FluidContext ctx, Block block) {
-        return FieldValue.resolve(cfg.blocked, ctx, Fluids.BLOCKED_18).test(block);
+    // 1.8 isBlocked(below), 26.1 isWaterHole: a fall the fluid would take rather than spread
+    private boolean hole(Rules r, Block at, Block below) {
+        if (!r.passage().through(r.ctx, at, Direction.DOWN, below)) return false;
+        return r.carries(below) || r.container(below) || !r.blocked(below);
     }
 
     // 1.8 getPossibleFlowDirections: the sides nearest a drop, all of them on a tie
-    private Set<Direction> directions(MechanicsWorld world, BlockVec pos, FluidConfig cfg, FluidContext ctx, Block fluid) {
+    private Set<Direction> directions(MechanicsWorld world, BlockVec pos, Rules r, Block at) {
         int best = 1000;
         Set<Direction> out = EnumSet.noneOf(Direction.class);
-        int reach = FieldValue.resolve(cfg.slopeDistance, ctx, 4);
-        Flow flows = FieldValue.resolve(cfg.flows, ctx, Flow.ANY);
+        int reach = r.slopeDistance();
+        Flow flows = r.flows();
+        Passage passage = r.passage();
         for (Direction d : Direction.HORIZONTAL) {
             BlockVec to = step(pos, d);
             Block toBlock = world.getBlock(to);
-            if (!flows.allowed(ctx, d, to)) continue;
-            if (blocked(cfg, ctx, toBlock) || (toBlock.compare(fluid) && level(toBlock) == 0)) continue;
-            int cost = blocked(cfg, ctx, world.getBlock(to.add(0, -1, 0))) ? cost(world, to, 1, d.opposite(), cfg, ctx, fluid, reach) : 0;
+            if (!flows.allowed(r.ctx, d, to)) continue;
+            if (!enterable(r, toBlock) || !passage.through(r.ctx, at, d, toBlock)) continue;
+            int cost = hole(r, toBlock, world.getBlock(to.add(0, -1, 0))) ? 0 : cost(world, to, toBlock, 1, d.opposite(), r, reach);
             if (cost < best) out.clear();
             if (cost <= best) {
                 out.add(d);
@@ -183,18 +239,23 @@ final class Spread {
         return out;
     }
 
+    // a cell the slope search may walk: not blocked, not a source of this fluid
+    private static boolean enterable(Rules r, Block block) {
+        return (r.container(block) || !r.blocked(block)) && r.level(block) != 0;
+    }
+
     // 1.8 func_176374_a
-    private int cost(MechanicsWorld world, BlockVec pos, int distance, Direction from, FluidConfig cfg, FluidContext ctx,
-                     Block fluid, int reach) {
+    private int cost(MechanicsWorld world, BlockVec pos, Block at, int distance, Direction from, Rules r, int reach) {
         int best = 1000;
+        Passage passage = r.passage();
         for (Direction d : Direction.HORIZONTAL) {
             if (d == from) continue;
             BlockVec to = step(pos, d);
             Block toBlock = world.getBlock(to);
-            if (blocked(cfg, ctx, toBlock) || (toBlock.compare(fluid) && level(toBlock) == 0)) continue;
-            if (!blocked(cfg, ctx, world.getBlock(to.add(0, -1, 0)))) return distance;
+            if (!enterable(r, toBlock) || !passage.through(r.ctx, at, d, toBlock)) continue;
+            if (hole(r, toBlock, world.getBlock(to.add(0, -1, 0)))) return distance;
             if (distance < reach) {
-                int further = cost(world, to, distance + 1, d.opposite(), cfg, ctx, fluid, reach);
+                int further = cost(world, to, toBlock, distance + 1, d.opposite(), r, reach);
                 if (further < best) best = further;
             }
         }

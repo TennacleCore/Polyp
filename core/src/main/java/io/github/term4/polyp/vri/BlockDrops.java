@@ -36,9 +36,9 @@ public final class BlockDrops {
      * {@link #correctTool} = the 26.1 gate: no tool required or the held {@code minecraft:tool} is correct for
      * drops. 1.8 gated by material ({@code rock}, {@code iron}, {@code anvil}, {@code snow}, {@code craftedSnow}
      * and {@code barrier} want a tool) and {@code ItemPickaxe.canHarvestBlock}'s levels; the block tags say the
-     * same of every block 1.8 had, so one gate serves both eras.
+     * same of every block 1.8 had, so one gate serves both eras. {@code player} is null when no one broke it (a wash).
      */
-    public record DropContext(@NotNull Player player, @NotNull Block block, @NotNull ItemStack tool,
+    public record DropContext(@Nullable Player player, @NotNull Block block, @NotNull ItemStack tool,
                               int fortune, boolean silkTouch, boolean correctTool) {}
 
     /** One link of the chain: the drops for this break, or {@code null} to pass on. Empty list = drop nothing (handled). */

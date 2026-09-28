@@ -4,13 +4,14 @@ import io.github.term4.polyp.codegen.GenerateBuilder;
 import io.github.term4.polyp.config.Config;
 import io.github.term4.polyp.config.FieldValue;
 import io.github.term4.polyp.mechanics.fluids.FluidsConfigResolver.FluidContext;
+import io.github.term4.polyp.vri.BlockDrops.DropRule;
 import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-/** One fluid's knobs (1.8 BlockLiquid/BlockDynamicLiquid, the numbers and the rules as fields). */
+/** One fluid's knobs: the numbers and the rules of BlockDynamicLiquid and FlowingFluid as fields. */
 @GenerateBuilder
 public final class FluidConfig extends Config<FluidContext, FluidConfig> {
 
@@ -27,13 +28,16 @@ public final class FluidConfig extends Config<FluidContext, FluidConfig> {
     public final @Nullable FieldValue<FluidContext, Boolean> updates;
     /** Lava's three-in-four chance to take four times as long rising a level. */
     public final @Nullable FieldValue<FluidContext, Boolean> hesitates;
-    /** Drops what it flows into (water on a torch); off, the block is simply gone (lava). */
-    public final @Nullable FieldValue<FluidContext, Boolean> washes;
+    /** What a block the fluid runs over drops, as a bare hand would get it; null, it is simply gone (lava). */
+    public final @Nullable FieldValue<FluidContext, DropRule> washes;
     public final @Nullable FieldValue<FluidContext, Flow> flows;
+    public final @Nullable FieldValue<FluidContext, Passage> passage;
     /** A block the fluid neither enters nor paths through. */
     public final @Nullable FieldValue<FluidContext, Predicate<Block>> blocked;
     /** Another fluid's blocks this one may flow into (none in 1.8; modern water takes low lava). */
     public final @Nullable FieldValue<FluidContext, Predicate<Block>> replaces;
+    /** Sources beside a cell that falls make it spread sideways too (26.1 three; {@code <= 0} never). */
+    public final @Nullable FieldValue<FluidContext, Integer> fallingSideSources;
     public final @Nullable FieldValue<FluidContext, Mixing> mixing;
 
     private FluidConfig(Builder b) {
@@ -47,8 +51,10 @@ public final class FluidConfig extends Config<FluidContext, FluidConfig> {
         this.hesitates = b.hesitates;
         this.washes = b.washes;
         this.flows = b.flows;
+        this.passage = b.passage;
         this.blocked = b.blocked;
         this.replaces = b.replaces;
+        this.fallingSideSources = b.fallingSideSources;
         this.mixing = b.mixing;
     }
 

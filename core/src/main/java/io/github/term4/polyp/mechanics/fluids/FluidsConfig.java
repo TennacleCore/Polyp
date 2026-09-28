@@ -20,6 +20,8 @@ public final class FluidsConfig extends Config<FluidContext, FluidsConfig> {
     public final @Nullable FieldValue<FluidContext, Boolean> buckets;
     /** How far a bucket reaches; {@code <= 0} reads the player's interaction range (modern). */
     public final @Nullable FieldValue<FluidContext, Double> bucketReach;
+    /** Blocks with a {@code waterlogged} property hold water (26.1); off, they are plain blocks whatever the property says. */
+    public final @Nullable FieldValue<FluidContext, Boolean> waterlogging;
     public final @Nullable FluidConfig defaults;
     public final Map<Key, FluidConfig> fluids;
 
@@ -27,6 +29,7 @@ public final class FluidsConfig extends Config<FluidContext, FluidsConfig> {
         super(b.subConfig);
         this.buckets = b.buckets;
         this.bucketReach = b.bucketReach;
+        this.waterlogging = b.waterlogging;
         this.defaults = b.defaults;
         this.fluids = Map.copyOf(b.fluids);
     }

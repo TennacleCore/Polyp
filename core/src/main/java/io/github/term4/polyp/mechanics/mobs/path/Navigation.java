@@ -12,24 +12,26 @@ import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.Nullable;
 
-/** 1.8 PathNavigateGround: finds and follows a walking path, feeding the move control one point at a time. */
+/** 1.8 PathNavigateGround: plans through the kind's {@link Pathing} and follows, feeding the move control one point at a time. */
 public final class Navigation {
 
     private final MobEntity entity;
-    private final WalkNodes nodes = new WalkNodes();
-    private final PathFinder finder;
     private @Nullable Path current;
     private double speed;
     private int totalTicks;
     private int ticksAtLastPos;
     private Vec lastPosCheck = Vec.ZERO;
     private float heightRequirement = 1.0f;
+    private boolean enterDoors = true;
+    private boolean breakDoors;
+    private boolean avoidsWater;
+    private boolean canSwim;
 
     public Navigation(MobEntity entity) {
         this.entity = entity;
-        nodes.enterDoors(true);
-        this.finder = new PathFinder(nodes);
     }
+
+    public MobEntity entity() { return entity; }
 
     public float searchRange() {
         return (float) entity.getAttributeValue(Attribute.FOLLOW_RANGE);
@@ -41,7 +43,7 @@ public final class Navigation {
 
     public @Nullable Path pathTo(Point block) {
         if (!canNavigate()) return null;
-        return finder.pathTo(entity.world(), entity, block, searchRange());
+        return entity.pathing().toBlock(this, block);
     }
 
     public boolean moveTo(double x, double y, double z, double speed) {
@@ -54,7 +56,7 @@ public final class Navigation {
 
     public @Nullable Path pathTo(Entity target) {
         if (!canNavigate()) return null;
-        return finder.pathTo(entity.world(), entity, target, searchRange());
+        return entity.pathing().toEntity(this, target);
     }
 
     public boolean moveTo(Entity target, double speed) {
@@ -171,7 +173,7 @@ public final class Navigation {
 
     private int pathableY() {
         Pos pos = entity.getPosition();
-        if (entity.inWater() && nodes.canSwim()) {
+        if (entity.inWater() && canSwim) {
             int y = (int) pos.y();
             int x = pos.blockX(), z = pos.blockZ();
             Block block = Blocks.at(entity.world(), x, y, z);
@@ -187,7 +189,7 @@ public final class Navigation {
     }
 
     private boolean canNavigate() {
-        return entity.isOnGround() || nodes.canSwim() && (entity.inWater() || entity.inLava());
+        return entity.isOnGround() || canSwim && (entity.inWater() || entity.inLava());
     }
 
     private boolean directPath(Vec from, Vec to, int sizeX, int sizeY, int sizeZ) {
@@ -266,10 +268,12 @@ public final class Navigation {
         return true;
     }
 
-    public void avoidsWater(boolean v) { nodes.avoidsWater(v); }
-    public boolean avoidsWater() { return nodes.avoidsWater(); }
-    public void breakDoors(boolean v) { nodes.breakDoors(v); }
-    public void enterDoors(boolean v) { nodes.enterDoors(v); }
-    public void canSwim(boolean v) { nodes.canSwim(v); }
-    public boolean canSwim() { return nodes.canSwim(); }
+    public void avoidsWater(boolean v) { avoidsWater = v; }
+    public boolean avoidsWater() { return avoidsWater; }
+    public void breakDoors(boolean v) { breakDoors = v; }
+    public boolean breakDoors() { return breakDoors; }
+    public void enterDoors(boolean v) { enterDoors = v; }
+    public boolean enterDoors() { return enterDoors; }
+    public void canSwim(boolean v) { canSwim = v; }
+    public boolean canSwim() { return canSwim; }
 }

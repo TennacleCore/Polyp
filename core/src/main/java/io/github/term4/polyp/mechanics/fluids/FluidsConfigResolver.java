@@ -12,7 +12,7 @@ public final class FluidsConfigResolver {
 
     private FluidsConfigResolver() {}
 
-    /** {@code pos}/{@code block} are the fluid cell being decided; null for a world-wide read (the bucket knobs). */
+    /** {@code pos} is the cell being decided and {@code block} the fluid it carries (water, for a waterlogged block); null for a world-wide read. */
     public record FluidContext(MechanicsWorld world, @Nullable BlockVec pos, @Nullable Block block, @Nullable Entity actor,
                                Services services) implements SubjectContext {
         @Override public @Nullable Entity subject() { return actor; }

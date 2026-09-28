@@ -19,6 +19,7 @@ import io.github.term4.polyp.mechanics.mobs.ai.MoveControl;
 import io.github.term4.polyp.mechanics.mobs.ai.Senses;
 import io.github.term4.polyp.mechanics.mobs.path.Blocks;
 import io.github.term4.polyp.mechanics.mobs.path.Navigation;
+import io.github.term4.polyp.mechanics.mobs.path.Pathing;
 import io.github.term4.polyp.world.ExternallyTickable;
 import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.world.WorldPolicy;
@@ -234,6 +235,8 @@ public abstract class MobEntity extends LivingEntity implements ExternallyTickab
     public boolean seesInvisible() { return knob(kind.seesInvisible, false); }
     public int attackInterval() { return knob(kind.attackInterval, 20); }
     public MeleeReach reach() { return knob(kind.reach, MeleeReach.LEGACY); }
+    public boolean attackNeedsSight() { return knob(kind.attackNeedsSight, false); }
+    public Pathing pathing() { return knob(kind.pathing, Pathing.LEGACY); }
     public double stepHeight() { return knob(kind.stepHeight, 0.6); }
     public boolean takesFallDamage() { return knob(kind.fallDamage, true); }
 

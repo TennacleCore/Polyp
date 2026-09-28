@@ -2,6 +2,7 @@ package io.github.term4.polyp.mechanics.fluids;
 
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
+import io.github.term4.polyp.entity.DroppedItemEntity;
 import io.github.term4.polyp.presets.vanilla18.Fluids;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
@@ -20,10 +21,16 @@ import net.minestom.server.utils.Direction;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 1.8 water and lava on a flat floor: the spread, the infinite pool, the mix, and the knobs that shut a side or freeze it. */
+/**
+ * Water and lava on a flat floor: the spread, the infinite pool, the mix, the knobs that shut a side or freeze it,
+ * and the same scenes under both eras' presets.
+ */
 class FluidsTest extends HeadlessServerTest {
 
     private static final int Y = 64, Z = 1100; // the harness floor tops at 63
@@ -115,6 +122,118 @@ class FluidsTest extends HeadlessServerTest {
         ticks(still, 30);
         assertEquals(0, level(still, 0, Y, 0));
         assertEquals(-1, level(still, 1, Y, 0), "a fluid that never ticks never moves");
+    }
+
+    private static MechanicsWorld worldOf(FluidsConfig cfg) {
+        InstanceContainer inst = flatInstance(MechanicsProfile.builder().set(MechanicsKeys.FLUIDS, cfg).build());
+        for (int cx = -1; cx <= 1; cx++) for (int cz = -1; cz <= 1; cz++) inst.loadChunk(cx, cz).join();
+        return MechanicsWorld.of(inst);
+    }
+
+    private static FluidsConfig modern() {
+        return io.github.term4.polyp.presets.vanilla.Fluids.config();
+    }
+
+    private static InstanceContainer instanceOf(MechanicsWorld w) {
+        return (InstanceContainer) w.instance();
+    }
+
+    private static long drops(MechanicsWorld w) {
+        return w.instance().getEntities().stream().filter(e -> e instanceof DroppedItemEntity).count();
+    }
+
+    private static boolean waterlogged(Block block) {
+        return io.github.term4.polyp.mechanics.fluids.Fluids.waterlogged(block);
+    }
+
+    @Test
+    void waterFillsASlabOnlyModern() {
+        for (boolean modern : new boolean[]{false, true}) {
+            MechanicsWorld w = worldOf(modern ? modern() : Fluids.config());
+            w.setBlock(new BlockVec(1, Y, 0), Block.OAK_SLAB);
+            fluids.place(w, new BlockVec(0, Y, 0), Block.WATER);
+            ticks(instanceOf(w), 30);
+            Block slab = w.getBlock(1, Y, 0);
+            assertTrue(slab.compare(Block.OAK_SLAB), "the slab stays a slab");
+            if (modern) assertTrue(waterlogged(slab), "26.1 water fills the slab");
+            else assertFalse(waterlogged(slab), "1.8 has no water inside a block");
+        }
+    }
+
+    @Test
+    void aFallBesideThreeSourcesSpreadsOnlyModern() {
+        for (boolean modern : new boolean[]{false, true}) {
+            MechanicsWorld w = worldOf(modern ? modern() : Fluids.config());
+            int x = 4;
+            w.setBlock(new BlockVec(x, Y - 1, 0), Block.AIR); // the hole under the middle source
+            w.setBlock(new BlockVec(x - 1, Y, -1), Block.STONE);
+            w.setBlock(new BlockVec(x - 1, Y, 1), Block.STONE);
+            // three sources around the hole; the cell over it fills from them and stays a flow, the ground being air
+            for (BlockVec at : List.of(new BlockVec(x, Y, -1), new BlockVec(x, Y, 1), new BlockVec(x + 1, Y, 0))) {
+                fluids.place(w, at, Block.WATER);
+            }
+            ticks(instanceOf(w), 40);
+            assertEquals(1, level(instanceOf(w), x, Y, 0), "over the hole, a flow");
+            assertTrue(w.getBlock(x, Y - 1, 0).compare(Block.WATER), "and it falls");
+            int west = level(instanceOf(w), x - 1, Y, 0);
+            if (modern) assertEquals(2, west, "26.1: three sources beside a fall push it sideways too");
+            else assertEquals(-1, west, "1.8: a flow that falls never spreads sideways");
+        }
+    }
+
+    @Test
+    void aFaceShutsOnlyModern() {
+        Block bottom = Block.OAK_SLAB, top = Block.OAK_SLAB.withProperty("type", "top");
+        assertFalse(Passage.MODERN.through(null, bottom, Direction.DOWN, Block.AIR), "a bottom slab's floor is whole");
+        assertTrue(Passage.MODERN.through(null, bottom, Direction.EAST, Block.AIR), "its side is half open");
+        assertTrue(Passage.MODERN.through(null, Block.AIR, Direction.DOWN, bottom), "water drops into a bottom slab");
+        assertFalse(Passage.MODERN.through(null, Block.AIR, Direction.DOWN, top), "not into a top one");
+        assertFalse(Passage.MODERN.through(null, Block.STONE, Direction.EAST, Block.AIR));
+        assertTrue(Passage.LEGACY.through(null, bottom, Direction.DOWN, Block.AIR), "1.8 knows no faces");
+    }
+
+    @Test
+    void washedLootFollowsTheEra() {
+        MechanicsWorld legacy = worldOf(Fluids.config());
+        legacy.setBlock(new BlockVec(1, Y, 0), Block.DEAD_BUSH);
+        fluids.place(legacy, new BlockVec(0, Y, 0), Block.WATER);
+        ticks(instanceOf(legacy), 20);
+        assertTrue(legacy.getBlock(1, Y, 0).compare(Block.WATER), "the bush is washed out");
+        assertEquals(0, drops(legacy), "1.8: a bare hand gets nothing from a dead bush");
+        MechanicsWorld modern = worldOf(modern());
+        for (int i = 0; i < 12 && drops(modern) == 0; i++) {
+            modern.setBlock(new BlockVec(1, Y, i * 3), Block.DEAD_BUSH);
+            fluids.place(modern, new BlockVec(0, Y, i * 3), Block.WATER);
+            ticks(instanceOf(modern), 20);
+        }
+        assertTrue(drops(modern) > 0, "26.1: the loot table's sticks");
+    }
+
+    @Test
+    void aBucketFillsASlabOnlyModern() {
+        for (boolean modern : new boolean[]{false, true}) {
+            MechanicsWorld w = worldOf(modern ? modern() : Fluids.config());
+            InstanceContainer inst = instanceOf(w);
+            inst.setBlock(6, Y, 0, Block.OAK_SLAB);
+            FakePlayer fp = FakePlayer.connect(inst, new Pos(6.5, Y + 0.5, 0.5, 0, 90), modern ? "Slabber" : "Topper");
+            try {
+                fp.player.setItemInMainHand(ItemStack.of(Material.WATER_BUCKET));
+                EventDispatcher.call(new PlayerUseItemEvent(fp.player, PlayerHand.MAIN, fp.player.getItemInMainHand(), 0));
+                assertEquals(Material.BUCKET, fp.player.getItemInMainHand().material());
+                if (modern) {
+                    assertTrue(waterlogged(inst.getBlock(6, Y, 0)), "poured into the slab");
+                    assertTrue(inst.getBlock(6, Y + 1, 0).air());
+                    EventDispatcher.call(new PlayerUseItemEvent(fp.player, PlayerHand.MAIN, fp.player.getItemInMainHand(), 0));
+                    assertFalse(waterlogged(inst.getBlock(6, Y, 0)), "scooped back out");
+                    assertEquals(Material.WATER_BUCKET, fp.player.getItemInMainHand().material());
+                } else {
+                    assertTrue(inst.getBlock(6, Y + 1, 0).compare(Block.WATER), "poured onto the slab");
+                    assertFalse(waterlogged(inst.getBlock(6, Y, 0)));
+                }
+            } finally {
+                fp.player.remove();
+            }
+        }
     }
 
     @Test

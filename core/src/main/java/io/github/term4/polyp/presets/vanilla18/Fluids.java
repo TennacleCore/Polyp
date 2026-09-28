@@ -4,6 +4,8 @@ import io.github.term4.polyp.mechanics.fluids.Flow;
 import io.github.term4.polyp.mechanics.fluids.FluidConfig;
 import io.github.term4.polyp.mechanics.fluids.FluidsConfig;
 import io.github.term4.polyp.mechanics.fluids.Mixing;
+import io.github.term4.polyp.mechanics.fluids.Passage;
+import io.github.term4.polyp.vri.BlockDrops;
 import net.minestom.server.instance.block.Block;
 
 /** 1.8's water and lava. */
@@ -15,13 +17,16 @@ public final class Fluids {
         return FluidsConfig.builder()
                 .buckets(true)
                 .bucketReach(5.0) // Item.getMovingObjectPositionFromPlayer, either mode
+                .waterlogging(false)
                 .defaults(FluidConfig.builder()
                         .slopeDistance(4)
                         .sourceNeighbors(2)
                         .updates(true)
                         .flows(Flow.ANY)
+                        .passage(Passage.LEGACY)
                         .blocked(io.github.term4.polyp.mechanics.fluids.Fluids.BLOCKED_18)
                         .replaces(io.github.term4.polyp.mechanics.fluids.Fluids.NONE)
+                        .fallingSideSources(0)
                         .build())
                 .fluid(Block.WATER, water())
                 .fluid(Block.LAVA, lava())
@@ -34,7 +39,7 @@ public final class Fluids {
                 .dropOff(1)
                 .infiniteSource(true)
                 .hesitates(false)
-                .washes(true)
+                .washes(BlockDrops.VANILLA_18)
                 .build();
     }
 
@@ -44,7 +49,6 @@ public final class Fluids {
                 .dropOff(2)
                 .infiniteSource(false)
                 .hesitates(true)
-                .washes(false)
                 .replaces(io.github.term4.polyp.mechanics.fluids.Fluids.WATER)
                 .mixing(Mixing.LAVA_18)
                 .build();
