@@ -173,6 +173,7 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         SendablePacket p = LegacyInventorySlotFix.rewrite(compat.legacyClient(),
                 EquipmentSlotsFix.rewrite(compat.rewriteItems(synced)));
         p = SpectatorHud.rewrite(this, p);
+        p = ViewRewrites.apply(this, p);
         p = LegacyHealthRoundingFix.rewrite(this, healthRounding, p);
         // not gated on the client: join lands before the protocol is known, and 1.8+ ignores the field
         if (p instanceof JoinGamePacket) p = LegacyTabGridFix.rewrite(p, tabSlots());
@@ -197,7 +198,7 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         SendablePacket rewritten = EquipmentSlotsFix.rewrite(packet);
         // The blocking-pose stamp is per-VIEWER (a modern client poses the block off ITS copy of the held item), so
         // equipment must arrive bare for each viewer's own item view to apply - grouping would share one CachedPacket.
-        if (rewritten instanceof EntityEquipmentPacket && anyViewerRewritesItems()) {
+        if (rewritten instanceof EntityEquipmentPacket && anyViewerRewritesItems() || ViewRewrites.bare(rewritten)) {
             for (Player viewer : getViewers()) viewer.sendPacket(rewritten);
             return;
         }
