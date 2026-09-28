@@ -230,6 +230,8 @@ public abstract class MobEntity extends LivingEntity implements ExternallyTickab
     public Predicate<LivingEntity> targetSelector() { return knob(kind.targetSelector, ANY); }
     public boolean canAttack(LivingEntity target) { return knob(kind.attackable, ANY).test(target); }
     public int targetChance() { return knob(kind.targetChance, 10); }
+    /** The wander's chance, the goal's own {@code vanilla} unless the kind says. */
+    public int wanderChance(int vanilla) { return Math.max(1, knob(kind.wanderChance, vanilla)); }
     public boolean targetSight() { return knob(kind.targetSight, true); }
     public boolean targetNearbyOnly() { return knob(kind.targetNearbyOnly, false); }
     public boolean seesInvisible() { return knob(kind.seesInvisible, false); }

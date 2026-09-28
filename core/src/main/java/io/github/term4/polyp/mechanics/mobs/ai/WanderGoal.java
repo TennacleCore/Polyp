@@ -27,7 +27,7 @@ public class WanderGoal extends Goal {
     public boolean shouldExecute() {
         if (!mustUpdate) {
             if (entity.age() >= 100) return false;
-            if (entity.random().nextInt(chance) != 0) return false;
+            if (entity.random().nextInt(entity.wanderChance(chance)) != 0) return false;
         }
         Vec point = RandomPositions.find(entity, 10, 7);
         if (point == null) return false;

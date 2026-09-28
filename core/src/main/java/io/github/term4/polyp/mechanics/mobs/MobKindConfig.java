@@ -38,6 +38,8 @@ public final class MobKindConfig extends Config<MobContext, MobKindConfig> {
     public final @Nullable FieldValue<MobContext, Double> attackLift;
     public final @Nullable FieldValue<MobContext, MobSound> attackSound;
     public final @Nullable FieldValue<MobContext, Integer> targetChance;
+    /** One chance in this many, a tick, of a new wander point while idle; unset = the kind's vanilla (a silverfish's 10). */
+    public final @Nullable FieldValue<MobContext, Integer> wanderChance;
     public final @Nullable FieldValue<MobContext, Boolean> targetSight;
     public final @Nullable FieldValue<MobContext, Boolean> targetNearbyOnly;
     /** Skips the invisibility range cut when picking players. */
@@ -86,6 +88,7 @@ public final class MobKindConfig extends Config<MobContext, MobKindConfig> {
         this.attackLift = b.attackLift;
         this.attackSound = b.attackSound;
         this.targetChance = b.targetChance;
+        this.wanderChance = b.wanderChance;
         this.targetSight = b.targetSight;
         this.targetNearbyOnly = b.targetNearbyOnly;
         this.seesInvisible = b.seesInvisible;
