@@ -67,7 +67,8 @@ public class SplashPotionEntity extends ManagedProjectile {
         Instance instance = getInstance();
         ItemStack item = ((SplashPotionMeta) getEntityMeta()).getItem();
         if (instance == null) return;
-        List<CustomPotionEffect> payload = VanillaPotions.payload(item);
+        List<CustomPotionEffect> payload = VanillaPotions.payload(item,
+                modernModel ? VanillaPotions.Contents.MODERN : VanillaPotions.Contents.LEGACY);
         Point at = getPosition();
         if (!payload.isEmpty()) {
             Float scale = item.get(DataComponents.POTION_DURATION_SCALE);

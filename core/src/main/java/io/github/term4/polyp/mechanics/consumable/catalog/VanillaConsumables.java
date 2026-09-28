@@ -144,11 +144,16 @@ public final class VanillaConsumables {
      * effects apply through {@link HealOrHarm} at intensity {@code 1.0} (vanilla drink); a water bottle is a no-op.
      */
     public static ConsumableBehavior drinkPotion() {
+        return drinkPotion(VanillaPotions.Contents.MODERN);
+    }
+
+    /** {@link #drinkPotion()} with the contents read by {@code rule}. */
+    public static ConsumableBehavior drinkPotion(VanillaPotions.Contents rule) {
         return new ConsumableBehavior() {
             @Override public void onFinish(ConsumableContext ctx) {
                 Player u = ctx.user();
                 byte flags = ctx.particles().potionFlags();
-                for (CustomPotionEffect e : VanillaPotions.payload(ctx.item())) {
+                for (CustomPotionEffect e : VanillaPotions.payload(ctx.item(), rule)) {
                     if (HealOrHarm.apply(ctx.services(), u, u, null, e, 1.0)) continue;
                     VanillaPotions.addEffect(u, new Potion(e.id(), e.amplifier(), e.duration(), flags));
                 }

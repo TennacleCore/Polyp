@@ -80,15 +80,25 @@ public final class VanillaPotions {
         return TABLE.getOrDefault(potion, List.of());
     }
 
-    /**
-     * The full effect payload of a potion item's {@code potion_contents}: custom effects plus the base potion's rows.
-     * Empty for a non-potion item or a water bottle.
-     */
+    /** How an item's {@code potion_contents} become effects. */
+    public enum Contents {
+        /** 1.8 {@code ItemPotion.getEffects}: custom effects, when there are any, stand in for the base potion's. */
+        LEGACY,
+        /** Custom effects plus the base potion's. */
+        MODERN
+    }
+
+    /** {@link #payload(ItemStack, Contents)} by the modern rule. */
     public static List<CustomPotionEffect> payload(@Nullable ItemStack item) {
+        return payload(item, Contents.MODERN);
+    }
+
+    /** The effects a potion item's {@code potion_contents} carry; empty for a non-potion item or a water bottle. */
+    public static List<CustomPotionEffect> payload(@Nullable ItemStack item, Contents rule) {
         PotionContents pc = item != null ? item.get(DataComponents.POTION_CONTENTS) : null;
         if (pc == null) return List.of();
         List<CustomPotionEffect> effects = new ArrayList<>(pc.customEffects());
-        if (pc.potion() != null) effects.addAll(effects(pc.potion()));
+        if (pc.potion() != null && (rule == Contents.MODERN || effects.isEmpty())) effects.addAll(effects(pc.potion()));
         return effects;
     }
 

@@ -3,13 +3,14 @@ package io.github.term4.polyp.presets.vanilla18;
 import io.github.term4.polyp.mechanics.consumable.ComponentFood;
 import io.github.term4.polyp.mechanics.consumable.ConsumableConfig;
 import io.github.term4.polyp.mechanics.consumable.ConsumableTypeConfig;
+import io.github.term4.polyp.mechanics.attribute.catalog.VanillaPotions;
 import io.github.term4.polyp.mechanics.consumable.catalog.VanillaConsumables;
 import net.kyori.adventure.key.Key;
 import net.minestom.server.potion.PotionEffect;
 
 /**
- * Vanilla 1.8 consumables: 1.8-source golden apple and pufferfish effects, plus the 1.8 {@code canEat} gate (creative
- * never eats) on every food incl. the component floor.
+ * Vanilla 1.8 consumables: 1.8-source golden apple and pufferfish effects, 1.8's potion contents, plus the 1.8
+ * {@code canEat} gate (creative never eats) on every food incl. the component floor.
  */
 public final class Consumables {
 
@@ -42,6 +43,9 @@ public final class Consumables {
                                         VanillaConsumables.eff(PotionEffect.POISON, 4, 1200),
                                         VanillaConsumables.eff(PotionEffect.HUNGER, 3, 300),
                                         VanillaConsumables.eff(PotionEffect.NAUSEA, 2, 300)))
+                                .build(),
+                        ConsumableTypeConfig.builder(VanillaConsumables.POTION.key())
+                                .behavior(VanillaConsumables.drinkPotion(VanillaPotions.Contents.LEGACY))
                                 .build(),
                         ConsumableTypeConfig.builder(ComponentFood.KEY)
                                 .canConsume(ctx -> VanillaConsumables.legacyCanEat(ctx, ComponentFood.alwaysEdible(ctx.item())))
