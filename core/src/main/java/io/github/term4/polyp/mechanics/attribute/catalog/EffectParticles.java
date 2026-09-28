@@ -52,7 +52,9 @@ public final class EffectParticles {
     public static void refresh(@NotNull LivingEntity living) {
         if (!(living.getEntityMeta() instanceof LivingEntityMeta meta)) return;
         List<Potion> active = new ArrayList<>();
-        for (TimedPotion timed : living.getActiveEffects()) active.add(timed.potion());
+        for (TimedPotion timed : living.getActiveEffects()) {
+            if (timed.potion().hasParticles()) active.add(timed.potion()); // 1.8 calcPotionLiquidColor skips a hidden one
+        }
         int color = PotionColors.legacyBlend(active);
         boolean ambient = !active.isEmpty() && active.stream().allMatch(Potion::isAmbient); // PotionBrewer.b: every one
         meta.setEffectParticles(color == 0 ? List.of() : List.of(swirl(color, ambient)));

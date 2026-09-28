@@ -72,6 +72,7 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
 
     private final EventNode<@NotNull Event> node = EventNode.all("polyp:fluids");
     private final Map<MechanicsWorld, Schedule> schedules = new ConcurrentHashMap<>();
+    private final Set<MechanicsWorld> ownClock = ConcurrentHashMap.newKeySet();
     private final Spread spread = new Spread(this);
     private final Buckets buckets = new Buckets(this);
     private TickSystem.Registration ticker;
@@ -92,7 +93,7 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
         for (Block block : Block.values()) {
             if (block.getProperty("waterlogged") != null) hook(manager, block, system);
         }
-        system.ticker = TickSystem.register(TickPhase.DEFAULT, ctx -> system.tick(ctx.world()));
+        system.ticker = TickSystem.register(TickPhase.DEFAULT, ctx -> system.tick(ctx.world(), ctx.external()));
         return system;
     }
 
@@ -109,6 +110,7 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
     public void uninstall() {
         if (ticker != null) ticker.cancel();
         schedules.clear();
+        ownClock.clear();
     }
 
     // ---- config
@@ -149,6 +151,17 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
     }
 
     // ---- the clock
+
+    // a world on its own clock ticks itself; the instance's pass carries every other world riding that instance
+    // (a game's shard on the server clock schedules under itself and would otherwise never advance)
+    private void tick(MechanicsWorld world, boolean external) {
+        if (external) ownClock.add(world);
+        tick(world);
+        if (external) return;
+        for (MechanicsWorld other : schedules.keySet()) {
+            if (other != world && other.instance() == world.instance() && !ownClock.contains(other)) tick(other);
+        }
+    }
 
     private void tick(MechanicsWorld world) {
         Schedule schedule = schedules.get(world);
