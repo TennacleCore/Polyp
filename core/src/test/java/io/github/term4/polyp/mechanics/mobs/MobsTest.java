@@ -30,6 +30,8 @@ import net.minestom.server.event.player.PlayerPacketEvent;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.network.packet.client.play.ClientAttackPacket;
 import org.junit.jupiter.api.BeforeAll;
+import io.github.term4.polyp.mechanics.mobs.MobKindConfig;
+import net.minestom.server.network.packet.server.play.EntityVelocityPacket;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -116,6 +118,40 @@ class MobsTest extends HeadlessServerTest {
             second.remove();
             fp.player.remove();
         }
+    }
+
+    /** Captured (four Hypixel games): a pass pushes once, never every tick under a wing; the engine's default is vanilla's. */
+    @Test
+    void aChargePushesOnceWhenTheKindSays() {
+        // a block beside the body's center: inside both wing zones whatever the yaw, and never at the zero the push divides by
+        FakePlayer fp = FakePlayer.connect(instance, new Pos(81.5, 65, Z + 0.5), "Winged");
+        try {
+            assertTrue(pushesOverThreeTicks(fp, MobKindConfig.builder().build()) >= 3, "vanilla: every tick under a wing");
+            assertEquals(1, pushesOverThreeTicks(fp, MobKindConfig.builder().pushOncePerCharge(true).build()), "one push a charge");
+        } finally {
+            fp.player.remove();
+        }
+    }
+
+    // a fresh dragon from rest, its flight points within reach so the three ticks are one charge
+    private static long pushesOverThreeTicks(FakePlayer fp, MobKindConfig kind) {
+        EnderDragonEntity dragon = EnderDragonEntity.spawn(mobs, world, new Pos(80.5, 66, Z + 0.5));
+        try {
+            awaitSpawn(dragon);
+            dragon.roamAround(new Pos(80.5, 66, Z + 0.5));
+            dragon.kind(kind);
+            fp.sent.clear();
+            tick(dragon, 3);
+            return pushes(fp);
+        } finally {
+            dragon.remove();
+        }
+    }
+
+    // a wing push at a block is 4 a tick, the bite's knockback 0.4: a packet over a block a tick is the wing's
+    private static long pushes(FakePlayer fp) {
+        return fp.sent(EntityVelocityPacket.class).stream()
+                .filter(p -> p.entityId() == fp.player.getEntityId() && Math.abs(p.velocity().x()) + Math.abs(p.velocity().z()) >= 1.0).count();
     }
 
     private static void swing(FakePlayer fp, int targetId) {

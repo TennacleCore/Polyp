@@ -55,6 +55,7 @@ public final class EnderDragonEntity extends MobEntity {
     private final double[][] ring = new double[64][3];
     private int ringIndex = -1;
     private final Set<LivingEntity> bitten = new HashSet<>(); // this charge's, under biteOncePerCharge
+    private final Set<LivingEntity> pushed = new HashSet<>(); // this charge's, under pushOncePerCharge
     private double targetX, targetY = 100.0, targetZ;
     private @Nullable Entity flightTarget;
     private boolean forceNewTarget;
@@ -237,6 +238,7 @@ public final class EnderDragonEntity extends MobEntity {
     private void newTarget() {
         forceNewTarget = false;
         bitten.clear();
+        pushed.clear();
         List<Player> players = new ArrayList<>();
         Predicate<LivingEntity> selector = knob(kind().targetSelector, ANY);
         for (Player p : world().players()) {
@@ -317,7 +319,9 @@ public final class EnderDragonEntity extends MobEntity {
         double bx = body.position().x(), bz = body.position().z();
         double push = knob(kind().wingPush, 4.0);
         double lift = knob(kind().wingLift, 0.20000000298023224);
+        boolean once = knob(kind().pushOncePerCharge, false);
         for (LivingEntity e : victims(zone)) {
+            if (once && !pushed.add(e)) continue;
             double dx = e.getPosition().x() - bx;
             double dz = e.getPosition().z() - bz;
             double d4 = dx * dx + dz * dz;
