@@ -17,12 +17,12 @@ class FixCatalogTest {
     @Test
     void everyToggleIsCatalogued() {
         FixesConfig cfg = FixesLegacy.config();
-        assertEquals(10, FixesConfig.TOGGLES.size(), "a new toggle needs its FixCatalog entry");
+        assertEquals(11, FixesConfig.TOGGLES.size(), "a new toggle needs its FixCatalog entry");
         for (String name : FixesConfig.TOGGLES) {
             assertNotNull(FixCatalog.of(name), name);
             cfg.toggle(name); // a name the switch does not know throws
         }
-        assertEquals(11, FixCatalog.fixes().size(), "ten toggles and the one value knob");
+        assertEquals(12, FixCatalog.fixes().size(), "eleven toggles and the one value knob");
         assertNotNull(FixCatalog.of("legacyTabSlots"), "the value knob is catalogued too, though it is no toggle");
         assertTrue(FixCatalog.describe().stream().anyMatch(l -> l.startsWith("legacyTabSlots  [any]")));
     }
@@ -32,6 +32,7 @@ class FixCatalogTest {
         FixesConfig modern = FixesLegacy.config().scopedTo(MODERN);
         assertNull(modern.legacyPlacementHalf(), "a 1.8 cursor fix cannot apply to a modern client");
         assertNull(modern.legacyConsume());
+        assertNull(modern.legacyChunkReload(), "a modern client refills a held chunk in place");
         assertNotNull(modern.legacyTabCompleteFix(), "the tab-complete gap is every client's");
         assertNotNull(modern.effectResync());
         assertEquals(20, modern.legacyTabSlots(), "join carries it before the protocol is known");
@@ -42,6 +43,7 @@ class FixCatalogTest {
         FixesConfig legacy = FixesLegacy.config().scopedTo(V1_8);
         assertNotNull(legacy.legacyPlacementHalf());
         assertNotNull(legacy.legacyUseResync());
+        assertNotNull(legacy.legacyChunkReload());
         assertSame(legacy, legacy.scopedTo(V1_8), "nothing out of range: the same instance");
         assertNotNull(FixesLegacy.config().scopedTo(V1_7).legacyInventorySlot(), "1.7 is legacy too");
     }
@@ -51,6 +53,8 @@ class FixCatalogTest {
         assertEquals("any", ClientRange.ANY.toString());
         assertEquals("1.8 and older", ClientRange.LEGACY.toString());
         assertEquals("1.7", ClientRange.V1_7.toString());
+        assertEquals("1.13.2 and older", ClientRange.THROUGH_1_13.toString());
+        assertTrue(ClientRange.THROUGH_1_13.covers(V1_8) && !ClientRange.THROUGH_1_13.covers(MODERN));
         assertTrue(ClientRange.LEGACY.covers(V1_7) && ClientRange.LEGACY.covers(V1_8));
         assertTrue(!ClientRange.LEGACY.covers(MODERN) && ClientRange.MODERN.covers(MODERN));
     }

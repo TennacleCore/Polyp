@@ -15,6 +15,8 @@ public final class ClientVersion {
     public static final int BLOCKS_ATTACKS_PROTOCOL = 770;
     /** 1.21.2, the first client that reads {@code item_model}. */
     public static final int ITEM_MODEL_PROTOCOL = 768;
+    /** 1.13.2, the last client that files an entity into the chunk object it stands in; 1.14 refills a held chunk in place. */
+    public static final int CHUNK_OBJECT_PROTOCOL_MAX = 404;
 
     private ClientVersion() {}
 

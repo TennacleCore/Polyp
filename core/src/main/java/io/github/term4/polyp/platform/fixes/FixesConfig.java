@@ -63,6 +63,8 @@ public final class FixesConfig {
 
     /** The 1.8 heart bar ceils; off by default, since captured networks send fractions ({@code LegacyHealthRoundingFix}). */
     public @Nullable FixToggleConfig legacyHealthRounding() { return toggles.get("legacyHealthRounding"); }
+    /** A held chunk sent again strands the entities the client filed in it ({@code LegacyChunkReloadFix}); 1.13.2 and older. */
+    public @Nullable FixToggleConfig legacyChunkReload() { return toggles.get("legacyChunkReload"); }
 
     /** 1.7's whole tab grid is Join Game's max players; {@code null} leaves Minestom's own. */
     public @Nullable Integer legacyTabSlots() { return legacyTabSlots; }
@@ -165,6 +167,7 @@ public final class FixesConfig {
         public Builder legacyUseResync(@Nullable FixToggleConfig v) { return toggle("legacyUseResync", v); }
         public Builder legacyPlacementHalf(@Nullable FixToggleConfig v) { return toggle("legacyPlacementHalf", v); }
         public Builder legacyHealthRounding(@Nullable FixToggleConfig v) { return toggle("legacyHealthRounding", v); }
+        public Builder legacyChunkReload(@Nullable FixToggleConfig v) { return toggle("legacyChunkReload", v); }
         public Builder legacyTabSlots(@Nullable Integer v) { this.legacyTabSlots = v; return this; }
 
         public FixesConfig build() { return new FixesConfig(this); }
