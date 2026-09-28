@@ -35,6 +35,10 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.network.packet.client.ClientPacket;
 import net.minestom.server.network.packet.server.SendablePacket;
+import net.minestom.server.network.packet.server.play.EntityStatusPacket;
+import net.minestom.server.entity.EntityStatuses;
+import net.minestom.server.entity.PlayerHand;
+import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.network.packet.server.play.EntityEquipmentPacket;
 import net.minestom.server.network.packet.server.play.EntityAttributesPacket;
 import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
@@ -142,6 +146,18 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
 
     @Override
     public void sendPacketToViewersAndSelf(@NotNull SendablePacket packet) {
+        // vanilla 1.8 sends status 9 to the eater alone; Minestom sends it to the viewers too, whose clients then
+        // predict the vanilla remainder (a potion's glass bottle) over the hand they were sent inside the finish.
+        // The hand goes out again behind it, so the prediction never outlives the tick
+        if (packet instanceof EntityStatusPacket(int id, byte status) && id == getEntityId()
+                && status == EntityStatuses.Player.MARK_ITEM_FINISHED) {
+            super.sendPacketToViewersAndSelf(packet);
+            PlayerHand hand = getItemUseHand() == PlayerHand.OFF ? PlayerHand.OFF : PlayerHand.MAIN;
+            EquipmentSlot slot = hand == PlayerHand.OFF ? EquipmentSlot.OFF_HAND : EquipmentSlot.MAIN_HAND;
+            EntityEquipmentPacket held = new EntityEquipmentPacket(getEntityId(), Map.of(slot, getItemInHand(hand)));
+            for (Player viewer : getViewers()) viewer.sendPacket(held); // bare: each viewer's own item view applies
+            return;
+        }
         if (processingClientInput && selfMetaFilter != null) {
             // client-predicted metadata (crouch, use item, elytra): viewers get the full packet, self only the rest
             if (packet instanceof EntityMetaDataPacket(int entityId, Map<Integer, Metadata.Entry<?>> entries) && entityId == getEntityId()) {
