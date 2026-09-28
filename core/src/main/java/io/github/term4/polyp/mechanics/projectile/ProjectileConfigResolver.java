@@ -5,6 +5,8 @@ import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.Services;
 import io.github.term4.polyp.config.Config;
 import io.github.term4.polyp.config.FieldValue;
+import net.kyori.adventure.key.Key;
+import io.github.term4.polyp.item.ItemKind;
 import io.github.term4.polyp.mechanics.damage.types.DamageType;
 import io.github.term4.polyp.mechanics.knockback.KnockbackConfig;
 import io.github.term4.polyp.mechanics.projectile.types.ProjectileTypeConfig;
@@ -62,10 +64,14 @@ public final class ProjectileConfigResolver {
         public ProjectileTypeConfig typeConfig() {
             ProjectileConfig cfg = snap.config();
             if (cfg == null && services != null && services.projectiles() != null) cfg = services.projectiles().config();
-            return Config.layer(snap.type().defaultConfig(),
+            ProjectileTypeConfig layered = Config.layer(snap.type().defaultConfig(),
                     cfg != null ? cfg.defaults() : null,
                     cfg != null ? cfg.typeConfig(snap.type().key()) : null,
                     this);
+            // a stamped item's kind over the type's entry: the config it registers under that key is the variant
+            Key kind = cfg != null ? ItemKind.of(snap.item()) : null;
+            ProjectileTypeConfig variant = kind != null ? cfg.typeConfig(kind) : null;
+            return variant != null ? variant.fromBase(layered).withOverlay(this) : layered;
         }
     }
 

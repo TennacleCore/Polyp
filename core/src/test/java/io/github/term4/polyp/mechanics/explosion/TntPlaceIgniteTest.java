@@ -3,7 +3,10 @@ package io.github.term4.polyp.mechanics.explosion;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.entity.PrimedTnt;
+import io.github.term4.polyp.item.ItemKind;
 import io.github.term4.polyp.presets.vanilla18.Explosion;
+import net.minestom.server.item.ItemStack;
+import net.minestom.server.item.Material;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.coordinate.BlockVec;
@@ -44,6 +47,25 @@ class TntPlaceIgniteTest extends HeadlessServerTest {
             var event = place(placer, new BlockVec(62, 65, 20));
             assertTrue(event.isCancelled(), "the block never exists");
             assertTrue(instance.getEntities().stream().anyMatch(e -> e instanceof PrimedTnt), "primed instead");
+        } finally {
+            polyp.profiles().setPlayer(placer.player, null);
+        }
+    }
+
+    @Test
+    void aStampedKindPrimesInAPlainScope() {
+        FakePlayer placer = FakePlayer.connect(instance, new Pos(80.5, 65, 20.5), "TntKind");
+        polyp.profiles().setPlayer(placer.player, MechanicsProfile.builder()
+                .set(MechanicsKeys.TNT, io.github.term4.polyp.presets.vanilla18.Tnt.config().toBuilder()
+                        .kind(io.github.term4.polyp.presets.hypixel.Tnt.KIND, io.github.term4.polyp.presets.hypixel.Tnt.kind())
+                        .build())
+                .build());
+        try {
+            placer.player.setItemInMainHand(ItemStack.of(Material.TNT, 2));
+            assertFalse(place(placer, new BlockVec(82, 65, 20)).isCancelled(), "a plain TNT is a block in a vanilla scope");
+            placer.player.setItemInMainHand(ItemKind.stamp(ItemStack.of(Material.TNT, 2),
+                    io.github.term4.polyp.presets.hypixel.Tnt.KIND));
+            assertTrue(place(placer, new BlockVec(84, 65, 20)).isCancelled(), "the stamped one lights as Hypixel's");
         } finally {
             polyp.profiles().setPlayer(placer.player, null);
         }

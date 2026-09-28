@@ -1,5 +1,7 @@
 package io.github.term4.polyp.presets.mmc18;
 
+import net.kyori.adventure.key.Key;
+
 import io.github.term4.polyp.mechanics.projectile.ProjectileBehavior;
 import io.github.term4.polyp.mechanics.projectile.ProjectileConfig;
 import io.github.term4.polyp.mechanics.projectile.entities.ManagedProjectile;
@@ -39,6 +41,9 @@ import java.util.List;
  * overdamage remainder + push).
  */
 public final class Projectiles {
+
+    /** The stamp a fire charge carries to throw as this fireball wherever it is used. */
+    public static final Key FIREBALL = Key.key("mmc18:fireball");
 
     private Projectiles() {}
 
@@ -226,7 +231,8 @@ public final class Projectiles {
                 .knockback(Knockback.arrow()).build();
         return ProjectileConfig.builder(base)
                 // no per-type floor: the minemen broadcast vy floor rides the profile's VELOCITY member
-                .typeConfigs(fireball, splash, bobber, snowball, egg, pearl, arrow)
+                .typeConfigs(fireball, splash, bobber, snowball, egg, pearl, arrow,
+                        ProjectileTypeConfig.builder(fireball).key(FIREBALL).build())
                 .shootables(new PseudoHook.Installer())
                 .useItemAimSync(true) // MineMen launches on the CLICK-time aim (in-game: flick-throws never desync)
                 .build();

@@ -37,6 +37,7 @@ import net.minestom.server.event.EventDispatcher;
 import io.github.term4.polyp.api.event.explosion.TntPrimeEvent;
 import io.github.term4.polyp.entity.PrimedTnt;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
+import net.minestom.server.item.ItemStack;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.Explosion;
@@ -81,7 +82,7 @@ public final class ExplosionSystem implements MechanicsModule {
             if (!e.getBlock().compare(Block.TNT)) return;
             Player p = e.getPlayer();
             MechanicsWorld world = MechanicsWorld.of(p);
-            PrimedTnt.Config tnt = resolveTnt(p, world, TntPrimeEvent.Cause.PLACEMENT);
+            PrimedTnt.Config tnt = resolveTnt(p, world, TntPrimeEvent.Cause.PLACEMENT, p.getItemInHand(e.getHand()));
             if (!tnt.igniteOnPlace()) return;
             PrimedTnt primed = PrimedTnt.spawn(this, world, e.getBlockPosition(), tnt, p,
                     TntPrimeEvent.Cause.PLACEMENT);
@@ -93,9 +94,15 @@ public final class ExplosionSystem implements MechanicsModule {
 
     /** The scope-resolved TNT knobs for one prime: {@code igniter}'s chain when present, else the world's. */
     public PrimedTnt.Config resolveTnt(@Nullable Entity igniter, MechanicsWorld world, TntPrimeEvent.Cause cause) {
+        return resolveTnt(igniter, world, cause, null);
+    }
+
+    /** {@link #resolveTnt(Entity, MechanicsWorld, TntPrimeEvent.Cause)} for {@code item}, whose stamped kind may carry its own knobs. */
+    public PrimedTnt.Config resolveTnt(@Nullable Entity igniter, MechanicsWorld world, TntPrimeEvent.Cause cause,
+                                       @Nullable ItemStack item) {
         TntConfig cfg = igniter != null ? services.profiles().resolve(igniter, MechanicsKeys.TNT)
                 : services.profiles().resolveWorld(world, MechanicsKeys.TNT);
-        return TntConfigResolver.resolve(cfg, new TntConfigResolver.TntContext(igniter, world, cause, services));
+        return TntConfigResolver.resolve(cfg, new TntConfigResolver.TntContext(igniter, world, cause, services, item));
     }
 
     public @Nullable PrimedTnt primeTnt(Instance instance, Point pos, @Nullable Entity igniter,

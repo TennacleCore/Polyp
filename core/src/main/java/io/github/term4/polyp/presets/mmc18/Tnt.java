@@ -4,6 +4,7 @@ import io.github.term4.polyp.entity.PrimedTnt;
 import io.github.term4.polyp.mechanics.explosion.ExplosionSystem;
 import io.github.term4.polyp.mechanics.explosion.TntConfig;
 import io.github.term4.polyp.mechanics.explosion.TntConfigResolver;
+import net.kyori.adventure.key.Key;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Instance;
 import org.jetbrains.annotations.Nullable;
@@ -20,9 +21,17 @@ public final class Tnt {
     // bounce, not a rule. Fireball sources keep the profile's KB_SCALE.
     private static final double TNT_VICTIM_SCALE = 1.1;
 
-    public static TntConfig config() {
+    /** The stamp a TNT carries to be this one wherever it is placed. */
+    public static final Key KIND = Key.key("mmc18:tnt");
+
+    public static TntConfig kind() {
         return TntConfig.builder().fuseTicks(52).detonateAtFeet(true).wire(PrimedTnt.Wire.MINEMEN)
                 .tntVictimScale(TNT_VICTIM_SCALE).igniteOnPlace(true).build();
+    }
+
+    /** The world's TNT, and the kind registered under {@link #KIND}. */
+    public static TntConfig config() {
+        return kind().toBuilder().kind(KIND, kind()).build();
     }
 
     public static @Nullable PrimedTnt spawn(ExplosionSystem explosion, Instance instance, Point tntBlock) {

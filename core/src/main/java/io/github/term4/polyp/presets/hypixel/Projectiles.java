@@ -9,6 +9,7 @@ import io.github.term4.polyp.mechanics.projectile.types.Fireball;
 import io.github.term4.polyp.mechanics.projectile.types.Pearl;
 import io.github.term4.polyp.mechanics.projectile.types.ProjectileTypeConfig;
 import io.github.term4.polyp.presets.vanilla18.Vanilla18;
+import net.kyori.adventure.key.Key;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
@@ -25,6 +26,9 @@ public final class Projectiles {
     private Projectiles() {}
 
     // first-tick move: sets the point-blank yaw window (~53 deg) and the close-range block-break offset
+    /** The stamp a fire charge carries to throw as this fireball wherever it is used. */
+    public static final Key FIREBALL = Key.key("hypixel:fireball");
+
     private static final double BW_LAUNCH = 0.5;
     // capture wire 8359; the ramp then rides the vanilla (v+0.1)*0.95 propulsion
     private static final double BW_CRUISE = 1.0449;
@@ -79,7 +83,7 @@ public final class Projectiles {
                 .teleportDamage(0.0) // BedWars pearls deal none; SkyWars keep vanilla 5 - per-mode configs differ in knobs
                 .build();
         return ProjectileConfig.builder(base)
-                .typeConfigs(bwFireball, bwPearl)
+                .typeConfigs(bwFireball, bwPearl, ProjectileTypeConfig.builder(bwFireball).key(FIREBALL).build())
                 .build();
     }
 }
