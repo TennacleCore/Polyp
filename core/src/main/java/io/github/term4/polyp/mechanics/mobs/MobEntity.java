@@ -116,6 +116,17 @@ public abstract class MobEntity extends LivingEntity implements ExternallyTickab
         MobKindConfig k = cfg.kind(getEntityType());
         this.kind = k != null ? k.withOverlay(ctx) : MobKindConfig.builder().build();
         this.sides = FieldValue.resolve(cfg.sides, ctx, Sides.SCOREBOARD);
+        applyKind();
+        goals();
+    }
+
+    /** {@code overlay}'s knobs over the kind's own: a game handing one mob its numbers (health, speed, targets). */
+    public void kind(MobKindConfig overlay) {
+        this.kind = overlay.withOverlay(ctx()).fromBase(kind);
+        applyKind();
+    }
+
+    private void applyKind() {
         double w = knob(kind.width, getEntityType().width()), h = knob(kind.height, getEntityType().height());
         setBoundingBox(w, h, w);
         Double maxHealth = knob(kind.maxHealth, null);
@@ -130,7 +141,6 @@ public abstract class MobEntity extends LivingEntity implements ExternallyTickab
         Float attack = knob(kind.attackDamage, null);
         if (attack != null) getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(attack);
         navigation.avoidsWater(knob(kind.avoidsWater, false));
-        goals();
     }
 
     /** Registers the kind's goals, 1.8's lists. */

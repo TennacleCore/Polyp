@@ -58,6 +58,7 @@ public final class EnderDragonEntity extends MobEntity {
     private boolean slowed;
     private float randomYawVelocity;
     private @Nullable DragonPart hit;
+    private @Nullable Point roam;
 
     public EnderDragonEntity(MobsSystem mobs) {
         super(mobs, EntityType.ENDER_DRAGON);
@@ -121,8 +122,10 @@ public final class EnderDragonEntity extends MobEntity {
         return null;
     }
 
-    /** Flight targets: a random player half the time, else a random point around home. */
     public void forceNewTarget() { forceNewTarget = true; }
+
+    /** Where the random flight points spread from; the End's fountain, 0 0, when unset and no home is. */
+    public void roamAround(@Nullable Point centre) { roam = centre; }
 
     // ---- the tick
 
@@ -234,13 +237,14 @@ public final class EnderDragonEntity extends MobEntity {
         Predicate<LivingEntity> selector = knob(kind().targetSelector, ANY);
         for (Player p : world().players()) {
             if (p.getGameMode() == GameMode.SPECTATOR || p.isDead() || !WorldPolicy.canAffect(this, p)) continue;
-            if (selector.test(p)) players.add(p);
+            if (sides().same(this, p) || !selector.test(p)) continue;
+            players.add(p);
         }
         if (random().nextInt(2) == 0 && !players.isEmpty()) {
             flightTarget = players.get(random().nextInt(players.size()));
             return;
         }
-        Point centre = hasHome() ? home() : BlockVec.ZERO;
+        Point centre = roam != null ? roam : hasHome() ? home() : BlockVec.ZERO;
         double radius = knob(kind().roamRadius, 60.0);
         double minY = knob(kind().roamMinY, 70.0);
         double height = knob(kind().roamHeight, 50.0);
@@ -359,7 +363,7 @@ public final class EnderDragonEntity extends MobEntity {
         for (Entity e : world().nearbyEntities(centre, reach)) {
             if (e == this || !(e instanceof LivingEntity le) || le.isDead() || le.isRemoved()) continue;
             if (e instanceof Player p && p.getGameMode() == GameMode.SPECTATOR) continue;
-            if (!WorldPolicy.canAffect(this, e) || !canAttack(le)) continue;
+            if (!WorldPolicy.canAffect(this, e) || !canAttack(le) || sides().same(this, e)) continue;
             if (zone.meets(e.getPosition(), e.getBoundingBox())) out.add(le);
         }
         return out;
