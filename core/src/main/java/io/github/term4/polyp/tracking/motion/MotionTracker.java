@@ -357,8 +357,10 @@ public final class MotionTracker implements Tracker {
         p.setTag(MOT_H, new MotState(residualAt(p, s, now), now, false));
     }
 
-    /** Burst catch-up bound; vanilla runs one {@code l()} per queued packet. */
-    private static final int STEP_CAP = 8;
+    /** Burst catch-up bound: vanilla runs one {@code l()} per queued packet, a thousand a tick; Minestom hands a player's
+     *  queue over at this many a tick, so the whole burst steps. A cap of 8 left a jittery client's sim short of vanilla's
+     *  by the rest of every burst until it next landed, and a chained hit folded that stale motY in (the user, 2026-09-28). */
+    private static final int STEP_CAP = ServerFlag.PLAYER_PACKET_PER_TICK;
 
     private void tick(TickContext ctx) {
         for (Player p : ctx.world().players()) {

@@ -62,6 +62,32 @@ class MotYMovePacketGateTest extends HeadlessServerTest {
         p.remove();
     }
 
+    /** A jittery client's packets land in bursts: every one of them steps the sim, as every one runs a 1.8 living update. */
+    @Test
+    void aBurstStepsEveryPacket() {
+        var inst = flatInstance(MechanicsProfile.builder()
+                .set(MechanicsKeys.VELOCITY, VelocityRule.simulated(
+                        VelocityConfig.builder().motYOnMovePacket(true).build()))
+                .build());
+        Player p = FakePlayer.connect(inst, new Pos(8.5, 80, 8.5), "MotYBurst").player;
+        double v = launch(inst, p);
+        p.teleport(new Pos(8.5, 90, 8.5)).join(); // high: the burst's fall probes reach no floor
+        tick(inst);
+        move(p, 90.42, false);         // a fresh launch after the teleport's reset
+        tick(inst);
+        v = MotionTracker.serverMotY(p, 0, true);
+        int burst = 20;
+        for (int i = 1; i <= burst; i++) move(p, 90.42 - 0.02 * i, false);
+        tick(inst);                    // the whole burst, one tick
+        double expected = v;
+        for (int i = 0; i < burst; i++) { // the step's own apex clamp, then gravity and drag
+            if (Math.abs(expected) < VelocityConfig.ZERO_BELOW) expected = 0;
+            expected = (expected - G) * D;
+        }
+        assertEquals(expected, MotionTracker.serverMotY(p, 0, true), 1e-9, "twenty packets, twenty steps");
+        p.remove();
+    }
+
     @Test
     void defaultAdvancesEveryTick() {
         var inst = flatInstance(null);  // no VELOCITY profile -> default gate (every tick)
