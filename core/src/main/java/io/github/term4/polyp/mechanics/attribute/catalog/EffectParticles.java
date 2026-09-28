@@ -1,6 +1,9 @@
 package io.github.term4.polyp.mechanics.attribute.catalog;
 
 import io.github.term4.polyp.Polyp;
+import net.minestom.server.potion.PotionEffect;
+import io.github.term4.polyp.mechanics.attribute.AttributeConfig;
+import io.github.term4.polyp.MechanicsKeys;
 import net.kyori.adventure.key.Key;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.color.AlphaColor;
@@ -32,9 +35,12 @@ public final class EffectParticles {
     private static final int AMBIENT_ALPHA = 38; // vanilla's 0.15
     private static final Particle.EntityEffect SWIRL = (Particle.EntityEffect) Particle.fromKey(Key.key("minecraft:entity_effect"));
 
+    private static volatile Polyp polyp;
+
     private EffectParticles() {}
 
     public static void install(@NotNull Polyp polyp) {
+        EffectParticles.polyp = polyp;
         EventNode<Event> node = EventNode.all("polyp:effect-particles");
         node.addListener(EntityPotionAddEvent.class, e -> later(e.getEntity()));
         node.addListener(EntityPotionRemoveEvent.class, e -> later(e.getEntity()));
@@ -52,13 +58,23 @@ public final class EffectParticles {
     public static void refresh(@NotNull LivingEntity living) {
         if (!(living.getEntityMeta() instanceof LivingEntityMeta meta)) return;
         List<Potion> active = new ArrayList<>();
-        for (TimedPotion timed : living.getActiveEffects()) {
-            if (timed.potion().hasParticles()) active.add(timed.potion()); // 1.8 calcPotionLiquidColor skips a hidden one
+        if (!hidden(living)) {
+            for (TimedPotion timed : living.getActiveEffects()) {
+                if (timed.potion().hasParticles()) active.add(timed.potion()); // 1.8 calcPotionLiquidColor skips a hidden one
+            }
         }
         int color = PotionColors.legacyBlend(active);
         boolean ambient = !active.isEmpty() && active.stream().allMatch(Potion::isAmbient); // PotionBrewer.b: every one
         meta.setEffectParticles(color == 0 ? List.of() : List.of(swirl(color, ambient)));
         meta.setPotionEffectAmbient(color != 0 && ambient);
+    }
+
+    // AttributeConfig.swirlWhileInvisible off: an invisible entity shows nothing at all
+    private static boolean hidden(LivingEntity living) {
+        if (!living.hasEffect(PotionEffect.INVISIBILITY)) return false;
+        Polyp p = polyp;
+        AttributeConfig cfg = p != null ? p.profiles().resolve(living, MechanicsKeys.ATTRIBUTES) : null;
+        return cfg != null && !cfg.swirlWhileInvisible();
     }
 
     /** One swirl in {@code color}, faint when ambient. */

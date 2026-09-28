@@ -25,6 +25,8 @@ public final class Hypixel {
         return Vanilla18.profile().toBuilder()
                 .mutate(MechanicsKeys.ATTACK, attack -> AttackConfig.builder(attack)
                         .suppressSprintResetEcho(true).build())
+                // an invisible player shows no swirl at all (Bed Wars, the user 2026-09-28); vanilla shows a rare one
+                .mutate(MechanicsKeys.ATTRIBUTES, a -> a.toBuilder().swirlWhileInvisible(false).build())
                 .set(MechanicsKeys.DAMAGE, Damage.config())
                 .set(MechanicsKeys.KNOCKBACK, Knockback.melee())
                 .set(MechanicsKeys.VELOCITY, Movement.velocity())

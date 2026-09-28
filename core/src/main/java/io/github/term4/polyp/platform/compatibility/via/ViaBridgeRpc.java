@@ -134,6 +134,31 @@ public final class ViaBridgeRpc {
                 encodeEntityMotionBody(entityId, vx, vy, vz));
     }
 
+    /**
+     * A 1.8 {@code level_particles} as a 1.8 client reads it, for a particle newer protocols never had (a footstep).
+     * {@code particleId} is 1.8's own id (footstep 28); the proxy passes it to a 1.8 client untouched.
+     */
+    public @NotNull CompletableFuture<Void> sendLevelParticles18(@NotNull Player player, int particleId, boolean longDistance,
+                                                                  float x, float y, float z, float offsetX, float offsetY,
+                                                                  float offsetZ, float speed, int count) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            writeInt(out, particleId);
+            out.write(longDistance ? 1 : 0);
+            writeFloat(out, x);
+            writeFloat(out, y);
+            writeFloat(out, z);
+            writeFloat(out, offsetX);
+            writeFloat(out, offsetY);
+            writeFloat(out, offsetZ);
+            writeFloat(out, speed);
+            writeInt(out, count);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return sendClientbound(player, PROTOCOL_1_8, PACKETS_1_8, "LEVEL_PARTICLES", out.toByteArray());
+    }
+
     /** {@code body} = the packet's fields as {@code inputProtocolId} writes them (no id); the proxy translates down to the client. */
     public @NotNull CompletableFuture<Void> sendClientbound(@NotNull Player player, int inputProtocolId,
                                                            @NotNull String packetClass, @NotNull String packetType,
@@ -282,6 +307,17 @@ public final class ViaBridgeRpc {
             }
         }
         return new Status(code, null, Arrays.copyOfRange(payload, 1, payload.length));
+    }
+
+    private static void writeInt(ByteArrayOutputStream out, int value) throws IOException {
+        out.write((value >>> 24) & 0xFF);
+        out.write((value >>> 16) & 0xFF);
+        out.write((value >>> 8) & 0xFF);
+        out.write(value & 0xFF);
+    }
+
+    private static void writeFloat(ByteArrayOutputStream out, float value) throws IOException {
+        writeInt(out, Float.floatToIntBits(value));
     }
 
     private static void writeShort(ByteArrayOutputStream out, short value) throws IOException {

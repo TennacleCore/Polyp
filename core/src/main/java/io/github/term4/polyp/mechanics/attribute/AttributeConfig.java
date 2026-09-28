@@ -56,6 +56,8 @@ public final class AttributeConfig extends Config<AttributeContext, AttributeCon
      * {@code updateEquipmentOnPlayerActions}). Armor always rides the tick, avoiding the use-item prediction race.
      */
     @Nullable public final Boolean attributeSwapping;
+    /** Whether an invisible entity still shows its effects' swirl (vanilla: a rare one); unset = yes. Hypixel shows none. */
+    @Nullable public final Boolean swirlWhileInvisible;
 
     private AttributeConfig(Builder b) {
         super(b.subConfig);
@@ -67,9 +69,11 @@ public final class AttributeConfig extends Config<AttributeContext, AttributeCon
         this.resistancePerLevel = b.resistancePerLevel;
         this.mitigationStages = b.mitigationStages;
         this.attributeSwapping = b.attributeSwapping;
+        this.swirlWhileInvisible = b.swirlWhileInvisible;
     }
 
     public boolean attributeSwapping() { return attributeSwapping != null && attributeSwapping; }
+    public boolean swirlWhileInvisible() { return swirlWhileInvisible == null || swirlWhileInvisible; }
 
     /** The {@link Source} catalog; resolved per scope and registered at install. */
     public List<Source> sources() { return sources; }
@@ -113,6 +117,7 @@ public final class AttributeConfig extends Config<AttributeContext, AttributeCon
                 .resistancePerLevel(resistancePerLevel != null ? resistancePerLevel : base.resistancePerLevel)
                 .mitigationStages(mitigationStages != null ? mitigationStages : base.mitigationStages)
                 .attributeSwapping(attributeSwapping != null ? attributeSwapping : base.attributeSwapping)
+                .swirlWhileInvisible(swirlWhileInvisible != null ? swirlWhileInvisible : base.swirlWhileInvisible)
                 .build();
     }
 
@@ -131,6 +136,7 @@ public final class AttributeConfig extends Config<AttributeContext, AttributeCon
         private Double resistancePerLevel;
         private List<MitigationPipeline.Stage> mitigationStages;
         private Boolean attributeSwapping;
+        private Boolean swirlWhileInvisible;
 
         Builder() {}
 
@@ -144,7 +150,10 @@ public final class AttributeConfig extends Config<AttributeContext, AttributeCon
             resistancePerLevel = c.resistancePerLevel;
             mitigationStages = c.mitigationStages;
             attributeSwapping = c.attributeSwapping;
+            swirlWhileInvisible = c.swirlWhileInvisible;
         }
+
+        public Builder swirlWhileInvisible(Boolean v) { swirlWhileInvisible = v; return this; }
 
         public Builder subConfig(Function<AttributeContext, AttributeConfig> fn) { subConfig = fn; return this; }
 
