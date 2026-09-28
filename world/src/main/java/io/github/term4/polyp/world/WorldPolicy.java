@@ -3,6 +3,7 @@ package io.github.term4.polyp.world;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;
+import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -13,6 +14,9 @@ import org.jetbrains.annotations.NotNull;
 public interface WorldPolicy {
 
     WorldPolicy SAME_WORLD = new WorldPolicy() {};
+
+    /** Scenery (a shopkeeper, a mannequin): nothing reaches it and it reaches nothing, under every policy. */
+    Tag<Boolean> INERT = Tag.Boolean("polyp:inert").defaultValue(false);
 
     /**
      * Whether {@code actor}'s gameplay effects reach {@code target} (melee, projectiles, splash, pushes, pickup,
@@ -45,6 +49,7 @@ public interface WorldPolicy {
     }
 
     static boolean canAffect(@NotNull Entity actor, @NotNull Entity target) {
+        if (actor.getTag(INERT) || target.getTag(INERT)) return false;
         return Holder.POLICY.affects(actor, target);
     }
 

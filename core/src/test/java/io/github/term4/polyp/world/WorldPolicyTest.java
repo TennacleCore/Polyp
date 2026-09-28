@@ -25,4 +25,18 @@ class WorldPolicyTest extends HeadlessServerTest {
             b.remove();
         }
     }
+
+    @Test
+    void inertIsOutOfReach() {
+        LivingEntity a = zombie(new Pos(64, 65, 60));
+        LivingEntity keeper = zombie(new Pos(64, 65, 62));
+        try {
+            keeper.setTag(WorldPolicy.INERT, true);
+            assertFalse(WorldPolicy.canAffect(a, keeper));
+            assertFalse(WorldPolicy.canAffect(keeper, a));
+        } finally {
+            a.remove();
+            keeper.remove();
+        }
+    }
 }
