@@ -34,6 +34,7 @@ public final class Vanilla {
                 .set(MechanicsKeys.VRI, VriConfig.all())
                 .set(MechanicsKeys.FX, Fx.modern())
                 .set(MechanicsKeys.MOBS, Mobs.config())
+                .set(MechanicsKeys.FLUIDS, Fluids.config())
                 .build();
     }
 }

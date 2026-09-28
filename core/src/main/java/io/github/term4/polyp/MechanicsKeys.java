@@ -23,6 +23,7 @@ import io.github.term4.polyp.tracking.motion.VelocityRule;
 import io.github.term4.polyp.entity.DroppedItemEntity;
 import io.github.term4.polyp.mechanics.explosion.TntConfig;
 import io.github.term4.polyp.mechanics.itemdamage.ItemDamageConfig;
+import io.github.term4.polyp.mechanics.fluids.FluidsConfig;
 import io.github.term4.polyp.mechanics.mobs.MobsConfig;
 import io.github.term4.polyp.vri.VriConfig;
 import io.github.term4.polyp.util.tick.TickScalingConfig;
@@ -65,4 +66,5 @@ public final class MechanicsKeys {
     public static final ConfigKey<CompatConfig> COMPAT = ConfigKey.of("polyp:compat", CompatConfig.class);
     public static final ConfigKey<ItemRegistry> ITEMS = ConfigKey.of("polyp:items", ItemRegistry.class);
     public static final ConfigKey<MobsConfig> MOBS = ConfigKey.of("polyp:mobs", MobsConfig.class);
+    public static final ConfigKey<FluidsConfig> FLUIDS = ConfigKey.of("polyp:fluids", FluidsConfig.class);
 }

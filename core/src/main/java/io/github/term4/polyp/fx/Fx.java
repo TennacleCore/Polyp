@@ -106,6 +106,11 @@ public final class Fx {
     /** The roar the whole world hears on the first death tick. */
     public static final Key DRAGON_DEATH = Key.key("polyp:dragon_death");
     public static final Key DRAGON_DEATH_BURST = Key.key("polyp:dragon_death_burst");
+    /** Lava meeting water (1.8 triggerMixEffects). */
+    public static final Key FLUID_MIX = Key.key("polyp:fluid_mix");
+    /** A bucket poured or filled; the 1.8 client hears nothing, the modern one predicts its own. */
+    public static final Key BUCKET_EMPTY = Key.key("polyp:bucket_empty");
+    public static final Key BUCKET_FILL = Key.key("polyp:bucket_fill");
 
     /**
      * Plays the fx registered for {@code key} in {@code ctx.source()}'s scope, firing the cancellable
@@ -187,7 +192,20 @@ public final class Fx {
                 .register(MOB_WALK_DUST, walkDust())
                 .register(DRAGON_BREAK, FxHandler.particle(Particle.EXPLOSION, 1, 0, 0f))
                 .register(DRAGON_DEATH, ctx -> ctx.emit(Recipients.WATCHERS, FxEffect.worldEvent(WorldEvent.SOUND_DRAGON_DEATH.id(), 0, true)))
-                .register(DRAGON_DEATH_BURST, FxHandler.particle(Particle.EXPLOSION_EMITTER, 1, 0, 0f));
+                .register(DRAGON_DEATH_BURST, FxHandler.particle(Particle.EXPLOSION_EMITTER, 1, 0, 0f))
+                .register(FLUID_MIX, fluidMix());
+    }
+
+    // 1.8: random.fizz 0.5 at 2.6 +- 0.8, eight large smokes 1.2 up; the modern client renders event 1501 itself
+    private static @NotNull FxHandler fluidMix() {
+        return ctx -> {
+            var random = ThreadLocalRandom.current();
+            ctx.sound(SoundEvent.BLOCK_FIRE_EXTINGUISH, Sound.Source.BLOCK, 0.5f, 2.6f + (random.nextFloat() - random.nextFloat()) * 0.8f);
+            for (int i = 0; i < 8; i++) {
+                ctx.emit(Recipients.WATCHERS, (c, to, at, seed) -> to.sendPacket(new ParticlePacket(Particle.LARGE_SMOKE,
+                        at.x() - 0.5 + random.nextDouble(), at.y() + 0.7, at.z() - 0.5 + random.nextDouble(), 0f, 0f, 0f, 0f, 1)));
+            }
+        };
     }
 
     private static @NotNull FxHandler mobSound() {
@@ -248,7 +266,10 @@ public final class Fx {
                 .register(BLOCK_PLACE, placeSound(block -> true))
                 .register(BLOCK_PLACE_REFUSED, placeSound(block -> true))
                 // ThrownEnderpearl.playSound: positional at the destination, PLAYERS category
-                .register(PEARL_TELEPORT, pearlTeleport());
+                .register(PEARL_TELEPORT, pearlTeleport())
+                .register(FLUID_MIX, ctx -> ctx.emit(Recipients.WATCHERS, FxEffect.worldEvent(WorldEvent.LAVA_FIZZ.id(), 0)))
+                .register(BUCKET_EMPTY, ctx -> ctx.viewerSound(SoundEvent.ITEM_BUCKET_EMPTY, Sound.Source.BLOCK, 1.0f, 1.0f))
+                .register(BUCKET_FILL, ctx -> ctx.viewerSound(SoundEvent.ITEM_BUCKET_FILL, Sound.Source.BLOCK, 1.0f, 1.0f));
     }
 
     /** 1.8 placed a bed through ItemBed, never ItemBlock: no place sound, landed or refused. */
