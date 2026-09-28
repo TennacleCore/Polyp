@@ -309,4 +309,41 @@ class ContainerSystemTest extends HeadlessServerTest {
             p.player.remove();
         }
     }
+    @Test
+    void anOpeningCanBeRefused() {
+        BlockVec pos = new BlockVec(20, Y, Z);
+        FakePlayer p = FakePlayer.connect(instance, new Pos(20.5, Y, Z + 2.5), "ChestRefused");
+        var refuse = net.minestom.server.event.EventListener.of(io.github.term4.polyp.api.event.container.ContainerOpenEvent.class,
+                e -> { if (e.getPlayer() == p.player) e.setCancelled(true); });
+        MinecraftServer.getGlobalEventHandler().addListener(refuse);
+        try {
+            instance.setBlock(pos, Block.CHEST.withProperty("facing", "north"));
+            assertTrue(click(p, pos).isBlockingItemUse(), "the click is still spent");
+            assertNull(p.player.getOpenInventory(), "nothing opens");
+        } finally {
+            MinecraftServer.getGlobalEventHandler().removeListener(refuse);
+            p.player.remove();
+        }
+    }
+
+    @Test
+    void setAndInsertReachAnOpenWindow() {
+        BlockVec pos = new BlockVec(24, Y, Z);
+        FakePlayer p = FakePlayer.connect(instance, new Pos(24.5, Y, Z + 2.5), "ChestFiller");
+        try {
+            instance.setBlock(pos, Block.CHEST.withProperty("facing", "north"));
+            containers.set(world, key(pos), 0, 27, ItemStack.of(Material.IRON_INGOT, 60));
+            ItemStack left = containers.insert(world, key(pos), 27, ItemStack.of(Material.IRON_INGOT, 10));
+            assertTrue(left.isAir());
+            assertEquals(64, containers.contents(world, key(pos))[0].amount(), "onto the like stack first");
+            assertEquals(6, containers.contents(world, key(pos))[1].amount(), "then the first empty slot");
+
+            click(p, pos);
+            containers.set(world, key(pos), 2, 27, ItemStack.of(Material.GOLD_INGOT, 3));
+            assertEquals(Material.GOLD_INGOT, window(p).getItemStack(2).material(), "live in the open window");
+            assertEquals(3, containers.contents(world, key(pos))[2].amount());
+        } finally {
+            p.player.remove();
+        }
+    }
 }

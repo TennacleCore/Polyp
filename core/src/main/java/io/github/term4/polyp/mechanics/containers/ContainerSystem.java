@@ -4,6 +4,7 @@ import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.ScopedSystem;
 import io.github.term4.polyp.api.event.container.ContainerChangeEvent;
+import io.github.term4.polyp.api.event.container.ContainerOpenEvent;
 import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
 import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.fx.FxContext;
@@ -122,6 +123,47 @@ public final class ContainerSystem extends ScopedSystem<ContainersConfig> {
         else store.holdings.remove(key);
     }
 
+    /**
+     * Sets slot {@code slot} of the contents under {@code key}, live in a window open on them; {@code size} slots
+     * when nothing is stored there yet. A change like any other: it fires {@link ContainerChangeEvent}.
+     */
+    public void set(@NotNull MechanicsWorld world, @NotNull String key, int slot, int size, @NotNull ItemStack item) {
+        ContainerStore store = ContainerStore.of(world);
+        ContainerStore.Window window = store.windows.get(key);
+        if (window != null) {
+            window.inventory().setItemStack(window.keys().indexOf(key) * window.half() + slot, item);
+            return;
+        }
+        ItemStack[] slots = store.holdings.get(key);
+        ItemStack before = slots != null && slot < slots.length && slots[slot] != null ? slots[slot] : ItemStack.AIR;
+        store.filled.add(key);
+        store.put(key, slot, size, item);
+        EventDispatcher.call(new ContainerChangeEvent(world, key, slot, before, item));
+    }
+
+    /** {@code stack} into the contents under {@code key} as a shift-click puts it: onto like stacks, then the first empty
+     *  slots of {@code size}; what does not fit comes back. */
+    public @NotNull ItemStack insert(@NotNull MechanicsWorld world, @NotNull String key, int size, @NotNull ItemStack stack) {
+        ItemStack[] slots = contents(world, key);
+        int left = stack.amount();
+        for (int i = 0; i < size && left > 0; i++) {
+            ItemStack in = slots != null && i < slots.length ? slots[i] : null;
+            if (in == null || !in.isSimilar(stack)) continue;
+            int now = Math.min(left, in.maxStackSize() - in.amount());
+            if (now <= 0) continue;
+            set(world, key, i, size, in.withAmount(in.amount() + now));
+            left -= now;
+        }
+        for (int i = 0; i < size && left > 0; i++) {
+            ItemStack in = slots != null && i < slots.length ? slots[i] : null;
+            if (in != null && !in.isAir()) continue;
+            int now = Math.min(left, stack.maxStackSize());
+            set(world, key, i, size, stack.withAmount(now));
+            left -= now;
+        }
+        return left > 0 ? stack.withAmount(left) : ItemStack.AIR;
+    }
+
     public void forEach(@NotNull MechanicsWorld world, @NotNull BiConsumer<String, ItemStack[]> consumer) {
         ContainerStore store = ContainerStore.existing(world);
         if (store != null) store.holdings.forEach((key, slots) -> consumer.accept(key, slots.clone()));
@@ -158,6 +200,9 @@ public final class ContainerSystem extends ScopedSystem<ContainersConfig> {
         ContainerContext ctx = context(world, pos, block, p);
         String key = kind.key().of(ctx);
         if (key == null) return;
+        ContainerOpenEvent opening = new ContainerOpenEvent(world, pos, key, p);
+        EventDispatcher.call(opening);
+        if (opening.isCancelled()) return;
         ContainerStore store = ContainerStore.of(world);
         List<BlockVec> cells = new ArrayList<>(2);
         List<String> keys = new ArrayList<>(2);
