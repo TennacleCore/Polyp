@@ -3,6 +3,7 @@ package io.github.term4.polyp.mechanics.damage;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
+import io.github.term4.polyp.config.KeySet;
 import io.github.term4.polyp.mechanics.containers.Spill;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DeathDropsTest extends HeadlessServerTest {
@@ -93,6 +95,36 @@ class DeathDropsTest extends HeadlessServerTest {
         });
         assertTrue(body[0].player.getInventory().getCursorItem().isAir());
         assertEquals(carried, body[0].player.getInventory().getItemStack(1), "into the first free slot, as 26.1 places it back");
+    }
+
+    @Test
+    void onlyTheSelectionSpills() {
+        FakePlayer[] body = new FakePlayer[1];
+        List<ItemSpawnEvent> drops = die("DropSome",
+                DeathConfig.builder().spilled(KeySet.only(Key.key("minecraft:stone"))).build(), p -> body[0] = p);
+        assertEquals(List.of(STONE), drops.stream().map(e -> e.item().getItemStack()).toList());
+        assertEquals(SWORD, body[0].player.getInventory().getItemStack(0), "the rest stays");
+    }
+
+    @Test
+    void aDeathWithoutAKillSpills() {
+        FakePlayer p = FakePlayer.connect(instance, new Pos(20.5, 64, 20.5), "DropNoKill");
+        List<ItemSpawnEvent> spawned = new ArrayList<>();
+        EventListener<ItemSpawnEvent> hold = EventListener.of(ItemSpawnEvent.class, e -> {
+            if (e.player() != p.player) return;
+            spawned.add(e);
+            e.setCancelled(true);
+        });
+        MinecraftServer.getGlobalEventHandler().addListener(hold);
+        try {
+            p.player.getInventory().setItemStack(0, SWORD);
+            polyp.module(DamageSystem.class).spill(p.player);
+            assertEquals(List.of(SWORD), spawned.stream().map(e -> e.item().getItemStack()).toList());
+            assertFalse(p.player.isDead(), "a game's own death: nobody was killed");
+        } finally {
+            MinecraftServer.getGlobalEventHandler().removeListener(hold);
+            p.player.remove();
+        }
     }
 
     @Test

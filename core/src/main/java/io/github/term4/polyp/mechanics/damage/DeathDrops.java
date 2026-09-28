@@ -1,5 +1,6 @@
 package io.github.term4.polyp.mechanics.damage;
 
+import io.github.term4.polyp.config.KeySet;
 import io.github.term4.polyp.item.Enchants;
 import io.github.term4.polyp.mechanics.containers.Spill;
 import io.github.term4.polyp.mechanics.damage.DeathConfig.DeathContext;
@@ -31,18 +32,20 @@ final class DeathDrops {
         inventory.setCursorItem(ItemStack.AIR);
         if (dead.getOpenInventory() != null) dead.closeInventory();
         Spill spill = death != null ? death.spill(ctx) : null;
-        if (spill == Spill.KEEP) {
+        KeySet spilled = death != null ? death.spilled(ctx) : null;
+        if (spill == Spill.KEEP || spilled != null && !carried.isAir() && !spilled.admits(carried.material().key())) {
             inventory.setCursorItem(PlaceBack.into(dead, carried));
-            return;
+            carried = ItemStack.AIR;
         }
+        if (spill == Spill.KEEP) return;
         List<ItemStack> drops = new ArrayList<>();
         for (int slot : SLOTS) {
             ItemStack stack = inventory.getItemStack(slot);
-            if (stack.isAir()) continue;
+            if (stack.isAir() || spilled != null && !spilled.admits(stack.material().key())) continue;
             inventory.setItemStack(slot, ItemStack.AIR);
             drops.add(stack);
         }
-        drops.add(carried);
+        if (!carried.isAir()) drops.add(carried);
         if (spill == Spill.VANISH) return;
         if (death == null || !Boolean.FALSE.equals(death.vanishingCurse(ctx))) {
             drops.removeIf(stack -> Enchants.has(stack, EffectComponent.PREVENT_EQUIPMENT_DROP));

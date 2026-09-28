@@ -6,6 +6,7 @@ import net.minestom.server.entity.Entity;
 import io.github.term4.polyp.config.SubjectContext;
 import io.github.term4.polyp.config.Config;
 import io.github.term4.polyp.config.FieldValue;
+import io.github.term4.polyp.config.KeySet;
 import net.minestom.server.entity.LivingEntity;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,6 +29,7 @@ public final class DeathConfig extends Config<DeathConfig.DeathContext, DeathCon
     public final @Nullable FieldValue<DeathContext, Boolean> hideCorpse;
     public final @Nullable FieldValue<DeathContext, Integer> deathAnimationTicks;
     public final @Nullable FieldValue<DeathContext, Spill> spill;
+    public final @Nullable FieldValue<DeathContext, KeySet> spilled;
     public final @Nullable FieldValue<DeathContext, Spill.Throw> dropThrow;
     public final @Nullable FieldValue<DeathContext, Boolean> vanishingCurse;
 
@@ -38,6 +40,7 @@ public final class DeathConfig extends Config<DeathConfig.DeathContext, DeathCon
         this.hideCorpse = b.hideCorpse;
         this.deathAnimationTicks = b.deathAnimationTicks;
         this.spill = b.spill;
+        this.spilled = b.spilled;
         this.dropThrow = b.dropThrow;
         this.vanishingCurse = b.vanishingCurse;
     }
@@ -56,6 +59,9 @@ public final class DeathConfig extends Config<DeathConfig.DeathContext, DeathCon
 
     /** What a player's inventory does at death; {@link Spill#KEEP} is keepInventory, and PACK drops. Unset = drop. */
     public @Nullable Spill spill(DeathContext ctx) { return resolve(spill, ctx); }
+
+    /** Which items the spill takes, by item key; the rest stay in the inventory. Unset = all. */
+    public @Nullable KeySet spilled(DeathContext ctx) { return resolve(spilled, ctx); }
 
     /** How the drops leave the body. Unset = {@link Spill.Throw#PLAYER}. */
     public @Nullable Spill.Throw dropThrow(DeathContext ctx) { return resolve(dropThrow, ctx); }

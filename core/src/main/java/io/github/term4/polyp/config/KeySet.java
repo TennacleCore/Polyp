@@ -1,11 +1,16 @@
 package io.github.term4.polyp.config;
 
 import net.kyori.adventure.key.Key;
+import net.minestom.server.codec.Codec;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Which keys of a catalog a scope admits - "only these" or "everything except these". A selection over types
@@ -29,15 +34,47 @@ public interface KeySet {
 
     /** Only the listed keys. */
     static @NotNull KeySet only(@NotNull Key... keys) {
-        Set<Key> allowed = new LinkedHashSet<>(Arrays.asList(keys));
-        return allowed::contains;
+        return new Listed(false, Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(keys))));
     }
 
     /** Everything the catalog has, minus the listed keys. */
     static @NotNull KeySet except(@NotNull Key... keys) {
-        Set<Key> denied = new LinkedHashSet<>(Arrays.asList(keys));
-        return key -> !denied.contains(key);
+        return new Listed(true, Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(keys))));
     }
+
+    /** An {@link #only} or {@link #except}: the one kind that writes back, its keys in the order given. */
+    record Listed(boolean except, @NotNull Set<Key> keys) implements KeySet {
+
+        @Override
+        public boolean admits(@NotNull Key key) {
+            return except != keys.contains(key);
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return (except ? "except(" : "only(") + keys.stream().map(Key::asString).collect(Collectors.joining(", ")) + ")";
+        }
+    }
+
+    /** {@code only(a, b)} or {@code except(a)}, a key without a namespace being {@code minecraft}'s. */
+    static @NotNull KeySet parse(@NotNull String text) {
+        String s = text.strip();
+        boolean except = s.startsWith("except(");
+        if (!except && !s.startsWith("only(") || !s.endsWith(")")) {
+            throw new IllegalArgumentException("not only(...) or except(...): " + text);
+        }
+        String body = s.substring(s.indexOf('(') + 1, s.length() - 1).strip();
+        List<Key> keys = new ArrayList<>();
+        if (!body.isEmpty()) for (String key : body.split(",")) keys.add(Key.key(key.strip()));
+        Key[] listed = keys.toArray(Key[]::new);
+        return except ? except(listed) : only(listed);
+    }
+
+    /** Written as {@link #parse} reads it; a combined set has no text and does not encode. */
+    Codec<KeySet> CODEC = Codec.STRING.transform(KeySet::parse, set -> {
+        if (set instanceof Listed listed) return listed.toString();
+        throw new IllegalArgumentException("only an only(...) or except(...) set is written");
+    });
 
     /** Admitted by both. */
     default @NotNull KeySet and(@NotNull KeySet other) {

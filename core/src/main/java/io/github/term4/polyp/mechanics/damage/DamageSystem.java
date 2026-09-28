@@ -367,6 +367,12 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         return typeValue != null ? typeValue : globalValue;
     }
 
+    /** The inventory's death spill for a death a game decides itself, which never reaches {@code kill()}. */
+    public void spill(@NotNull Player dead) {
+        DeathContext ctx = new DeathContext(dead);
+        DeathDrops.spill(dead, effectiveDeath(polyp.profiles().resolve(dead, MechanicsKeys.DEATH), ctx), ctx);
+    }
+
     /** A nullable {@link DeathConfig} toggle: unset (or true) is on; only an explicit {@code false} disables. */
     private static boolean deathFlag(@Nullable Boolean v) { return !Boolean.FALSE.equals(v); }
 

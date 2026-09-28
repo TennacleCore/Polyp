@@ -1,5 +1,6 @@
 package io.github.term4.polyp.config;
 
+import net.kyori.adventure.key.Key;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.mechanics.damage.DamageConfig;
@@ -246,6 +247,17 @@ class PathEditsTest extends io.github.term4.polyp.testsupport.HeadlessServerTest
     }
 
     /** Over a base that says nothing the inherited set is everything, so a mutation reads like except()/only(). */
+    @Test
+    void aListedSetWritesBack() {
+        KeySet set = KeySet.parse("only(iron_ingot, minecraft:gold_ingot)");
+        assertEquals("only(minecraft:iron_ingot, minecraft:gold_ingot)", set.toString());
+        assertTrue(set.admits(Key.key("minecraft:gold_ingot")));
+        assertFalse(set.admits(Key.key("minecraft:diamond")));
+        assertEquals(set, KeySet.parse(set.toString()));
+        assertTrue(KeySet.parse("except()").admits(Key.key("minecraft:diamond")), "except() is everything");
+        assertThrows(IllegalArgumentException.class, () -> KeySet.parse("all"));
+    }
+
     @Test
     void aMutationOverNothingEditsEverything() {
         MechanicsProfile.Builder b = MechanicsProfile.builder();
