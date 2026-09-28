@@ -20,8 +20,10 @@ import io.github.term4.polyp.mechanics.mobs.MobsSystem;
 import io.github.term4.polyp.mechanics.mobs.PartDamage;
 import io.github.term4.polyp.mechanics.mobs.path.Blocks;
 import io.github.term4.polyp.tracking.motion.MotionTracker;
+import io.github.term4.polyp.api.event.mobs.MobBreakBlockEvent;
 import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.world.WorldPolicy;
+import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.coordinate.BlockVec;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Pos;
@@ -391,6 +393,12 @@ public final class EnderDragonEntity extends MobEntity {
                     Block block = Blocks.at(world, x, y, z);
                     if (block.air()) continue;
                     if (breaks.test(block)) {
+                        MobBreakBlockEvent event = new MobBreakBlockEvent(world, this, new BlockVec(x, y, z), block);
+                        EventDispatcher.call(event);
+                        if (event.isCancelled()) {
+                            stopped = true;
+                            continue;
+                        }
                         world.setBlock(new BlockVec(x, y, z), Block.AIR);
                         broke = true;
                     } else {

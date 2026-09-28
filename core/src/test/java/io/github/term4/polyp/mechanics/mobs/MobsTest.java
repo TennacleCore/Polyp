@@ -32,6 +32,9 @@ import net.minestom.server.network.packet.client.play.ClientAttackPacket;
 import org.junit.jupiter.api.BeforeAll;
 import io.github.term4.polyp.mechanics.mobs.MobKindConfig;
 import net.minestom.server.network.packet.server.play.EntityVelocityPacket;
+import io.github.term4.polyp.api.event.mobs.MobBreakBlockEvent;
+import net.minestom.server.event.EventListener;
+import net.minestom.server.MinecraftServer;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -117,6 +120,31 @@ class MobsTest extends HeadlessServerTest {
             first.remove();
             second.remove();
             fp.player.remove();
+        }
+    }
+
+    /** A game may keep a block from a dragon: the event's cancel leaves it, and the flight treats it as bedrock. */
+    @Test
+    void aKeptBlockStopsTheDragon() {
+        Pos at = new Pos(100.5, 66, Z + 0.5);
+        instance.setBlock(100, 67, Z, Block.STONE); // inside the body's box
+        var keep = EventListener.of(MobBreakBlockEvent.class, e -> {
+            if (e.position().blockX() == 100 && e.position().blockY() == 67 && e.position().blockZ() == Z) e.setCancelled(true);
+        });
+        MinecraftServer.getGlobalEventHandler().addListener(keep);
+        EnderDragonEntity dragon = EnderDragonEntity.spawn(mobs, world, at);
+        try {
+            awaitSpawn(dragon);
+            dragon.roamAround(at);
+            tick(dragon, 2);
+            assertEquals(Block.STONE, instance.getBlock(100, 67, Z), "kept");
+            assertTrue(dragon.slowed(), "and it slows the flight, as bedrock does");
+            MinecraftServer.getGlobalEventHandler().removeListener(keep);
+            tick(dragon, 2);
+            assertEquals(Block.AIR, instance.getBlock(100, 67, Z), "let go, it goes");
+        } finally {
+            MinecraftServer.getGlobalEventHandler().removeListener(keep);
+            dragon.remove();
         }
     }
 
