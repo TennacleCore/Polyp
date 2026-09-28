@@ -169,6 +169,13 @@ public final class ContainerSystem extends ScopedSystem<ContainersConfig> {
         if (store != null) store.holdings.forEach((key, slots) -> consumer.accept(key, slots.clone()));
     }
 
+    /** The store key a click by {@code viewer} at {@code pos} opens, or {@code null}. */
+    public @Nullable String keyAt(@NotNull MechanicsWorld world, @NotNull Point pos, @Nullable Player viewer) {
+        Block block = world.getBlock(pos);
+        ResolvedContainer kind = kindAt(world, pos, block, viewer);
+        return kind == null ? null : kind.key().of(context(world, pos.asBlockVec(), block, viewer));
+    }
+
     /** The kind of container at {@code pos}, or {@code null}; {@code viewer} is who is opening or breaking it. */
     public @Nullable ResolvedContainer kindAt(@NotNull MechanicsWorld world, @NotNull Point pos, @NotNull Block block,
                                              @Nullable Player viewer) {

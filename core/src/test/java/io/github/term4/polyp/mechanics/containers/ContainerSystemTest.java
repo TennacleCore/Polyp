@@ -332,6 +332,7 @@ class ContainerSystemTest extends HeadlessServerTest {
         FakePlayer p = FakePlayer.connect(instance, new Pos(24.5, Y, Z + 2.5), "ChestFiller");
         try {
             instance.setBlock(pos, Block.CHEST.withProperty("facing", "north"));
+            assertEquals(key(pos), containers.keyAt(world, pos, p.player));
             containers.set(world, key(pos), 0, 27, ItemStack.of(Material.IRON_INGOT, 60));
             ItemStack left = containers.insert(world, key(pos), 27, ItemStack.of(Material.IRON_INGOT, 10));
             assertTrue(left.isAir());
