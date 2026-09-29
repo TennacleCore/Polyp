@@ -8,18 +8,25 @@ import io.github.term4.polyp.Services;
 import io.github.term4.polyp.api.event.attack.AttackAppliedEvent;
 import io.github.term4.polyp.api.event.attack.AttackEvent;
 import io.github.term4.polyp.api.event.attack.PreAttackEvent;
+import io.github.term4.polyp.util.tick.TickScaler;
+import io.github.term4.polyp.util.tick.TickSystem;
 import net.kyori.adventure.key.Key;
 import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Entity;
+import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.ListenerHandle;
+import net.minestom.server.event.entity.EntityDeathEvent;
+import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Attack pipeline: {@link HitDetection} turns raw input into snapshots, then the system fires the {@link AttackEvent}
@@ -39,6 +46,9 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
     private static final ListenerHandle<PreAttackEvent> PRE_ATTACK = EventDispatcher.getHandle(PreAttackEvent.class);
     private static final ListenerHandle<AttackAppliedEvent> ATTACK_APPLIED = EventDispatcher.getHandle(AttackAppliedEvent.class);
 
+    private static final Tag<Long> DIED_AT = Tag.Long("polyp:died-at");
+    private static final AtomicBoolean CLOCK_RESET = new AtomicBoolean();
+
     /**
      * @param detection how hits are detected; none given installs {@link HitDetection#PACKET}. Always live - {@code enabled}
      *                  gates per hit, so a disabled install config can be switched live by assigning an enabled profile.
@@ -51,6 +61,8 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
 
         if (detection.length == 0) detection = new HitDetection[]{HitDetection.PACKET};
         for (HitDetection d : detection) d.install(node, this::apply);
+        node.addListener(EntityDeathEvent.class, e -> e.getEntity().setTag(DIED_AT, TickSystem.tick(e.getEntity())));
+        if (CLOCK_RESET.compareAndSet(false, true)) TickSystem.onClockChange(e -> e.removeTag(DIED_AT));
     }
 
     /**
@@ -75,6 +87,7 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
 
         AttackEvent api = new AttackEvent(snap, services);
         if (!withinReach(snap, api.resolvedConfig().reachPadding())) return;
+        if (deadTooLong(snap.attacker(), api.resolvedConfig().deadHitTicks())) return;
         EventDispatcher.call(api);
         // enabled read live: a listener can swap in an enabled config to let the hit through
         if (api.isCancelled() || !api.process() || !api.resolvedConfig().enabled()) return;
@@ -93,6 +106,13 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
         if (padding == null || padding < 0 || snap.target() == null || !(snap.attacker() instanceof Player p)) return true;
         double max = p.getAttributeValue(Attribute.ENTITY_INTERACTION_RANGE) + padding;
         return eyeToBoxSquared(p, snap.target()) < max * max;
+    }
+
+    // the death unseen or on another clock: past the window
+    private static boolean deadTooLong(@Nullable Entity attacker, @Nullable Integer ticks) {
+        if (ticks == null || ticks < 0 || !(attacker instanceof LivingEntity living) || !living.isDead()) return false;
+        Long diedAt = living.getTag(DIED_AT);
+        return diedAt == null || TickSystem.tick(living) - diedAt >= TickScaler.duration(living, ticks, KEY);
     }
 
     private static double eyeToBoxSquared(Player from, Entity to) {

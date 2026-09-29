@@ -24,6 +24,8 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
     public static final double MINEMEN_REACH_PADDING = VANILLA_REACH_PADDING + 0.5;
     /** Scrims goes further still: a practice server refusing a hit is worse than one landing late. */
     public static final double SCRIMS_REACH_PADDING = VANILLA_REACH_PADDING + 4.0;
+    /** Paper 1.8.8 (CraftBukkit's {@code player.dead}): until the corpse goes, 20 ticks after the death. */
+    public static final int PAPER_DEAD_HIT_TICKS = 20;
 
     public final FieldValue<AttackContext, Boolean> enabled;
     public final FieldValue<AttackContext, AttackEvent.AttackRule.Ruleset> ruleset;
@@ -48,6 +50,11 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
      * nothing above 1 applies.
      */
     public final @Nullable FieldValue<AttackContext, Double> reachPadding;
+    /**
+     * How long a dead attacker's hits still land, in ticks after its death. {@code null}/negative = always (vanilla
+     * 1.8.8 checks nothing); 26.2 drops them from the death to the respawn, {@code 0}.
+     */
+    public final @Nullable FieldValue<AttackContext, Integer> deadHitTicks;
 
     private AttackConfig(Builder b) {
         super(b.subConfig);
@@ -58,6 +65,7 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
         fullHitScale = b.fullHitScale;
         suppressSprintResetEcho = b.suppressSprintResetEcho;
         reachPadding = b.reachPadding;
+        deadHitTicks = b.deadHitTicks;
     }
 
     /** Merges this config over base. */
@@ -92,6 +100,7 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
             fullHitScale = FieldValue.constant(VANILLA_FULL_HIT_SCALE);
             suppressSprintResetEcho = FieldValue.constant(false);
             reachPadding = FieldValue.constant(VANILLA_REACH_PADDING);
+            deadHitTicks = FieldValue.constant(PAPER_DEAD_HIT_TICKS);
         }
 
         Builder(AttackConfig c) {
