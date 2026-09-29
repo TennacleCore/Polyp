@@ -44,7 +44,7 @@ public final class ClientEye {
             case SNEAKING -> oldSneakHeight(player) ? LEGACY_SNEAKING : MODERN_CROUCH;
             // Minestom never computes the swim pose (no client signal), so detect sprint-swimming directly
             default -> player.isSprinting() && player.getInstance() != null
-                    && feetInWater(player, MechanicsWorld.viewed(player)) ? POSE_EYE : STANDING;
+                    && swimDepth(player, MechanicsWorld.viewed(player)) ? POSE_EYE : STANDING;
         };
     }
 
@@ -52,11 +52,22 @@ public final class ClientEye {
         return player instanceof OptimizedPlayer op && op.compat().handlesNatively(AnimatiumFeature.OLD_SNEAK_HEIGHT);
     }
 
-    /** Feet cell (not eye): 1.8 slows wading too, and the swim pose starts at the surface. */
+    /** Feet cell (not eye): 1.8 slows wading too. */
     static boolean feetInWater(Player player, MechanicsWorld world) {
         Pos p = player.getPosition();
+        return water(world, p.blockX(), p.blockY(), p.blockZ());
+    }
+
+    /** Water the swim pose can start in: the eye must go under, which takes a second water cell above or below the feet cell. */
+    static boolean swimDepth(Player player, MechanicsWorld world) {
+        Pos p = player.getPosition();
+        int x = p.blockX(), y = p.blockY(), z = p.blockZ();
+        return water(world, x, y, z) && (water(world, x, y + 1, z) || water(world, x, y - 1, z));
+    }
+
+    private static boolean water(MechanicsWorld world, int x, int y, int z) {
         try {
-            Block block = world.getBlock(p.blockX(), p.blockY(), p.blockZ(), Block.Getter.Condition.TYPE);
+            Block block = world.getBlock(x, y, z, Block.Getter.Condition.TYPE);
             return block != null && block.compare(Block.WATER);
         } catch (Exception ignored) {
             return false; // unloaded chunk

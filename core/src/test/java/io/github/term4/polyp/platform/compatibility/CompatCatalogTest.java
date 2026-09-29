@@ -28,6 +28,8 @@ class CompatCatalogTest {
         CompatConfig legacy = Compat18.config().scopedTo(V1_8);
         assertNull(legacy.attackHitboxMargin, "1.8 hits natively; the stamp is junk NBT through Via");
         assertNull(legacy.suppressSwim, "no swim pose to suppress");
+        assertNotNull(CompatConfig.builder().suppressSprint(CompatConfig.SprintGate.FOOD).build().scopedTo(V1_8).suppressSprint,
+                "1.8 has the food gate too");
         assertNotNull(legacy.removeAttackCooldown, "1.8 combat is the server's, not the client's");
         assertNotNull(legacy.legacyHitbox);
     }
@@ -52,6 +54,7 @@ class CompatCatalogTest {
         assertEquals(ClientRange.MODERN, CompatCatalog.applies("attackHitboxMargin"));
         assertEquals(ClientRange.LEGACY, CompatCatalog.applies("legacySelfPlace"));
         assertEquals(ClientRange.ANY, CompatCatalog.applies("attackReach"));
+        assertEquals(ClientRange.ANY, CompatCatalog.applies("suppressSprint"));
         assertEquals(ClientRange.ANY, CompatCatalog.applies("somethingNobodyHasWrittenYet"), "an unlisted knob applies everywhere");
         ConfigKnob knob = CompatConfigBuilderBase.KNOBS.get("attackHitboxMargin");
         assertNotNull(knob.get().apply(Compat18.config()), "the unscoped preset still sets it");

@@ -6,7 +6,7 @@ import io.github.term4.polyp.platform.SharedTeam;
 import io.github.term4.polyp.platform.compatibility.CompatAnimatium;
 import io.github.term4.polyp.platform.compatibility.CompatCreativeGuard;
 import io.github.term4.polyp.platform.compatibility.CompatPickBlock;
-import io.github.term4.polyp.platform.compatibility.CompatSwim;
+import io.github.term4.polyp.platform.compatibility.CompatSprint;
 import io.github.term4.polyp.platform.compatibility.CompatMovement;
 import io.github.term4.polyp.platform.compatibility.CompatOffhand;
 import io.github.term4.polyp.platform.compatibility.CompatPlacement;
@@ -169,8 +169,8 @@ public final class Polyp {
             CompatCreativeGuard.install(this);
             // 1.8 middle-click: a block already in the hotbar switches to it instead of overwriting the held slot
             CompatPickBlock.install(this);
-            // inert unless CompatConfig.suppressSwim
-            CompatSwim.install(this);
+            // inert unless CompatConfig.suppressSwim / suppressSprint
+            CompatSprint.install(this);
         }
         // the one lib scoreboard team; features enroll, this cleans up on disconnect
         SharedTeam.install(this);

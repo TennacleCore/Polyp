@@ -51,6 +51,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.minestom.server.network.packet.server.play.UpdateHealthPacket;
 import net.minestom.server.network.player.GameProfile;
 import net.minestom.server.network.player.PlayerConnection;
+import net.minestom.server.potion.PotionEffect;
+import net.minestom.server.potion.TimedPotion;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -79,6 +81,10 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
     private final Map<Key, EntityAttributesPacket.Property> attributesKnown = new ConcurrentHashMap<>();
     private int positionBroadcastInterval = 1;
     private boolean selfPlacing = false;
+    // vanilla's swing gate (EntityLivingBase.swingItem, LivingEntity.swing): the arm restarts only once half done,
+    // so a relay at most every four ticks, plus a second click inside the same tick
+    private boolean swinging;
+    private int swingTick;
     private final CompatState compat = new CompatState();
     private final UseItemAimSync aimSync = new UseItemAimSync();
     private final AttackAimSync attackSync = new AttackAimSync();
@@ -118,6 +124,42 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
     @Override public void tick(long time) {
         if (!MechanicsWorld.ownsCurrentTick(this)) return;
         super.tick(time);
+        tickSwing();
+    }
+
+    @Override public void swingMainHand(boolean fromClient) {
+        if (swingAccepted()) super.swingMainHand(fromClient);
+    }
+
+    @Override public void swingOffHand(boolean fromClient) {
+        if (swingAccepted()) super.swingOffHand(fromClient);
+    }
+
+    private boolean swingAccepted() {
+        if (swinging && swingTick >= 0 && swingTick < swingDuration() / 2) return false;
+        swingTick = -1;
+        swinging = true;
+        return true;
+    }
+
+    // after the tick's packets, as updateArmSwingProgress runs: a click reads the count the previous tick left
+    private void tickSwing() {
+        if (!swinging) {
+            swingTick = 0;
+            return;
+        }
+        if (++swingTick >= swingDuration()) {
+            swingTick = 0;
+            swinging = false;
+        }
+    }
+
+    private int swingDuration() {
+        TimedPotion haste = getEffect(PotionEffect.HASTE);
+        if (haste != null) return 6 - (1 + haste.potion().amplifier());
+        TimedPotion fatigue = getEffect(PotionEffect.MINING_FATIGUE);
+        if (fatigue != null) return 6 + (1 + fatigue.potion().amplifier()) * 2;
+        return 6;
     }
 
     /** Set by {@code MetaFix} around the client-input listeners; while {@code true}, self-bound echoes are filtered. */
@@ -217,8 +259,8 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
         // that event costs the server an extract, an allocation and a dispatch for EVERY outgoing packet
         if (HurtSuppression.swallows(this, packet)) return;
         if (packet instanceof EntityAttributesPacket attr && attr.entityId() == getEntityId()) remember(attr);
-        // holds the client's food gate shut against ANY server re-send (eat, regen, exhaustion) while the fix is engaged
-        if (compat.activeSwimFix() == CompatConfig.SwimSuppression.FOOD
+        // holds the client's food gate shut against ANY server re-send (eat, regen, exhaustion) while the gate is held
+        if (compat.sprintGate() == CompatConfig.SprintGate.FOOD
                 && packet instanceof UpdateHealthPacket uh && uh.food() > 6) {
             packet = new UpdateHealthPacket(uh.health(), 6, uh.foodSaturation());
         }

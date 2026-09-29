@@ -20,17 +20,18 @@ public final class CompatConfig {
     /** Poses the server forces back to {@code STANDING}; the gameplay half is {@link #restrictMovement}. Empty = none disabled. */
     public final @Nullable FieldValue<CompatContext, Set<EntityPose>> disabledPoses;
     /**
-     * Suppress modern swim-posing by gating sprint client-side while in water (food &le; 6 and blindness are the only
-     * wire-drivable sprint gates). {@code FOOD} clamps outgoing food to 6 (3-shank HUD, server food untouched);
-     * {@code BLINDNESS} maintains a hidden effect (steady near fog while underwater). Non-Animatium modern clients
-     * only, and never creative/spectator: mayfly bypasses the client's food gate, so {@code FOOD} can't hold there.
+     * Hold a {@link SprintGate} shut while the client stands in water deep enough for the swim pose (a second water
+     * cell above or below the feet cell; the pose starts only once the eye goes under), so it never sprints into it.
+     * Non-Animatium modern clients only, never creative/spectator: mayfly bypasses the client's food gate.
      */
-    public final @Nullable FieldValue<CompatContext, SwimSuppression> suppressSwim;
+    public final @Nullable FieldValue<CompatContext, SprintGate> suppressSwim;
+    /** Hold a {@link SprintGate} shut always: no sprinting, on any client. Never creative/spectator; wins over {@link #suppressSwim}. */
+    public final @Nullable FieldValue<CompatContext, SprintGate> suppressSprint;
     /**
-     * Effect duration for {@code suppressSwim = BLINDNESS}, re-sent every tick; {@code null} = 60. The client's fog
-     * saturates at 20 ticks - below that it sits in the fade region and the per-tick refresh makes it strobe.
+     * Effect duration of the {@link SprintGate#BLINDNESS} refresh, re-sent every tick; {@code null} = 60. The client's
+     * fog saturates at 20 ticks - below that it sits in the fade region and the per-tick refresh makes it strobe.
      */
-    public final @Nullable FieldValue<CompatContext, Integer> swimBlindnessTicks;
+    public final @Nullable FieldValue<CompatContext, Integer> blindnessGateTicks;
     /** Reject a move that newly places the SERVER hitbox in block collision - a client rendering itself crawling can't traverse a gap its server hitbox can't fit. */
     public final @Nullable FieldValue<CompatContext, Boolean> restrictMovement;
     /** Server box stays at standing dimensions (no crouch shrink) + 1.8 eye heights (1.54 sneaking); the client still renders its own pose. */
@@ -107,7 +108,8 @@ public final class CompatConfig {
     private CompatConfig(Builder b) {
         disabledPoses = b.disabledPoses;
         suppressSwim = b.suppressSwim;
-        swimBlindnessTicks = b.swimBlindnessTicks;
+        suppressSprint = b.suppressSprint;
+        blindnessGateTicks = b.blindnessGateTicks;
         restrictMovement = b.restrictMovement;
         legacyHitbox = b.legacyHitbox;
         attackHitboxMargin = b.attackHitboxMargin;
@@ -144,14 +146,18 @@ public final class CompatConfig {
         animatiumDebug = b.animatiumDebug;
     }
 
-    public enum SwimSuppression { FOOD, BLINDNESS }
+    /** The two wire-drivable sprint gates, on every client. {@code FOOD} clamps outgoing food to 6 (a 3-shank HUD,
+     *  server food untouched) and ends a running sprint everywhere; {@code BLINDNESS} keeps a hidden effect (near
+     *  fog), which ends a sprint on a modern client but only refuses a new one on 1.8. */
+    public enum SprintGate { FOOD, BLINDNESS }
 
     /** What a compat knob resolves against: the player the policy applies to. */
     public record CompatContext(@Nullable Entity subject) implements SubjectContext {}
 
     public @Nullable Set<EntityPose> disabledPoses(CompatContext ctx) { return FieldValue.resolve(disabledPoses, ctx); }
-    public @Nullable SwimSuppression suppressSwim(CompatContext ctx) { return FieldValue.resolve(suppressSwim, ctx); }
-    public @Nullable Integer swimBlindnessTicks(CompatContext ctx) { return FieldValue.resolve(swimBlindnessTicks, ctx); }
+    public @Nullable SprintGate suppressSwim(CompatContext ctx) { return FieldValue.resolve(suppressSwim, ctx); }
+    public @Nullable SprintGate suppressSprint(CompatContext ctx) { return FieldValue.resolve(suppressSprint, ctx); }
+    public @Nullable Integer blindnessGateTicks(CompatContext ctx) { return FieldValue.resolve(blindnessGateTicks, ctx); }
     public @Nullable Boolean restrictMovement(CompatContext ctx) { return FieldValue.resolve(restrictMovement, ctx); }
     public @Nullable Boolean legacyHitbox(CompatContext ctx) { return FieldValue.resolve(legacyHitbox, ctx); }
     public @Nullable Float attackHitboxMargin(CompatContext ctx) { return FieldValue.resolve(attackHitboxMargin, ctx); }

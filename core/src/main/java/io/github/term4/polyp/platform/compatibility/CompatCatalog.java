@@ -30,7 +30,6 @@ public final class CompatCatalog {
         // client-shaped: what the CLIENT draws or predicts, so off-era clients cannot take them
         add("disabledPoses", ClientRange.MODERN, "poses are a 1.9+ concept; 1.8 has none to disable");
         add("suppressSwim", ClientRange.MODERN, "the swim pose a 1.8 client never enters");
-        add("swimBlindnessTicks", ClientRange.MODERN, "the BLINDNESS lever's refresh, with suppressSwim");
         add("restrictSwimSpeed", ClientRange.MODERN, "dampens the 1.9+ swim sprint; 1.8 never had it");
         add("swimFactor", ClientRange.MODERN, "with restrictSwimSpeed");
         add("swimVerticalFactor", ClientRange.MODERN, "with restrictSwimSpeed");
@@ -49,6 +48,8 @@ public final class CompatCatalog {
         add("restrictSprintSneak", ClientRange.ANY, "1.8 sprint rules");
         add("restrictSprintUse", ClientRange.ANY, "1.8 sprint rules");
         add("resetSprintOnSpawn", ClientRange.ANY, "1.8 clears sprint on respawn");
+        add("suppressSprint", ClientRange.ANY, "the food and blindness gates exist on every client");
+        add("blindnessGateTicks", ClientRange.ANY, "the BLINDNESS gate's refresh, with suppressSwim or suppressSprint");
         add("attackReach", ClientRange.ANY, "the server's reach, not the client's view of it");
         add("oldPlacement", ClientRange.ANY, "1.8 placement rules, server-side");
         add("removeAttackCooldown", ClientRange.ANY, "1.8 combat for everyone - a modern client on this preset loses the cooldown too");

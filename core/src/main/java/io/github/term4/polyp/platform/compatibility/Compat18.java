@@ -15,7 +15,7 @@ public final class Compat18 {
     public static CompatConfig config() {
         return CompatConfig.builder()
                 .disabledPoses(EntityPose.SWIMMING, EntityPose.FALL_FLYING)
-                .suppressSwim(CompatConfig.SwimSuppression.FOOD) // modern non-Animatium only: holds the client's food sprint gate shut in water
+                .suppressSwim(CompatConfig.SprintGate.FOOD) // modern non-Animatium only: holds the client's food sprint gate shut in swimmable water
                 .restrictMovement(true)
                 .legacyHitbox(true)
                 .attackHitboxMargin(0.1f) // 1.8 attack-target box grow (EntityPlayer.attackTargetEntityWithCurrentItem 0.1)

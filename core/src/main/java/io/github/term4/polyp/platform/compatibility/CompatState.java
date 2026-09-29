@@ -57,7 +57,8 @@ public final class CompatState {
     private boolean attackCooldownRemoved = false;
     private double savedAttackSpeedBase = 4.0; // vanilla generic.attack_speed default until a removal captures the real base
     private boolean sprintStripped = false;
-    private @Nullable CompatConfig.SwimSuppression activeSwimFix;
+    private @Nullable CompatConfig.SprintGate sprintGate;
+    private boolean swimGated;
     private @Nullable EntityPose interceptedPose;
     private @NotNull Set<AnimatiumFeature> nativeFeatures = Set.of();
     private boolean animatiumClient = false;
@@ -146,21 +147,28 @@ public final class CompatState {
     public boolean sprintStripped() { return sprintStripped; }
     public void setSprintStripped(boolean v) { this.sprintStripped = v; }
 
-    /** The lever configured for THIS client ({@code null} = none): legacy can't swim-pose, Animatium disables it natively. */
-    public @Nullable CompatConfig.SwimSuppression suppressSwim() {
+    /** The water gate configured for THIS client ({@code null} = none): legacy can't swim-pose, Animatium disables it natively. */
+    public @Nullable CompatConfig.SprintGate suppressSwim() {
         return legacyClient || handlesNatively(AnimatiumFeature.DISABLE_SWIM_POSE) ? null : policy.suppressSwim(ctx);
     }
 
-    /** Duration of the BLINDNESS lever's per-tick refresh; {@code null} = 60 (safely above the 20-tick fog knee). */
-    public int swimBlindnessTicks() { return or(policy.swimBlindnessTicks(ctx), 60); }
+    /** The always gate; every client has both levers. */
+    public @Nullable CompatConfig.SprintGate suppressSprint() { return policy.suppressSprint(ctx); }
 
-    /** The lever {@code CompatSwim} currently holds on the wire; dies with the player, so a relog starts clean. */
-    public @Nullable CompatConfig.SwimSuppression activeSwimFix() { return activeSwimFix; }
-    public void setActiveSwimFix(@Nullable CompatConfig.SwimSuppression v) { this.activeSwimFix = v; }
+    /** Duration of the BLINDNESS gate's per-tick refresh; {@code null} = 60 (safely above the 20-tick fog knee). */
+    public int blindnessGateTicks() { return or(policy.blindnessGateTicks(ctx), 60); }
+
+    /** The gate {@code CompatSprint} currently holds on the wire; dies with the player, so a relog starts clean. */
+    public @Nullable CompatConfig.SprintGate sprintGate() { return sprintGate; }
+    public void setSprintGate(@Nullable CompatConfig.SprintGate v) { this.sprintGate = v; }
+
+    /** Whether the water gate wants the swim pose gone this tick. */
+    public boolean swimGated() { return swimGated; }
+    public void setSwimGated(boolean v) { this.swimGated = v; }
 
     public boolean isPoseDisabled(@NotNull EntityPose pose) {
-        // an engaged swim fix implies the pose is unwanted, even in configs without disabledPoses
-        return disabledPoses().contains(pose) || (pose == EntityPose.SWIMMING && activeSwimFix != null);
+        // the water gate implies the pose is unwanted, even in configs without disabledPoses
+        return disabledPoses().contains(pose) || (pose == EntityPose.SWIMMING && swimGated);
     }
 
     /** The Animatium features this client applies natively (empty for non-Animatium clients); the enforcers gate the matching hack off via {@link #handlesNatively}. */
