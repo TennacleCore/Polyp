@@ -26,6 +26,8 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
     public static final double SCRIMS_REACH_PADDING = VANILLA_REACH_PADDING + 4.0;
     /** Paper 1.8.8 (CraftBukkit's {@code player.dead}): until the corpse goes, 20 ticks after the death. */
     public static final int PAPER_DEAD_HIT_TICKS = 20;
+    /** 26.2: nothing lands from the death to the respawn. */
+    public static final int MODERN_DEAD_HIT_TICKS = 0;
 
     public final FieldValue<AttackContext, Boolean> enabled;
     public final FieldValue<AttackContext, AttackEvent.AttackRule.Ruleset> ruleset;
@@ -50,10 +52,7 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
      * nothing above 1 applies.
      */
     public final @Nullable FieldValue<AttackContext, Double> reachPadding;
-    /**
-     * How long a dead attacker's hits still land, in ticks after its death. {@code null}/negative = always (vanilla
-     * 1.8.8 checks nothing); 26.2 drops them from the death to the respawn, {@code 0}.
-     */
+    /** How long a dead attacker's hits still land, in ticks after its death; {@code null}/negative = always, as vanilla 1.8.8. */
     public final @Nullable FieldValue<AttackContext, Integer> deadHitTicks;
 
     private AttackConfig(Builder b) {

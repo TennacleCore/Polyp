@@ -4,18 +4,22 @@ import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.api.event.attack.AttackEvent;
 import io.github.term4.polyp.config.PathEdits;
+import io.github.term4.polyp.presets.hypixel.Hypixel;
+import io.github.term4.polyp.presets.mmc18.Mmc18;
+import io.github.term4.polyp.presets.scrims18.Scrims18;
 import io.github.term4.polyp.presets.vanilla18.Vanilla18;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;
-import net.minestom.server.instance.Instance;
-import net.minestom.server.event.instance.InstanceTickEvent;
 import net.minestom.server.event.EventDispatcher;
-import net.minestom.server.MinecraftServer;
+import net.minestom.server.event.instance.InstanceTickEvent;
+import net.minestom.server.instance.Instance;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -92,5 +96,14 @@ class AttackGatesTest extends HeadlessServerTest {
         AttackConfig attack = b.build().get(MechanicsKeys.ATTACK);
         assertEquals(0, attack.deadHitTicks.constantOrNull());
         assertEquals(AttackConfig.VANILLA_REACH_PADDING, attack.reachPadding.constantOrNull(), "the rest rides along");
+    }
+
+    /** The user, 2026-09-29: every network drops a dead player's hits at the death; vanilla18 keeps Paper's corpse. */
+    @Test
+    void onlyVanillaKeepsTheCorpse() {
+        assertEquals(AttackConfig.PAPER_DEAD_HIT_TICKS, Vanilla18.attack().deadHitTicks.constantOrNull());
+        for (MechanicsProfile network : List.of(Hypixel.profile(), Mmc18.profile(), Scrims18.profile())) {
+            assertEquals(AttackConfig.MODERN_DEAD_HIT_TICKS, network.get(MechanicsKeys.ATTACK).deadHitTicks.constantOrNull());
+        }
     }
 }
