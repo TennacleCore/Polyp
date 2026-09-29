@@ -310,7 +310,7 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
                 // (EntityHuman.attack applies fire aspect whenever damageEntity returns true)
                 dispatchWeaponOnHit(living, finalSnap);
             }
-            fireDamageApplied(finalSnap, replaced ? applied : 0f, DamageOutcome.OVERDAMAGE, blocked);
+            fireDamageApplied(finalSnap, replaced ? applied : 0f, DamageOutcome.OVERDAMAGE, blocked, !replaced);
             return DamageOutcome.OVERDAMAGE;
         }
 
@@ -340,13 +340,15 @@ public final class DamageSystem extends ScopedSystem<DamageConfig> {
         }
         // a cancelled kill took nothing: no enchant on-hit, and the feed says zero
         if (landed) dispatchWeaponOnHit(living, finalSnap);
-        fireDamageApplied(finalSnap, landed ? amount : 0f, DamageOutcome.FRESH_DAMAGE, blocked);
+        fireDamageApplied(finalSnap, landed ? amount : 0f, DamageOutcome.FRESH_DAMAGE, blocked, !landed);
         return DamageOutcome.FRESH_DAMAGE;
     }
 
-    private void fireDamageApplied(DamageSnapshot snap, float dealt, DamageOutcome outcome, boolean blocked) {
+    // applyDamage is false only for a cancelled fatal
+    private void fireDamageApplied(DamageSnapshot snap, float dealt, DamageOutcome outcome, boolean blocked,
+                                   boolean fatalCancelled) {
         if (DAMAGE_APPLIED.hasListener()) {
-            EventDispatcher.call(new DamageAppliedEvent(snap, dealt, outcome, blocked, services));
+            EventDispatcher.call(new DamageAppliedEvent(snap, dealt, outcome, blocked, fatalCancelled, services));
         }
     }
 

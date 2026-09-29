@@ -21,13 +21,20 @@ public final class DamageAppliedEvent implements Event {
     private final float dealt;
     private final DamageOutcome outcome;
     private final boolean blocked;
+    private final boolean fatalCancelled;
 
     public DamageAppliedEvent(DamageSnapshot snapshot, float dealt, DamageOutcome outcome, Services services) {
-        this(snapshot, dealt, outcome, false, services);
+        this(snapshot, dealt, outcome, false, false, services);
     }
 
     public DamageAppliedEvent(DamageSnapshot snapshot, float dealt, DamageOutcome outcome, boolean blocked,
                               Services services) {
+        this(snapshot, dealt, outcome, blocked, false, services);
+    }
+
+    public DamageAppliedEvent(DamageSnapshot snapshot, float dealt, DamageOutcome outcome, boolean blocked,
+                              boolean fatalCancelled, Services services) {
+        this.fatalCancelled = fatalCancelled;
         this.blocked = blocked;
         this.snapshot = snapshot;
         this.services = services;
@@ -39,7 +46,7 @@ public final class DamageAppliedEvent implements Event {
 
     public Services services() { return services; }
 
-    /** Amount actually applied (after overdamage/mitigation); {@code 0} if nothing landed. */
+    /** Amount actually applied (after overdamage/mitigation); {@code 0} for a zero-damage hit (an egg, a snowball) or a {@link #fatalCancelled} one. */
     public float dealt() { return dealt; }
 
     public DamageOutcome outcome() { return outcome; }
@@ -50,6 +57,9 @@ public final class DamageAppliedEvent implements Event {
      * {@code BlockingDamageEvent}, which is the veto seam and fires on the decision.
      */
     public boolean blocked() { return blocked; }
+
+    /** A killing blow a {@link FatalDamageEvent} listener cancelled: it dealt nothing, and the listener owns the death. */
+    public boolean fatalCancelled() { return fatalCancelled; }
 
     public DamageType type() { return snapshot.type(); }
     public Entity target() { return snapshot.target(); }
