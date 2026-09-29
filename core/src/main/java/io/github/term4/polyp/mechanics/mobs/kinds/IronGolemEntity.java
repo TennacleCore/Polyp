@@ -3,6 +3,7 @@ package io.github.term4.polyp.mechanics.mobs.kinds;
 import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.fx.FxContext;
 import io.github.term4.polyp.mechanics.mobs.MobEntity;
+import net.minestom.server.sound.SoundEvent;
 import io.github.term4.polyp.mechanics.mobs.MobSound;
 import io.github.term4.polyp.mechanics.mobs.MobsSystem;
 import io.github.term4.polyp.mechanics.mobs.ai.HurtByTargetGoal;
@@ -27,6 +28,9 @@ import net.minestom.server.instance.block.Block;
 public final class IronGolemEntity extends MobEntity {
 
     private int attackTimer;
+
+    /** 1.8 attackEntityAsMob plays {@code mob.irongolem.throw} on every swing. */
+    private static final MobSound THROW = new MobSound(SoundEvent.ENTITY_IRON_GOLEM_ATTACK, 1f, 1f);
 
     public IronGolemEntity(MobsSystem mobs) {
         super(mobs, EntityType.IRON_GOLEM);
@@ -95,8 +99,7 @@ public final class IronGolemEntity extends MobEntity {
         attackTimer = 10;
         triggerStatus((byte) 4);
         boolean landed = hurt(target, knob(kind().attackDamage, 0.0f), false, knob(kind().attackLift, 0.0));
-        MobSound swing = knob(kind().attackSound, null);
-        if (swing != null) Fx.play(services(), Fx.MOB_ATTACK, FxContext.of(this).withDetail(swing));
+        Fx.play(services(), Fx.MOB_ATTACK, FxContext.of(this).withDetail(knob(kind().attackSound, THROW)));
         return landed;
     }
 }
