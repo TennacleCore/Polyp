@@ -161,7 +161,32 @@ class MobsTest extends HeadlessServerTest {
         }
     }
 
-    // a fresh dragon from rest, its flight points within reach so the three ticks are one charge
+    /** A charge begun away from a victim may push them again; one begun over them may not. */
+    @Test
+    void aLeftVictimIsReArmed() {
+        FakePlayer fp = FakePlayer.connect(instance, new Pos(81.5, 65, Z + 0.5), "Rearmed");
+        EnderDragonEntity dragon = EnderDragonEntity.spawn(mobs, world, new Pos(80.5, 66, Z + 0.5));
+        try {
+            awaitSpawn(dragon);
+            dragon.roamAround(new Pos(80.5, 66, Z + 0.5));
+            dragon.kind(MobKindConfig.builder().pushOncePerCharge(true).build());
+            fp.sent.clear();
+            tick(dragon, 1);
+            assertEquals(1, pushes(fp), "the first pass");
+            fp.player.teleport(new Pos(81.5, 65, Z + 20.5)).join();
+            dragon.forceNewTarget();
+            tick(dragon, 1);
+            fp.player.teleport(new Pos(81.5, 65, Z + 0.5)).join();
+            fp.sent.clear();
+            tick(dragon, 1);
+            assertEquals(1, pushes(fp), "a charge begun 20 blocks off pushes again");
+        } finally {
+            dragon.remove();
+            fp.player.remove();
+        }
+    }
+
+    // a fresh dragon from rest, retargeting every tick as vanilla's does with its target in reach
     private static long pushesOverThreeTicks(FakePlayer fp, MobKindConfig kind) {
         EnderDragonEntity dragon = EnderDragonEntity.spawn(mobs, world, new Pos(80.5, 66, Z + 0.5));
         try {
@@ -169,7 +194,10 @@ class MobsTest extends HeadlessServerTest {
             dragon.roamAround(new Pos(80.5, 66, Z + 0.5));
             dragon.kind(kind);
             fp.sent.clear();
-            tick(dragon, 3);
+            for (int i = 0; i < 3; i++) {
+                dragon.forceNewTarget();
+                tick(dragon, 1);
+            }
             return pushes(fp);
         } finally {
             dragon.remove();

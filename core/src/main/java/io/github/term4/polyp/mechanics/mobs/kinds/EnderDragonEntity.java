@@ -56,6 +56,8 @@ public final class EnderDragonEntity extends MobEntity {
     private final DragonPart[] parts;
     private final double[][] ring = new double[64][3];
     private int ringIndex = -1;
+    /** Squared: vanilla's flight target is reached within 10 blocks. */
+    private static final double REACHED = 100.0;
     private final Set<LivingEntity> bitten = new HashSet<>(); // this charge's, under biteOncePerCharge
     private final Set<LivingEntity> pushed = new HashSet<>(); // this charge's, under pushOncePerCharge
     private double targetX, targetY = 100.0, targetZ;
@@ -200,7 +202,7 @@ public final class EnderDragonEntity extends MobEntity {
             targetX += random().nextGaussian() * 2.0;
             targetZ += random().nextGaussian() * 2.0;
         }
-        if (forceNewTarget || d14 < 100.0 || d14 > 22500.0 || collidedHorizontally || collidedVertically) newTarget();
+        if (forceNewTarget || d14 < REACHED || d14 > 22500.0 || collidedHorizontally || collidedVertically) newTarget();
         dy /= Math.sqrt(dx * dx + dz * dz);
         dy = Math.clamp(dy, -0.6f, 0.6f);
         motion = motion.add(0, dy * 0.10000000149011612, 0);
@@ -239,8 +241,12 @@ public final class EnderDragonEntity extends MobEntity {
 
     private void newTarget() {
         forceNewTarget = false;
-        bitten.clear();
-        pushed.clear();
+        // vanilla retargets every tick while its target is in reach: a victim it still hangs over stays spent
+        Pos here = getPosition();
+        Predicate<LivingEntity> left = e -> e.isRemoved() || e.getInstance() != getInstance()
+                || e.getPosition().distanceSquared(here) >= REACHED;
+        bitten.removeIf(left);
+        pushed.removeIf(left);
         List<Player> players = new ArrayList<>();
         Predicate<LivingEntity> selector = knob(kind().targetSelector, ANY);
         for (Player p : world().players()) {
