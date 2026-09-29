@@ -183,6 +183,9 @@ public final class Projectiles {
                 .boundingBox(1, 1, 1)
                 .gravity(0.0).horizontalDrag(0.95).verticalDrag(0.95)
                 .speed(LAUNCH).coastTicks(1).cruiseSpeed(CRUISE).spread(0.0) // coast one tick at launch, then ignite to cruise
+                // captured (mmcfbupimpact): the first move lands a tick after the spawn packet, so a blast comes at
+                // 1, 2, 3 ticks for 0.04, 0.56, 1.61 blocks; a vanilla item flies its first step in the use tick
+                .launchTickStep(false)
                 .spawnOffsetForward(0.0).spawnOffsetVertical(0.0).spawnOffsetSideways(0.0)
                 .leftOwnerImmunity(true)
                 // captured wire (mmcfbdflct1 + 3 older sessions, 139 fireballs): absolute teleports on the

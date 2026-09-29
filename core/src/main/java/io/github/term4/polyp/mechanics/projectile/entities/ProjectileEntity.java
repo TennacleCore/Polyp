@@ -150,6 +150,7 @@ public abstract class ProjectileEntity extends MechanicsEntity {
      *  wires the fire boolean to viewers ({@code setOnFire(100)} at shoot). */
     private boolean burning;
     private int stuckDespawnTicks = 1200;
+    private boolean launchTickStep = true;
     private int stuckTicks;
     private Vec stuckVelocity = Vec.ZERO;
     // a 1.8 client counts its own ticksInGround and setDead()s at 1200 from ITS stick; a longer server life
@@ -340,6 +341,10 @@ public abstract class ProjectileEntity extends MechanicsEntity {
     public void setLeftOwnerImmunity(boolean v) { this.leftOwnerImmunity = v; }
 
     public void setStickPullback(double v) { this.stickPullback = v; }
+
+    /** Whether {@code ProjectileSystem.firstStep} flies this one in its launch tick. */
+    public boolean launchTickStep() { return launchTickStep; }
+    public void setLaunchTickStep(boolean v) { this.launchTickStep = v; }
 
     /** Per-tick acceleration (b/t) folded in before drag - the fireball's self-propulsion. */
     public void setAcceleration(@NotNull Vec a) { this.acceleration = a; }

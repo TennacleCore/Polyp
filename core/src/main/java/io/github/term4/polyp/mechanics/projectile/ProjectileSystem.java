@@ -104,10 +104,10 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
 
     /** First flight step, run by click handlers in the click's own tick (1.8 drains use-item before the entity
      *  update, so a point-blank pearl impacts on the throw tick). Call after any post-launch stamps; no-op while
-     *  the spawn is still resolving (unloaded chunk). */
+     *  the spawn is still resolving (unloaded chunk) or when the type's {@code launchTickStep} is off. */
     public void firstStep(@Nullable ProjectileEntity entity) {
-        // nanos: the unit every other tick of this entity gets from the server dispatcher
-        if (entity != null && !entity.isRemoved() && entity.getInstance() != null) entity.tick(System.nanoTime());
+        if (entity == null || entity.isRemoved() || entity.getInstance() == null || !entity.launchTickStep()) return;
+        entity.tick(System.nanoTime()); // nanos: the unit every other tick of this entity gets from the server dispatcher
     }
 
     /** The flight values {@link #launch} would use for {@code snap} - a launcher reading one knob (the bow's {@code critChance}) without re-resolving by hand. */
@@ -263,6 +263,7 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
             arrow.setShakeTicks(flight.shakeTicks());
             if (flight.pickupBox() != null) arrow.setPickupBox(flight.pickupBox());
         }
+        entity.setLaunchTickStep(flight.launchTickStep());
         if (entity instanceof FireballEntity fireball) {
             fireball.setExplosionPower((float) flight.explosionPower());
             fireball.setIgnition(flight.coastTicks(), flight.cruiseSpeed());

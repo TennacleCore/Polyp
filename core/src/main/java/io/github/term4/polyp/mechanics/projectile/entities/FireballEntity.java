@@ -36,6 +36,7 @@ public class FireballEntity extends ManagedProjectile {
     /** Speed the ignition snaps to when the coast ends; {@code 0} = keep coasting into pure propulsion. */
     private double cruiseSpeed;
     private int moves;
+    private boolean lit;
 
     public FireballEntity(@Nullable Entity shooter, @NotNull EntityType entityType,
                           ProjectileSnapshot snap, ProjectileTypeConfig effectiveConfig) {
@@ -81,6 +82,10 @@ public class FireballEntity extends ManagedProjectile {
             propelled = true;
         }
         boolean wasCoasting = coasting();
+        if (!lit) {
+            lit = true;
+            getEntityMeta().setOnFire(true); // vanilla lights it on its first update, not in the spawn
+        }
         super.movementTick();
         if (isStuck() || isRemoved()) return;
         if (wasCoasting && ++moves == coastTicks && cruiseSpeed > 0.0) {

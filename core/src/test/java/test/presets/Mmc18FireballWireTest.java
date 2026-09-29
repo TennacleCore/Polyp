@@ -6,16 +6,19 @@ import io.github.term4.polyp.mechanics.projectile.ProjectileSnapshot;
 import io.github.term4.polyp.mechanics.projectile.ProjectileSystem;
 import io.github.term4.polyp.mechanics.projectile.entities.ProjectileEntity;
 import io.github.term4.polyp.mechanics.projectile.types.Fireball;
+import io.github.term4.polyp.mechanics.projectile.types.Pearl;
 import io.github.term4.polyp.presets.mmc18.Projectiles;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.LivingEntity;
+import net.minestom.server.instance.block.Block;
 import net.minestom.server.network.packet.server.play.EntityTeleportPacket;
 import net.minestom.server.network.packet.server.play.EntityVelocityPacket;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -57,5 +60,40 @@ class Mmc18FireballWireTest extends HeadlessServerTest {
         } finally {
             viewer.player.remove();
         }
+    }
+
+    /** mmcfbupimpact: blasts at 1, 2, 3 ticks after the spawn packet for 0.04, 0.56, 1.61 blocks, so a MineMen
+     *  fireball's first step waits for the tick after its spawn; a vanilla item's does not. */
+    @Test
+    void theFirstStepWaitsATick() {
+        ProjectileConfig config = Projectiles.config();
+        ProjectileSystem system = new ProjectileSystem(Polyp.getInstance(), config);
+        ProjectileEntity fb = pointBlank(system, config, Fireball.INSTANCE, 230);
+        system.firstStep(fb);
+        assertFalse(fb.isRemoved(), "no flight in the use tick");
+        assertFalse(fb.getEntityMeta().isOnFire(), "unlit until it flies");
+        fb.tick(50L);
+        assertTrue(fb.isRemoved(), "the first step, a tick later, meets the wall");
+
+        ProjectileEntity pearl = pointBlank(system, config, Pearl.INSTANCE, 240);
+        system.firstStep(pearl);
+        assertTrue(pearl.isRemoved(), "a vanilla item impacts in the use tick");
+    }
+
+    // a shooter facing +z, its projectile spawning 0.05 short of a stone cell
+    private static ProjectileEntity pointBlank(ProjectileSystem system, ProjectileConfig config,
+                                               io.github.term4.polyp.mechanics.projectile.types.ProjectileType type, int y) {
+        LivingEntity shooter = looseZombie();
+        var snap = ProjectileSnapshot.of(shooter, type).withConfig(config);
+        double forward = system.resolveFlight(snap).spawnOffsetForward();
+        shooter.setInstance(instance, new Pos(8.5, y, 8.95 - forward, 0.0f, 0.0f)).join();
+        double eye = y + shooter.getEyeHeight();
+        for (int dy = -1; dy <= 1; dy++) instance.setBlock(8, (int) Math.floor(eye) + dy, 9, Block.STONE);
+        ProjectileEntity proj = system.launch(snap);
+        assertNotNull(proj);
+        awaitSpawn(proj);
+        assertEquals(8.95, proj.getPosition().z(), 0.02, "spawned at the eye, a hair short of the cell");
+        shooter.remove();
+        return proj;
     }
 }
