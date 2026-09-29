@@ -24,7 +24,7 @@ public final class Regeneration {
         @Override public void onTick(Entity entity, int level) {
             if (!(entity instanceof LivingEntity living)) return;
             float max = (float) living.getAttributeValue(Attribute.MAX_HEALTH);
-            if (living.getHealth() < max) living.setHealth(Math.min(living.getHealth() + 1, max));
+            if (living.getHealth() > 0 && living.getHealth() < max) living.setHealth(Math.min(living.getHealth() + 1, max)); // vanilla heal(): the living only
         }
     };
 

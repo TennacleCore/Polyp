@@ -20,7 +20,7 @@ public final class InstantHealth {
 
     private static final Behavior HEAL = new Behavior() {
         @Override public void onApply(Entity entity, int level) {
-            if (!(entity instanceof LivingEntity living)) return;
+            if (!(entity instanceof LivingEntity living) || living.getHealth() <= 0) return; // vanilla heal(): the living only
             float max = (float) living.getAttributeValue(Attribute.MAX_HEALTH);
             float heal = 4 << (level - 1);
             living.setHealth(Math.min(living.getHealth() + heal, max));

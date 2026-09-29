@@ -159,7 +159,7 @@ public final class HungerSystem extends ScopedSystem<HungerConfig> {
     /** The vanilla food tick: regen, else starvation, on the SHARED timer. */
     private void foodTick(Player p, HungerConfig cfg) {
         float max = (float) p.getAttributeValue(Attribute.MAX_HEALTH);
-        boolean hurt = p.getHealth() < max;
+        boolean hurt = p.getHealth() > 0 && p.getHealth() < max; // vanilla shouldHeal: a dead body never regenerates
         HungerContext ctx = new HungerContext(p);
         boolean regen = !Boolean.FALSE.equals(FieldValue.resolve(cfg.naturalRegen, ctx));
         if (regen && Boolean.TRUE.equals(FieldValue.resolve(cfg.saturationRegen, ctx)) && p.getFoodSaturation() > 0 && hurt && p.getFood() >= 20) {

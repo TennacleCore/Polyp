@@ -23,7 +23,8 @@ public final class HealOrHarm {
     public static boolean apply(@Nullable Services services, LivingEntity target, @Nullable Entity source,
                                 @Nullable Point at, CustomPotionEffect effect, double intensity) {
         if (effect.id() == PotionEffect.INSTANT_HEALTH) {
-            target.setHealth(target.getHealth() + (int) (intensity * (4 << effect.amplifier()) + 0.5));
+            // vanilla heal(): the living only
+            if (target.getHealth() > 0) target.setHealth(target.getHealth() + (int) (intensity * (4 << effect.amplifier()) + 0.5));
             return true;
         }
         if (effect.id() == PotionEffect.INSTANT_DAMAGE) {

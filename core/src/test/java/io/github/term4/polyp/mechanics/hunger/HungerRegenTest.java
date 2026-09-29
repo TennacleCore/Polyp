@@ -149,4 +149,19 @@ class HungerRegenTest extends HeadlessServerTest {
         polyp.module(HungerSystem.class).restore(p, 4, 9.6f);
         assertEquals(20f, p.getFoodSaturation(), 1e-6, "saturation caps at the food level");
     }
+
+    /** Vanilla heals the living alone ({@code shouldHeal}: health above 0). A killed body the tick healed read half a
+     *  heart to a 1.8 client in its death's own tick, so it never opened the death screen. */
+    @Test
+    void theDeadNeverRegen() {
+        String[] names = {"DeadRegen18", "DeadRegenNew"};
+        HungerConfig[] shapes = {Hunger.config(), io.github.term4.polyp.presets.vanilla.Hunger.config()};
+        for (int i = 0; i < shapes.length; i++) {
+            Instance inst = instance(shapes[i]);
+            Player p = player(inst, names[i]);
+            p.kill();
+            tick(inst, 200);
+            assertEquals(0f, p.getHealth(), 1e-6, names[i] + ": a dead body stays at 0");
+        }
+    }
 }
