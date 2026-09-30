@@ -1,7 +1,7 @@
 package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.mechanics.blocking.catalog.VanillaBlocking;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import io.github.term4.polyp.tracking.ClientVersion;
@@ -316,7 +316,7 @@ class CompatStateTest extends HeadlessServerTest {
     void lateProtocolResends() {
         FakePlayer fp = FakePlayer.connect(instance, new Pos(0.5, 65, 1320.5), "LateProto");
         try {
-            OptimizedPlayer op = (OptimizedPlayer) fp.player;
+            PolypPlayer op = (PolypPlayer) fp.player;
             op.compat().apply(Compat18.config(), op);
             op.getInventory().setItemStack(0, ItemStack.of(Material.DIAMOND_SWORD));
             assertTrue(op.compat().stampsAttackRange(), "unknown reads as modern");

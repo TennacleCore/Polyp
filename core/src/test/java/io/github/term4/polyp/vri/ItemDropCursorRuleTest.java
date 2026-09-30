@@ -1,7 +1,7 @@
 package io.github.term4.polyp.vri;
 
 import io.github.term4.polyp.platform.inventory.InventorySync;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.platform.player.PlayerConfig;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
@@ -38,7 +38,7 @@ class ItemDropCursorRuleTest extends HeadlessServerTest {
         });
         MinecraftServer.getGlobalEventHandler().addListener(drops);
         try {
-            InventorySync sync = ((OptimizedPlayer) p.player).inventorySync();
+            InventorySync sync = ((PolypPlayer) p.player).inventorySync();
             sync.cursorOnClose(PlayerConfig.CursorOnClose.RETURN);
             ItemStack carried = ItemStack.of(Material.STONE, 3);
             p.player.getInventory().setCursorItem(carried);

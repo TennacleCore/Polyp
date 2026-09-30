@@ -57,7 +57,7 @@ public final class SprintTracker implements Tracker {
 
         // instance change reseeds the clock these stamps use, and isClientSprinting compares raw eventTicks (no
         // TickState future-guard), so drop them or it misreads across instances. The flag itself follows the
-        // client's entity - cleared with the respawn packet (OptimizedPlayer) - unless the arrival's profile says
+        // client's entity - cleared with the respawn packet (PolypPlayer) - unless the arrival's profile says
         // every arrival lands un-sprinting
         node.addListener(PlayerSpawnEvent.class, e -> {
             Player p = e.getPlayer();

@@ -1,7 +1,7 @@
 package io.github.term4.polyp.platform.inventory;
 
 import io.github.term4.polyp.platform.player.CreativeInventory;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.platform.player.PlayerConfig;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
@@ -822,7 +822,7 @@ class InventorySyncTest extends HeadlessServerTest {
     }
 
     private static InventorySync sync(FakePlayer p) {
-        return ((OptimizedPlayer) p.player).inventorySync();
+        return ((PolypPlayer) p.player).inventorySync();
     }
 
     private static void feed(FakePlayer p, ClientPacket packet) {
@@ -848,7 +848,7 @@ class InventorySyncTest extends HeadlessServerTest {
 
     /** What a modern client reports: the hash of the item as it is shown. */
     private static ItemStack.Hash hash(FakePlayer p, ItemStack item) {
-        return ItemStack.Hash.of(((OptimizedPlayer) p.player).compat().view(item), MinecraftServer.process());
+        return ItemStack.Hash.of(((PolypPlayer) p.player).compat().view(item), MinecraftServer.process());
     }
 
     private static List<ServerPacket> inventoryPackets(FakePlayer p) {

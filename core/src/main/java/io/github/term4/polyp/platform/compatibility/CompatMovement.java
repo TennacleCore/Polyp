@@ -3,7 +3,7 @@ package io.github.term4.polyp.platform.compatibility;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.mechanics.damage.DamageSystem;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.tracking.ClientInfoTracker;
 import io.github.term4.polyp.tracking.SprintTracker;
 import io.github.term4.polyp.world.MechanicsWorld;
@@ -32,7 +32,7 @@ import org.jetbrains.annotations.Nullable;
  * (camera kept). Installed once; inert unless a player's config enables a restriction.
  *
  * <p>Plain server API throughout, so foreign-provider players get these too (tag-carried {@link CompatState},
- * policy re-resolved per move); the packet-level compat elsewhere still needs {@code OptimizedPlayer}.
+ * policy re-resolved per move); the packet-level compat elsewhere still needs {@code PolypPlayer}.
  */
 public final class CompatMovement {
 
@@ -51,7 +51,7 @@ public final class CompatMovement {
     }
 
     private static @Nullable CompatState compatOf(Polyp polyp, Player player) {
-        if (player instanceof OptimizedPlayer op) return op.compat();
+        if (player instanceof PolypPlayer op) return op.compat();
         // PlayerConfigApplier is provider-gated, so nothing pushes policy changes here - re-resolve each move
         CompatConfig cfg = polyp.profiles().resolve(player, MechanicsKeys.COMPAT);
         CompatState c = player.getTag(FALLBACK_COMPAT);

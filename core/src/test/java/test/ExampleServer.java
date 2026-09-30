@@ -3,7 +3,7 @@ package test;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.Polyp;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.mechanics.attack.AttackSystem;
 import io.github.term4.polyp.mechanics.attribute.AttributeSystem;
 import io.github.term4.polyp.mechanics.damage.DamageSystem;
@@ -280,7 +280,7 @@ public class ExampleServer {
         // /compat: toggle this player between the global 1.8 profile and a per-player modern override (mode switch demo).
         Command compatCmd = new Command("compat");
         compatCmd.setDefaultExecutor((sender, ctx) -> {
-            if (!(sender instanceof OptimizedPlayer op)) return;
+            if (!(sender instanceof PolypPlayer op)) return;
             boolean turningOff = polyp.profiles().player(op) == null; // no per-player override = currently on the global mmc18 profile
             if (turningOff) {
                 // A per-player override to modern. The full reset-then-layer apply (PlayerConfigApplier, via the profile-change
@@ -299,7 +299,7 @@ public class ExampleServer {
         // profile change re-pushes the Animatium feature set, so it flips live - take a >2 b/t knockback to see a difference.
         Command shortsCmd = new Command("shorts");
         shortsCmd.setDefaultExecutor((sender, ctx) -> {
-            if (!(sender instanceof OptimizedPlayer op)) return;
+            if (!(sender instanceof PolypPlayer op)) return;
             CompatConfig current = polyp.profiles().resolve(op, MechanicsKeys.COMPAT);
             boolean on = !(current != null && Boolean.TRUE.equals(current.nativeShortVelocity));
             polyp.profiles().setPlayer(op, MechanicsProfile.builder()

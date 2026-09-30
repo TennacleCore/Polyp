@@ -9,7 +9,7 @@ import io.github.term4.polyp.mechanics.damage.DeathConfig;
 import io.github.term4.polyp.platform.fixes.FixesConfig;
 import io.github.term4.polyp.platform.fixes.FixToggleConfig;
 import io.github.term4.polyp.platform.inventory.InventorySync;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.presets.vanilla18.Consumables;
 import io.github.term4.polyp.mechanics.consumable.catalog.VanillaConsumables;
 import io.github.term4.polyp.testsupport.FakePlayer;
@@ -163,7 +163,7 @@ class ConsumableGateTest extends HeadlessServerTest {
     void cutRearmJoinsTheEat() {
         player.player.setGameMode(GameMode.SURVIVAL);
         polyp.clientInfo().setConnectionDetails(player.player, "{\"version\": 774}");
-        InventorySync sync = ((OptimizedPlayer) player.player).inventorySync();
+        InventorySync sync = ((PolypPlayer) player.player).inventorySync();
         sync.countChangeEndsUse(true);
         int slot = player.player.getHeldSlot();
         player.player.getInventory().setItemStack(slot, ItemStack.of(Material.GOLDEN_APPLE, 5));

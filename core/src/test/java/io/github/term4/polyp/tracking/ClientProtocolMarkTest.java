@@ -1,6 +1,6 @@
 package io.github.term4.polyp.tracking;
 
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.coordinate.Pos;
@@ -22,15 +22,15 @@ class ClientProtocolMarkTest extends HeadlessServerTest {
             // ViaProxy-style lie: the wire says 1.8 while the real client is modern
             info.setConnectionDetails(fp.player, "{\"version\": 47}");
             assertTrue(info.isLegacy(fp.player), "via details resolve legacy");
-            assertTrue(((OptimizedPlayer) fp.player).compat().legacyClient());
+            assertTrue(((PolypPlayer) fp.player).compat().legacyClient());
 
             info.setProtocol(fp.player, 776); // the app learned the truth over its own channel
             assertEquals(776, info.getProtocol(fp.player), "mark outranks the via details");
-            assertFalse(((OptimizedPlayer) fp.player).compat().legacyClient(), "compat follows the mark down");
+            assertFalse(((PolypPlayer) fp.player).compat().legacyClient(), "compat follows the mark down");
 
             polyp.client(fp.player).protocol(47);
             assertTrue(info.isLegacy(fp.player));
-            assertTrue(((OptimizedPlayer) fp.player).compat().legacyClient(), "and back up");
+            assertTrue(((PolypPlayer) fp.player).compat().legacyClient(), "and back up");
 
             info.setProtocol(fp.player, ClientVersion.UNKNOWN_PROTOCOL);
             assertEquals(47, info.getProtocol(fp.player), "cleared: the via details resolve again");

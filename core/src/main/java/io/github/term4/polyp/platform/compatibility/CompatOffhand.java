@@ -1,7 +1,7 @@
 package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.Polyp;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
@@ -33,7 +33,7 @@ public final class CompatOffhand {
     }
 
     private static boolean disabled(Player player) {
-        return player instanceof OptimizedPlayer op && op.compat().disableOffhand();
+        return player instanceof PolypPlayer op && op.compat().disableOffhand();
     }
 
     private static boolean targetsOffhand(InventoryPreClickEvent e) {

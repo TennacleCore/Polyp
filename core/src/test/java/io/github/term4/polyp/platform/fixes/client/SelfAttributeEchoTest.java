@@ -1,6 +1,6 @@
 package io.github.term4.polyp.platform.fixes.client;
 
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.kyori.adventure.key.Key;
@@ -26,7 +26,7 @@ class SelfAttributeEchoTest extends HeadlessServerTest {
     void aSprintEchoStaysHome() {
         FakePlayer p = FakePlayer.connect(instance, new Pos(40.5, 64, 40.5), "EchoSprint");
         try {
-            OptimizedPlayer op = (OptimizedPlayer) p.player;
+            PolypPlayer op = (PolypPlayer) p.player;
             p.sent.clear();
             // a fresh player's speed instance is born in the toggle: its first packet carries the player default
             op.suppressSelf(() -> op.setSprinting(true));
@@ -42,7 +42,7 @@ class SelfAttributeEchoTest extends HeadlessServerTest {
     void aPushedModifierReachesTheClient() {
         FakePlayer p = FakePlayer.connect(instance, new Pos(40.5, 64, 40.5), "EchoSlow");
         try {
-            OptimizedPlayer op = (OptimizedPlayer) p.player;
+            PolypPlayer op = (PolypPlayer) p.player;
             op.suppressSelf(() -> op.setSprinting(true));
             p.sent.clear();
             op.suppressSelf(() -> op.getAttribute(Attribute.MOVEMENT_SPEED).addModifier(SLOW));

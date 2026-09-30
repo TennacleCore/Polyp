@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
  *  join path - even when set after init. */
 class PlayerFactoryTest extends HeadlessServerTest {
 
-    static final class CustomPlayer extends OptimizedPlayer {
+    static final class CustomPlayer extends PolypPlayer {
         CustomPlayer(PlayerConnection connection, GameProfile profile) { super(connection, profile); }
     }
 

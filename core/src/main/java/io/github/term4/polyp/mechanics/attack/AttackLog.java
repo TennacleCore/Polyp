@@ -3,7 +3,7 @@ package io.github.term4.polyp.mechanics.attack;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.api.event.attack.PreAttackEvent;
 import io.github.term4.polyp.platform.compatibility.ClientEye;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.tracking.ClientInfoTracker;
 import io.github.term4.polyp.tracking.ClientVersion;
 import io.github.term4.polyp.util.geometry.Aabb;
@@ -135,7 +135,7 @@ public final class AttackLog {
     /** 1.8 grows the attack box 0.1 natively; a modern client grows by its compat-stamped {@code attack_range} margin (same CompatState as the attack-box feature, so the two can't diverge). */
     private static double hitPad(Player attacker, ClientInfoTracker clientInfo) {
         double nativePad = ClientVersion.isLegacy(clientInfo.getProtocol(attacker)) ? 0.1 : 0.0;
-        Float margin = attacker instanceof OptimizedPlayer op ? op.compat().attackHitboxMargin() : null;
+        Float margin = attacker instanceof PolypPlayer op ? op.compat().attackHitboxMargin() : null;
         return Math.max(nativePad, margin != null ? margin : 0.0);
     }
 }

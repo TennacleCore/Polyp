@@ -26,7 +26,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Applies the scoped player-platform configs - {@link PlayerConfig} and {@link CompatConfig} - at spawn (join and
  * instance change) and on every profile assignment change, so swaps are live without polling. Each member is applied
- * only when a scope sets it; otherwise the player is left untouched, so the manual {@link OptimizedPlayer} setters
+ * only when a scope sets it; otherwise the player is left untouched, so the manual {@link PolypPlayer} setters
  * stay authoritative.
  */
 public final class PlayerConfigApplier {
@@ -50,7 +50,7 @@ public final class PlayerConfigApplier {
 
     /** Applies the player's scoped platform configs; each member is a no-op when no scope sets it. */
     public static void apply(Polyp polyp, Player player) {
-        if (!(player instanceof OptimizedPlayer op)) return;
+        if (!(player instanceof PolypPlayer op)) return;
         // Reads two members of the same player's profile - resolve its scope chain once.
         MechanicsProfiles.Resolved profile = polyp.profiles().resolved(player);
         PlayerConfig cfg = profile.get(MechanicsKeys.PLAYER);
@@ -92,7 +92,7 @@ public final class PlayerConfigApplier {
     }
 
     /** Re-sends {@code player}'s inventory and every visible entity's equipment through its (now changed) item view. */
-    public static void resendItemView(OptimizedPlayer player) {
+    public static void resendItemView(PolypPlayer player) {
         player.getInventory().update();
         resendViewedEquipment(player);
     }

@@ -346,7 +346,7 @@ public class FishingBobberEntity extends ManagedProjectile {
                     if (hookWater && clientInfo != null && clientInfo.isLegacy(viewer) == !modernOrder) {
                         continue; // their generation predicts this physics
                     }
-                    if (viewer instanceof io.github.term4.polyp.platform.player.OptimizedPlayer op
+                    if (viewer instanceof io.github.term4.polyp.platform.player.PolypPlayer op
                             && !op.compat().hookPredictionEscort()) continue;
                     viewer.sendPacket(sync);
                     viewer.sendPacket(new EntityVelocityPacket(getEntityId(), wireVelocityFor(viewer))); // per-viewer: 1.8 gets the un-dilated step

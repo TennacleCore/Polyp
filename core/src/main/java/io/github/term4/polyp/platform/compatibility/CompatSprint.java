@@ -2,7 +2,7 @@ package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.platform.compatibility.CompatConfig.SprintGate;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.world.MechanicsWorld;
 import net.minestom.server.entity.EntityPose;
 import net.minestom.server.entity.GameMode;
@@ -21,7 +21,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Drives {@code CompatConfig.suppressSprint} and {@code suppressSwim}: one of the client's two wire-drivable sprint
  * gates is held shut, always for the first and while the water is deep enough for the swim pose for the second;
- * released the moment neither wants it. {@code FOOD} rides the {@code OptimizedPlayer} outgoing clamp (any server
+ * released the moment neither wants it. {@code FOOD} rides the {@code PolypPlayer} outgoing clamp (any server
  * food update stays clamped while held); {@code BLINDNESS} refreshes a hidden effect every tick
  * ({@code blindnessGateTicks} long - the default stays above the 20-tick fog saturation knee so the fog factor
  * can't sawtooth). All state lives on {@link CompatState}, so disconnect/relog cleanup is free. Installed once;
@@ -34,12 +34,12 @@ public final class CompatSprint {
     public static void install(Polyp polyp) {
         EventNode<@NotNull PlayerEvent> node = EventNode.type("polyp:compat-sprint", EventFilter.PLAYER);
         node.addListener(PlayerTickEvent.class, e -> {
-            if (e.getPlayer() instanceof OptimizedPlayer op) tick(op);
+            if (e.getPlayer() instanceof PolypPlayer op) tick(op);
         });
         polyp.install(node);
     }
 
-    static void tick(@NotNull OptimizedPlayer player) {
+    static void tick(@NotNull PolypPlayer player) {
         CompatState compat = player.compat();
         boolean exempt = exempt(player);
         SprintGate swim = exempt ? null : swimWanted(player, compat);
@@ -64,20 +64,20 @@ public final class CompatSprint {
     }
 
     // mayfly bypasses the client's food gate anyway, and fogging a builder helps no one
-    private static boolean exempt(OptimizedPlayer player) {
+    private static boolean exempt(PolypPlayer player) {
         if (player.isDead() || player.getInstance() == null) return true;
         GameMode gm = player.getGameMode();
         return gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR;
     }
 
-    private static @Nullable SprintGate swimWanted(OptimizedPlayer player, CompatState compat) {
+    private static @Nullable SprintGate swimWanted(PolypPlayer player, CompatState compat) {
         SprintGate configured = compat.suppressSwim();
         if (configured == null) return null;
         return ClientEye.swimDepth(player, MechanicsWorld.viewed(player)) ? configured : null;
     }
 
     /** Through {@code sendPacket}, so the clamp applies exactly when a gate is held. */
-    private static void resendFood(OptimizedPlayer player) {
+    private static void resendFood(PolypPlayer player) {
         player.sendPacket(new UpdateHealthPacket(player.getHealth(), player.getFood(), player.getFoodSaturation()));
     }
 }

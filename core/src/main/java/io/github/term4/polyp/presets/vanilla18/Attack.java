@@ -12,7 +12,7 @@ import io.github.term4.polyp.mechanics.damage.DamageSystem;
 import io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage;
 import io.github.term4.polyp.mechanics.knockback.KnockbackSnapshot;
 import io.github.term4.polyp.mechanics.knockback.KnockbackSystem;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.tracking.SprintTracker;
 import io.github.term4.polyp.tracking.motion.MotionTracker;
 import net.minestom.server.coordinate.Pos;
@@ -69,7 +69,7 @@ public final class Attack {
             if (result.landed() && event.attacker() instanceof LivingEntity le) {
                 double scale = event.resolvedConfig().fullHitScale();
                 if (scale != 1.0 && sprintingForKb(le)) MotionTracker.scaleHorizontalResidual(le, scale);
-                if (le instanceof OptimizedPlayer op && event.resolvedConfig().suppressSprintResetEcho()) {
+                if (le instanceof PolypPlayer op && event.resolvedConfig().suppressSprintResetEcho()) {
                     op.suppressSelf(() -> op.setSprinting(false));
                 } else {
                     le.setSprinting(false);

@@ -9,7 +9,7 @@ import io.github.term4.polyp.fx.FxContext;
 import io.github.term4.polyp.mechanics.explosion.ExplosionCalculator;
 import io.github.term4.polyp.mechanics.explosion.ExplosionSystem;
 import io.github.term4.polyp.mechanics.projectile.entities.ProjectileEntity;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.tracking.motion.VelocityRule;
 import io.github.term4.polyp.tracking.motion.VelocityConfig;
 import io.github.term4.polyp.util.tick.TickScaler;
@@ -312,7 +312,7 @@ public final class PrimedTnt extends MechanicsEntity {
     // directly - a fresh spawn restarts the client's own fuse count.
     private void rearmLegacyViewers() {
         for (Player viewer : List.copyOf(getViewers())) {
-            if (viewer instanceof OptimizedPlayer op && op.compat().legacyClient()) {
+            if (viewer instanceof PolypPlayer op && op.compat().legacyClient()) {
                 updateOldViewer(viewer);
                 updateNewViewer(viewer);
             }

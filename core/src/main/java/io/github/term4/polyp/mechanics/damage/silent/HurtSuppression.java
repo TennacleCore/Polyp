@@ -24,7 +24,7 @@ public final class HurtSuppression {
     private HurtSuppression() {}
 
     /** Installs the tag cleanup under the damage system's node (so it lives and dies with the install). The drop
-     *  itself is in {@code OptimizedPlayer.sendPacket}: a listener on {@code PlayerPacketOutEvent} costs the whole
+     *  itself is in {@code PolypPlayer.sendPacket}: a listener on {@code PlayerPacketOutEvent} costs the whole
      *  server an extract and an allocation per outgoing packet, and both packets here are self-only sends. */
     public static void install(EventNode<@NotNull Event> parent) {
         EventNode<@NotNull PlayerEvent> node = EventNode.type("polyp:hurt-suppression", EventFilter.PLAYER);

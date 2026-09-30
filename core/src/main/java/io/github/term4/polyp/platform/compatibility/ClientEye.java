@@ -1,6 +1,6 @@
 package io.github.term4.polyp.platform.compatibility;
 
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.tracking.ClientVersion;
 import io.github.term4.polyp.world.MechanicsWorld;
 import net.minestom.server.coordinate.Pos;
@@ -38,7 +38,7 @@ public final class ClientEye {
     public static double perceived(Player player, int protocol) {
         if (ClientVersion.isLegacy(protocol)) return player.isSneaking() ? LEGACY_SNEAKING : STANDING; // 1.8 has no lower pose
         // believed pose: the disabled pose we intercepted, even though the server pose is forced to STANDING
-        EntityPose pose = player instanceof OptimizedPlayer op ? op.compat().clientPose(op.getPose()) : player.getPose();
+        EntityPose pose = player instanceof PolypPlayer op ? op.compat().clientPose(op.getPose()) : player.getPose();
         return switch (pose) {
             case FALL_FLYING, SWIMMING, SPIN_ATTACK -> POSE_EYE; // crawl / elytra / riptide
             case SNEAKING -> oldSneakHeight(player) ? LEGACY_SNEAKING : MODERN_CROUCH;
@@ -49,7 +49,7 @@ public final class ClientEye {
     }
 
     private static boolean oldSneakHeight(Player player) {
-        return player instanceof OptimizedPlayer op && op.compat().handlesNatively(AnimatiumFeature.OLD_SNEAK_HEIGHT);
+        return player instanceof PolypPlayer op && op.compat().handlesNatively(AnimatiumFeature.OLD_SNEAK_HEIGHT);
     }
 
     /** Feet cell (not eye): 1.8 slows wading too. */

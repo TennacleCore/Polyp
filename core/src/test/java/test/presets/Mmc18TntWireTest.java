@@ -1,7 +1,7 @@
 package test.presets;
 
 import io.github.term4.polyp.mechanics.explosion.ExplosionSystem;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.network.ConnectionState;
@@ -84,7 +84,7 @@ class Mmc18TntWireTest extends HeadlessServerTest {
     void longFuseReArmsOnlyLegacyViewers() {
         FakePlayer legacy = FakePlayer.connect(instance, new Pos(8, 65, 8), "LegacyTntViewer");
         FakePlayer modern = FakePlayer.connect(instance, new Pos(8, 65, 8), "ModernTntViewer");
-        ((OptimizedPlayer) legacy.player).compat().setLegacyClient(true);
+        ((PolypPlayer) legacy.player).compat().setLegacyClient(true);
 
         ExplosionSystem explosions = new ExplosionSystem(polyp, Explosion.config().toBuilder().blockBreaking((io.github.term4.polyp.mechanics.explosion.BlockBreaking) null).build());
         var cfg = new PrimedTnt.Config(120, 4.0f, true, PrimedTnt.Wire.HYPIXEL, false, null, false); // 120 > 80: outlives the client count
@@ -102,7 +102,7 @@ class Mmc18TntWireTest extends HeadlessServerTest {
     @Test
     void shortFuseNeverReArms() {
         FakePlayer legacy = FakePlayer.connect(instance, new Pos(8, 65, 8), "ShortFuseViewer");
-        ((OptimizedPlayer) legacy.player).compat().setLegacyClient(true);
+        ((PolypPlayer) legacy.player).compat().setLegacyClient(true);
 
         ExplosionSystem explosions = new ExplosionSystem(polyp, Explosion.config().toBuilder().blockBreaking((io.github.term4.polyp.mechanics.explosion.BlockBreaking) null).build());
         var cfg = new PrimedTnt.Config(50, 4.0f, true, PrimedTnt.Wire.HYPIXEL, false, null, false); // 50 < 80: the client's own count covers it

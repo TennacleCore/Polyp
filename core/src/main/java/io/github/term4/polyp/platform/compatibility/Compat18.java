@@ -6,7 +6,7 @@ import net.minestom.server.entity.EntityPose;
  * Cross-version compatibility presets that make a modern (26.1) client behave like 1.8. General - not tied to any
  * mechanics preset, usable from anywhere. {@link #config()} is the full 1.8 compat set; {@link #off()} is the inverse
  * (every knob OFF) for toggling back to vanilla 26.1. Applied via {@code MechanicsProfile.compat} (pushed to
- * {@code OptimizedPlayer} by {@code PlayerConfigApplier}).
+ * {@code PolypPlayer} by {@code PlayerConfigApplier}).
  */
 public final class Compat18 {
 

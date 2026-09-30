@@ -14,7 +14,7 @@ import io.github.term4.polyp.platform.compatibility.LegacyVelocityBridge;
 import io.github.term4.polyp.platform.compatibility.via.ViaBridgeRpc;
 import io.github.term4.polyp.platform.fixes.client.MetaFix;
 import io.github.term4.polyp.platform.inventory.InventorySync;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.platform.player.PlayerConfigApplier;
 import io.github.term4.polyp.tracking.ClientInfoTracker;
 import io.github.term4.polyp.tracking.ClientProfile;
@@ -73,9 +73,9 @@ public final class Polyp {
     /** Exact 1.8 knockback through the ViaBridge Velocity plugin. Opt in: a proxy without it costs one RPC timeout per player. */
     public boolean installViaBridge = false;
 
-    /** Builds each connecting player. Swap for an {@code OptimizedPlayer} subclass to keep the whole
+    /** Builds each connecting player. Swap for a {@code PolypPlayer} subclass to keep the whole
      *  {@code instanceof}-gated compat/fixes layer; read per-connect, so setting it after init works too. */
-    public BiFunction<PlayerConnection, GameProfile, ? extends OptimizedPlayer> playerFactory = OptimizedPlayer::new;
+    public BiFunction<PlayerConnection, GameProfile, ? extends PolypPlayer> playerFactory = PolypPlayer::new;
 
     private final EventNode<@NotNull Event> root = EventNode.all("polyp:root");
     private final EventNode<@NotNull Event> apiEvents = EventNode.all("polyp:api-events");
@@ -151,7 +151,7 @@ public final class Polyp {
         TickSystem.start();
 
         if (metaFix && !installPlayerProvider) {
-            LOG.warn("metaFix is enabled but installPlayerProvider is not - the meta fix needs the OptimizedPlayer"
+            LOG.warn("metaFix is enabled but installPlayerProvider is not - the meta fix needs the PolypPlayer"
                     + " provider and will be inert (keep the provider on and set playerFactory instead).");
         }
         if (metaFix) MetaFix.installListeners();

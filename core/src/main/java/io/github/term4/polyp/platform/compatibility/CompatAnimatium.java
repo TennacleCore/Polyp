@@ -2,7 +2,7 @@ package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.Polyp;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.tracking.ClientInfoTracker;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -40,7 +40,7 @@ public final class CompatAnimatium {
     }
 
     private static void onInfo(Polyp polyp, Player player, byte[] info) {
-        if (!(player instanceof OptimizedPlayer op)) return;
+        if (!(player instanceof PolypPlayer op)) return;
         op.compat().setAnimatiumClient(true);
         op.compat().setSupportedFeatures(parseSupportedFeatures(info));
         applyFeatures(polyp, player);
@@ -54,7 +54,7 @@ public final class CompatAnimatium {
      * join, so the server must re-push the set itself. No-op for non-Animatium clients.
      */
     public static void applyFeatures(Polyp polyp, Player player) {
-        if (!(player instanceof OptimizedPlayer op)) return;
+        if (!(player instanceof PolypPlayer op)) return;
         CompatConfig cfg = polyp.profiles().resolve(player, MechanicsKeys.COMPAT);
         CompatConfig.CompatContext ctx = new CompatConfig.CompatContext(player);
         boolean debug = cfg != null && Boolean.TRUE.equals(cfg.animatiumDebug(ctx));

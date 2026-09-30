@@ -4,7 +4,7 @@ import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.mechanics.projectile.ProjectileSnapshot;
 import io.github.term4.polyp.mechanics.projectile.ProjectileSystem;
 import io.github.term4.polyp.mechanics.projectile.types.Arrow;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.presets.vanilla18.Vanilla18;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
@@ -24,7 +24,7 @@ class LegacyStuckArrowRearmTest extends HeadlessServerTest {
         FakePlayer shooter = FakePlayer.connect(instance, new Pos(700.5, 66, 700.5, 0f, 90f), "StuckShooter"); // looking straight down
         FakePlayer legacy = FakePlayer.connect(instance, new Pos(702.5, 65, 700.5), "StuckLegacy");
         FakePlayer modern = FakePlayer.connect(instance, new Pos(698.5, 65, 700.5), "StuckModern");
-        ((OptimizedPlayer) legacy.player).compat().setLegacyClient(true);
+        ((PolypPlayer) legacy.player).compat().setLegacyClient(true);
         var config = Vanilla18.projectiles();
         ProjectileEntity arrow = new ProjectileSystem(Polyp.getInstance(), config)
                 .launch(ProjectileSnapshot.of(shooter.player, Arrow.INSTANCE).withConfig(config));

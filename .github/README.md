@@ -41,12 +41,12 @@ Requires the published `net.minestom:minestom` artifact (see `minestomVersion` i
 
 ## Custom player class
 
-Polyp installs an `OptimizedPlayer` provider (self-echo filtering, per-client compat state, the dispatcher opt-out
+Polyp installs a `PolypPlayer` provider (self-echo filtering, per-client compat state, the dispatcher opt-out
 that shard domain ticking needs). To use your own player class, extend it and swap the factory — every
-`instanceof OptimizedPlayer` gate in the library keeps matching:
+`instanceof PolypPlayer` gate in the library keeps matching:
 
 ```java
-public class MyPlayer extends OptimizedPlayer {
+public class MyPlayer extends PolypPlayer {
     public MyPlayer(PlayerConnection connection, GameProfile profile) { super(connection, profile); }
 }
 

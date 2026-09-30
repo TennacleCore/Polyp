@@ -1,7 +1,7 @@
 package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.Polyp;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.util.BlockContact;
 import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.tracking.ClientInfoTracker;
@@ -45,7 +45,7 @@ public final class CompatPlacement {
      */
     public static boolean placementBodyCheck(@NotNull Player placer, @NotNull Entity body, @NotNull Block placing,
                                              @NotNull Point cellRelativeBody, @NotNull BoundingBox bodyBox) {
-        if (placer instanceof OptimizedPlayer op && op.compat().legacyClient()) {
+        if (placer instanceof PolypPlayer op && op.compat().legacyClient()) {
             if (BlockContact.isPassable(placing)) return false;
             if (body == placer && op.compat().legacySelfPlace() && isStairs(placing)) return false;
         }
@@ -66,7 +66,7 @@ public final class CompatPlacement {
 
     /** A live raycast never block-hits air, so an air clicked-block = the client aimed at a cell it just broke (creative quick-replace). */
     private static void onInteract(PlayerBlockInteractEvent event) {
-        if (!(event.getPlayer() instanceof OptimizedPlayer op)) return;
+        if (!(event.getPlayer() instanceof PolypPlayer op)) return;
         // the event's block is the base-map read; a virtual-world member's clicked block may exist only in their world
         if (op.compat().oldPlacement() && MechanicsWorld.viewed(op).getBlock(event.getBlockPosition()).air()) {
             event.setBlockingItemUse(true);
@@ -75,7 +75,7 @@ public final class CompatPlacement {
 
     private static void onPlace(PlayerBlockPlaceEvent event, ClientInfoTracker clientInfo) {
         Player player = event.getPlayer();
-        if (!(player instanceof OptimizedPlayer op)) return;
+        if (!(player instanceof PolypPlayer op)) return;
         Double reach = op.compat().blockPlaceReach();
         if (reach == null) return;
         // only modern survival clients can sneak-bridge past 1.8 reach; legacy/creative/spectator already aim correctly

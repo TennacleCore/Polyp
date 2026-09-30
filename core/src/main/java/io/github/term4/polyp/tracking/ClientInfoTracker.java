@@ -1,7 +1,7 @@
 package io.github.term4.polyp.tracking;
 
 import net.minestom.server.MinecraftServer;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.platform.player.PlayerConfigApplier;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventFilter;
@@ -92,7 +92,7 @@ public final class ClientInfoTracker implements Tracker {
 
     // the item stamps each have a protocol floor, and the join inventory went out under the unknown-protocol guess
     private void rescopeCompat(Player player) {
-        if (!(player instanceof OptimizedPlayer op)) return;
+        if (!(player instanceof PolypPlayer op)) return;
         List<Object> view = op.compat().itemViewKey();
         op.compat().setLegacyClient(ClientVersion.isLegacy(getProtocol(player)));
         if (!view.equals(op.compat().itemViewKey())) PlayerConfigApplier.resendItemView(op);

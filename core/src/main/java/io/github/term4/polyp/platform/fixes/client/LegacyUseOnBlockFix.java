@@ -5,7 +5,7 @@ import net.minestom.server.tag.Tag;
 import net.minestom.server.event.player.PlayerPacketEvent;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.MinecraftServer;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.Polyp;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.Event;
@@ -34,7 +34,7 @@ public final class LegacyUseOnBlockFix {
             if (!polyp.clientInfo().isLegacy(p)) return;
             // a drawing 1.8 client never re-sends C08: a repeat press means ITS draw restarted and the release was
             // lost - restart, never span (vanilla's reference no-op would bank the lost gap). A recount spans, as in 1.8
-            if (p.getItemUseHand() != null && !(p instanceof OptimizedPlayer op && op.inventorySync().useCut())) {
+            if (p.getItemUseHand() != null && !(p instanceof PolypPlayer op && op.inventorySync().useCut())) {
                 p.refreshActiveHand(false, p.getItemUseHand() == net.minestom.server.entity.PlayerHand.OFF, false);
                 p.clearItemUse();
             }
@@ -49,7 +49,7 @@ public final class LegacyUseOnBlockFix {
                 // That skips the sync's wrapper around it, so its after-use rule runs here
                 UseItemListener.useItemListener(new ClientUseItemPacket(hand, 0,
                         p.getPosition().yaw(), p.getPosition().pitch()), p);
-                if (p instanceof OptimizedPlayer op) op.inventorySync().afterUse(hand);
+                if (p instanceof PolypPlayer op) op.inventorySync().afterUse(hand);
             });
         });
         node.addListener(PlayerPacketEvent.class, e -> {

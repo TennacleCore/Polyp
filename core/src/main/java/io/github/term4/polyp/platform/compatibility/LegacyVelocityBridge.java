@@ -2,7 +2,7 @@ package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.platform.compatibility.via.ViaBridgeRpc;
 import io.github.term4.polyp.Polyp;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.tracking.motion.LegacyVelocity;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.coordinate.Vec;
@@ -57,7 +57,7 @@ public final class LegacyVelocityBridge {
         polyp = instance;
         EventNode<@NotNull PlayerEvent> cleanup = EventNode.type("polyp:legacy-velocity-bridge-cleanup", EventFilter.PLAYER);
         cleanup.addListener(PlayerDisconnectEvent.class, e -> {
-            if (e.getPlayer() instanceof OptimizedPlayer op) op.compat().releaseArmed();
+            if (e.getPlayer() instanceof PolypPlayer op) op.compat().releaseArmed();
         });
         instance.install(cleanup);
     }
@@ -80,7 +80,7 @@ public final class LegacyVelocityBridge {
 
         // gated on advertised decoder support so an ALL-features client lacking the decoder is untouched;
         // the BufferedPacket send won't re-fire this event
-        if (p instanceof OptimizedPlayer op
+        if (p instanceof PolypPlayer op
                 && op.compat().handlesNatively(AnimatiumFeature.SHORTS_VELOCITY)
                 && op.compat().supports(AnimatiumFeature.SHORTS_VELOCITY)) {
             e.setCancelled(true);

@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 /**
  * Per-player cross-version compat state plus the pose/hitbox/eye/attack-box logic it drives. The policy is the held
  * {@link CompatConfig} (swapped whole by {@link #apply} - a profile push is a clean mode SWITCH, never a sticky merge);
- * the rest is operational/identity state. One instance per {@code OptimizedPlayer}, exposed via {@code compat()}.
+ * the rest is operational/identity state. One instance per {@code PolypPlayer}, exposed via {@code compat()}.
  */
 public final class CompatState {
 

@@ -70,7 +70,7 @@ import java.util.function.Function;
  * throttle, the self-placement exclusion, and the cross-version compat overrides (pose/hitbox/eye/attack-box,
  * state in {@link CompatState}). Each behavior is opt-in and wired by {@code Polyp}.
  */
-public class OptimizedPlayer extends Player implements ExternallyTickable {
+public class PolypPlayer extends Player implements ExternallyTickable {
 
     private static final long FIRST_KEEP_ALIVE_MS = 2_000;
 
@@ -98,7 +98,7 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
     private final BooleanSupplier healthRounding =
             () -> compat.legacyClient() && fixEnabled(FixesConfig::legacyHealthRounding);
 
-    public OptimizedPlayer(PlayerConnection connection, GameProfile gameProfile) {
+    public PolypPlayer(PlayerConnection connection, GameProfile gameProfile) {
         super(connection, gameProfile);
         // vanilla scans item pickups every tick; Minestom's default 5-tick cooldown adds up to 250ms of pickup lag
         this.itemPickupCooldown = new Cooldown(Duration.ZERO);
@@ -304,7 +304,7 @@ public class OptimizedPlayer extends Player implements ExternallyTickable {
 
     private boolean anyViewerRewritesItems() {
         for (Player viewer : getViewers()) {
-            if (viewer instanceof OptimizedPlayer op && op.compat().rewritesItems()) return true;
+            if (viewer instanceof PolypPlayer op && op.compat().rewritesItems()) return true;
         }
         return false;
     }

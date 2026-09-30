@@ -2,7 +2,7 @@ package io.github.term4.polyp.platform.fixes.client;
 
 import io.github.term4.polyp.platform.fixes.FixToggleConfig;
 import io.github.term4.polyp.platform.fixes.FixesSystem;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
@@ -26,7 +26,7 @@ public final class LegacyUseResyncFix {
         node.addListener(PlayerCancelItemUseEvent.class, e -> {
             if (e.getItemStack().material() != Material.BOW) return;
             Player player = e.getPlayer();
-            if (!(player instanceof OptimizedPlayer op) || !op.compat().legacyClient()) return;
+            if (!(player instanceof PolypPlayer op) || !op.compat().legacyClient()) return;
             FixToggleConfig cfg = fixes.forClient(player).legacyUseResync();
             if (cfg == null || !cfg.enabled(player)) return;
             PlayerInventory inventory = player.getInventory();

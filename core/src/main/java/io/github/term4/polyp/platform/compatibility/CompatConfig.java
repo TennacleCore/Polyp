@@ -11,7 +11,7 @@ import java.util.Set;
 
 /**
  * Immutable cross-version compatibility config: per-scope knobs that present consistent (typically 1.8-style)
- * mechanics to mixed-version clients. Scoped via {@code MechanicsProfile.compat}, pushed to {@code OptimizedPlayer}
+ * mechanics to mixed-version clients. Scoped via {@code MechanicsProfile.compat}, pushed to {@code PolypPlayer}
  * by {@code PlayerConfigApplier}. Plain values (platform knobs, not per-hit); unset ({@code null}) = unmanaged.
  */
 @GenerateBuilder

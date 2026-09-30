@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * A Minestom {@link Inventory} whose creative clicks land ({@link CreativeClicks}), and whose slot changes each
- * {@link OptimizedPlayer} viewer's {@link io.github.term4.polyp.platform.inventory.InventorySync} sends.
+ * {@link PolypPlayer} viewer's {@link io.github.term4.polyp.platform.inventory.InventorySync} sends.
  */
 public class CreativeInventory extends Inventory {
 
@@ -26,21 +26,21 @@ public class CreativeInventory extends Inventory {
         super.UNSAFE_itemInsert(slot, item, previous, false);
         if (!sendPacket) return;
         for (Player viewer : getViewers()) {
-            if (!(viewer instanceof OptimizedPlayer)) viewer.sendPacket(new SetSlotPacket(getWindowId(), 0, (short) slot, item));
+            if (!(viewer instanceof PolypPlayer)) viewer.sendPacket(new SetSlotPacket(getWindowId(), 0, (short) slot, item));
         }
     }
 
     @Override
     public void sendSlotRefresh(int slot, ItemStack item) {
         for (Player viewer : getViewers()) {
-            if (viewer instanceof OptimizedPlayer op) op.inventorySync().refresh(this, slot, item);
+            if (viewer instanceof PolypPlayer op) op.inventorySync().refresh(this, slot, item);
             else viewer.sendPacket(new SetSlotPacket(getWindowId(), 0, (short) slot, item));
         }
     }
 
     @Override
     public void update(Player player) {
-        if (player instanceof OptimizedPlayer op) op.inventorySync().resync(this);
+        if (player instanceof PolypPlayer op) op.inventorySync().resync(this);
         else super.update(player);
     }
 

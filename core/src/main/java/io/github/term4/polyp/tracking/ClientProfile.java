@@ -1,7 +1,7 @@
 package io.github.term4.polyp.tracking;
 
 import io.github.term4.polyp.platform.compatibility.AnimatiumFeature;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.Nullable;
@@ -36,12 +36,12 @@ public final class ClientProfile {
     public void protocol(int protocolVersion) { tracker.setProtocol(player, protocolVersion); }
 
     public boolean isAnimatium() {
-        return player instanceof OptimizedPlayer op && op.compat().isAnimatiumClient();
+        return player instanceof PolypPlayer op && op.compat().isAnimatiumClient();
     }
 
     /** Features this client applies natively (empty for non-Animatium clients). */
     public Set<AnimatiumFeature> animatiumFeatures() {
-        return player instanceof OptimizedPlayer op ? op.compat().nativeFeatures() : Set.of();
+        return player instanceof PolypPlayer op ? op.compat().nativeFeatures() : Set.of();
     }
 
     @SuppressWarnings("unchecked")

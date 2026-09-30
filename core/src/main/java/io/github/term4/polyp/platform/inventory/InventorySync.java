@@ -2,7 +2,7 @@ package io.github.term4.polyp.platform.inventory;
 
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.platform.PacketShapes;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.platform.player.PlayerConfig;
 import io.github.term4.polyp.platform.player.PlayListeners;
 import net.minestom.server.MinecraftServer;
@@ -76,7 +76,7 @@ public final class InventorySync {
     /** A pong that never comes back (a proxy that drops the ack) must not freeze the inventory. */
     private static final long FENCE_TICKS = 100;
 
-    private final OptimizedPlayer player;
+    private final PolypPlayer player;
     private final ClientWindow inventoryWindow = new ClientWindow(0, PlayerInventory.INVENTORY_SIZE, null);
     private @Nullable ClientWindow container;
     private final Remote cursor = new Remote();
@@ -103,7 +103,7 @@ public final class InventorySync {
     private int lastFence;
     private long fencedAt;
 
-    public InventorySync(@NotNull OptimizedPlayer player) {
+    public InventorySync(@NotNull PolypPlayer player) {
         this.player = player;
         inventoryWindow.resyncAll = true;
     }
@@ -111,21 +111,21 @@ public final class InventorySync {
     public static void install(@NotNull Polyp polyp) {
         EventNode<@NotNull Event> node = EventNode.all("polyp:inventory-sync");
         node.addListener(PlayerTickEvent.class, e -> {
-            if (e.getPlayer() instanceof OptimizedPlayer op) op.inventorySync().broadcast();
+            if (e.getPlayer() instanceof PolypPlayer op) op.inventorySync().broadcast();
         });
         node.addListener(InventoryCloseEvent.class, e -> {
-            if (e.getPlayer() instanceof OptimizedPlayer op) op.inventorySync().closing(e.getInventory());
+            if (e.getPlayer() instanceof PolypPlayer op) op.inventorySync().closing(e.getInventory());
         });
         // an instance hop: a 1.8 client wipes its inventory on respawn, and Via can synthesize one the server never sent
         node.addListener(PlayerSpawnEvent.class, e -> {
-            if (!e.isFirstSpawn() && e.getPlayer() instanceof OptimizedPlayer op) op.inventorySync().forget();
+            if (!e.isFirstSpawn() && e.getPlayer() instanceof PolypPlayer op) op.inventorySync().forget();
         });
         polyp.install(node);
 
         // the client's side of a packet is read here, where it is handled, and not off PlayerPacketEvent: a packet
         // held back and fed in again (the lag simulator) fires that event twice
         PlayListeners.wrap(ClientClickWindowPacket.class, WindowListener::clickWindowListener, (packet, player, next) -> {
-            if (!(player instanceof OptimizedPlayer op)) {
+            if (!(player instanceof PolypPlayer op)) {
                 next.accept(packet, player);
                 return;
             }
@@ -146,18 +146,18 @@ public final class InventorySync {
         // ViaBackwards answers a ping with the pre-1.17 client's own transaction ack when
         // handle-pings-as-inv-acknowledgements is on, else at once
         PlayListeners.wrap(ClientPongPacket.class, WindowListener::pong, (packet, player, next) -> {
-            if (player instanceof OptimizedPlayer op) op.inventorySync().pong(packet.id());
+            if (player instanceof PolypPlayer op) op.inventorySync().pong(packet.id());
             next.accept(packet, player);
         });
         PlayListeners.wrap(ClientCreativeInventoryActionPacket.class, CreativeInventoryActionListener::listener,
                 (packet, player, next) -> {
-                    if (player instanceof OptimizedPlayer op) op.inventorySync().creative(packet.slot(), packet.item());
+                    if (player instanceof PolypPlayer op) op.inventorySync().creative(packet.slot(), packet.item());
                     next.accept(packet, player);
-                    if (player instanceof OptimizedPlayer op) op.inventorySync().broadcast();
+                    if (player instanceof PolypPlayer op) op.inventorySync().broadcast();
                 });
         PlayListeners.wrap(ClientPlayerActionPacket.class, PlayerActionListener::playerActionListener,
                 (packet, player, next) -> {
-                    if (player instanceof OptimizedPlayer op) {
+                    if (player instanceof PolypPlayer op) {
                         switch (packet.status()) {
                             case DROP_ITEM -> op.inventorySync().dropped(false);
                             case DROP_ITEM_STACK -> op.inventorySync().dropped(true);
@@ -168,7 +168,7 @@ public final class InventorySync {
                 });
         PlayListeners.wrap(ClientUseItemPacket.class, UseItemListener::useItemListener, (packet, player, next) -> {
             next.accept(packet, player);
-            if (player instanceof OptimizedPlayer op) op.inventorySync().afterUse(packet.hand());
+            if (player instanceof PolypPlayer op) op.inventorySync().afterUse(packet.hand());
         });
     }
 

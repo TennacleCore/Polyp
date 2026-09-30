@@ -20,7 +20,7 @@ class SwingRelayGateTest extends HeadlessServerTest {
         FakePlayer swinger = FakePlayer.connect(instance, new Pos(0.5, 64, 896.5), "SwingA");
         FakePlayer viewer = FakePlayer.connect(instance, new Pos(2.5, 64, 896.5), "SwingV");
         try {
-            OptimizedPlayer op = (OptimizedPlayer) swinger.player;
+            PolypPlayer op = (PolypPlayer) swinger.player;
             long deadline = System.currentTimeMillis() + 2000;
             while (!op.getViewers().contains(viewer.player) && System.currentTimeMillis() < deadline) Thread.onSpinWait();
             assertTrue(op.getViewers().contains(viewer.player), "viewed");
@@ -57,7 +57,7 @@ class SwingRelayGateTest extends HeadlessServerTest {
         }
     }
 
-    private static long swings(FakePlayer viewer, OptimizedPlayer of) {
+    private static long swings(FakePlayer viewer, PolypPlayer of) {
         return viewer.sent(EntityAnimationPacket.class).stream()
                 .filter(p -> p.entityId() == of.getEntityId() && p.animation() == EntityAnimationPacket.Animation.SWING_MAIN_ARM)
                 .count();

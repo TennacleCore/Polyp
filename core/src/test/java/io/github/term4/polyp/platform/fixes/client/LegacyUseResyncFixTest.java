@@ -5,7 +5,7 @@ import io.github.term4.polyp.platform.fixes.FixToggleConfig;
 import io.github.term4.polyp.platform.fixes.FixesConfig;
 import io.github.term4.polyp.platform.fixes.FixesSystem;
 import io.github.term4.polyp.platform.inventory.InventorySync;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.MinecraftServer;
@@ -62,7 +62,7 @@ class LegacyUseResyncFixTest extends HeadlessServerTest {
             Polyp.getInstance().clientInfo().setProtocol(p.player, 47);
             p.player.getInventory().setItemStack(0, ItemStack.of(Material.BOW));
             p.player.getInventory().setItemStack(9, ItemStack.of(Material.ARROW, 16));
-            InventorySync sync = ((OptimizedPlayer) p.player).inventorySync();
+            InventorySync sync = ((PolypPlayer) p.player).inventorySync();
             sync.broadcast();
             p.sent.clear();
             // a tap and a fresh press: 1.8 starts the new use the tick after the release
@@ -89,7 +89,7 @@ class LegacyUseResyncFixTest extends HeadlessServerTest {
             Polyp.getInstance().clientInfo().setProtocol(drawer.player, protocol);
             drawer.player.getInventory().setItemStack(0, ItemStack.of(held));
             drawer.player.getInventory().setItemStack(9, ItemStack.of(Material.ARROW, 16));
-            InventorySync sync = ((OptimizedPlayer) drawer.player).inventorySync();
+            InventorySync sync = ((PolypPlayer) drawer.player).inventorySync();
             sync.broadcast();
             drawer.sent.clear();
             EventDispatcher.call(new PlayerCancelItemUseEvent(drawer.player, PlayerHand.MAIN, ItemStack.of(held), 3));

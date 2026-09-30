@@ -5,7 +5,7 @@ import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.api.event.damage.DamageAppliedEvent;
 import io.github.term4.polyp.mechanics.damage.DamageSystem;
 import io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.util.tick.TickScaler;
 import io.github.term4.polyp.util.tick.TickSystem;
 import io.github.term4.polyp.world.WorldPolicy;
@@ -146,7 +146,7 @@ public final class FakeHits {
         }
         FakeHitConfig preset = cfg != null ? cfg.fakeHits : null;
         // windowless: the bare hand should behave like a stamped item - EVERY swing picks the padded box, no combo timing
-        FakeHitConfig fist = atk instanceof OptimizedPlayer op && op.compat().fistRayHits()
+        FakeHitConfig fist = atk instanceof PolypPlayer op && op.compat().fistRayHits()
                 ? new FakeHitConfig(true, false, op.compat().attackReach(), 1, 1, 1, true) : null;
         if (preset != null && fist != null) return List.of(preset, fist);
         if (preset != null) return List.of(preset);

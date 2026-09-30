@@ -2,7 +2,7 @@ package io.github.term4.polyp.platform.fixes.client;
 
 import io.github.term4.polyp.mechanics.consumable.ConsumableSystem;
 import io.github.term4.polyp.platform.inventory.InventorySync;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.presets.vanilla18.Consumables;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
@@ -93,7 +93,7 @@ class LegacyUseOnBlockFixTest extends HeadlessServerTest {
     void aRecountCutSpans() {
         Player p = FakePlayer.connect(instance, new Pos(8.5, 42, 8.5), "LegacyEatCut").player;
         polyp.clientInfo().setConnectionDetails(p, "{\"version\": 47}");
-        InventorySync sync = ((OptimizedPlayer) p).inventorySync();
+        InventorySync sync = ((PolypPlayer) p).inventorySync();
         sync.countChangeEndsUse(true);
         p.setFood(10);
         p.setItemInMainHand(ItemStack.of(Material.BREAD, 5));

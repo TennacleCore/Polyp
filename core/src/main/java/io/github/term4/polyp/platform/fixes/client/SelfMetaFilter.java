@@ -13,7 +13,7 @@ import java.util.Set;
  * predict state (sneak, sprint, pose, item use) locally, and the server echoing it back causes a one-tick stutter.
  * Viewers always get the full packet.
  *
- * @see io.github.term4.polyp.platform.player.OptimizedPlayer
+ * @see io.github.term4.polyp.platform.player.PolypPlayer
  */
 public final class SelfMetaFilter {
 

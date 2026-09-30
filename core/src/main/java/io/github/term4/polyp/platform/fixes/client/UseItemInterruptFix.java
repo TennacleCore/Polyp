@@ -8,7 +8,7 @@ import net.minestom.server.network.packet.server.SendablePacket;
 import org.jetbrains.annotations.NotNull;
 import net.minestom.server.event.entity.EntityAttackEvent;
 import io.github.term4.polyp.Polyp;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.Event;
@@ -58,12 +58,12 @@ public final class UseItemInterruptFix {
      *  listener on {@code PlayerPacketOutEvent} taxes every outgoing packet server-wide. */
     public static void onOutgoing(@NotNull Player p, @NotNull SendablePacket packet) {
         if (p.getItemUseHand() != PlayerHand.MAIN || !Polyp.getInstance().clientInfo().isLegacy(p)) return;
-        if (p instanceof OptimizedPlayer op && op.inventorySync().recounting()) return;
+        if (p instanceof PolypPlayer op && op.inventorySync().recounting()) return;
         if (rewritesHand(packet, p.getHeldSlot())) interrupt(p, PlayerHand.MAIN);
     }
 
     private static boolean cut(Player p) {
-        return p instanceof OptimizedPlayer op && op.inventorySync().useCut();
+        return p instanceof PolypPlayer op && op.inventorySync().useCut();
     }
 
     private static void interrupt(Player p, PlayerHand hand) {

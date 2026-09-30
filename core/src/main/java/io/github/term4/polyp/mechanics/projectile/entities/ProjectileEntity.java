@@ -1,7 +1,7 @@
 package io.github.term4.polyp.mechanics.projectile.entities;
 
 import java.util.List;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.tracking.motion.VelocityContext;
 import io.github.term4.polyp.entity.MechanicsEntity;
@@ -440,7 +440,7 @@ public abstract class ProjectileEntity extends MechanicsEntity {
     // removeViewer no-ops on an auto-viewable entity: drive the destroy + spawn, a fresh spawn restarts the client's count
     private void rearmLegacyViewers() {
         for (Player viewer : List.copyOf(getViewers())) {
-            if (viewer instanceof OptimizedPlayer op && op.compat().legacyClient()) {
+            if (viewer instanceof PolypPlayer op && op.compat().legacyClient()) {
                 updateOldViewer(viewer);
                 updateNewViewer(viewer);
             }
@@ -999,7 +999,7 @@ public abstract class ProjectileEntity extends MechanicsEntity {
         var clientInfo = io.github.term4.polyp.Polyp.getInstance().clientInfo();
         for (var viewer : getViewers()) {
             if (clientInfo.isLegacy(viewer)) continue;
-            if (viewer instanceof io.github.term4.polyp.platform.player.OptimizedPlayer op
+            if (viewer instanceof io.github.term4.polyp.platform.player.PolypPlayer op
                     && op.compat().isAnimatiumClient()) continue;
             viewer.sendPacket(packet);
         }

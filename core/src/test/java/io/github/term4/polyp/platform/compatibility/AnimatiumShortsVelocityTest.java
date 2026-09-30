@@ -2,7 +2,7 @@ package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.testsupport.CapturingConnection;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import io.github.term4.polyp.tracking.motion.LegacyVelocity;
@@ -35,8 +35,8 @@ class AnimatiumShortsVelocityTest extends HeadlessServerTest {
 
     private static final Vec VELOCITY_BT = new Vec(0.55, 0.4, -0.1);
 
-    private static OptimizedPlayer animatiumPlayer(CapturingConnection conn, boolean shortsKnob, boolean advertisesCapabilities) {
-        OptimizedPlayer p = new OptimizedPlayer(conn, new GameProfile(UUID.randomUUID(), "AnimTest"));
+    private static PolypPlayer animatiumPlayer(CapturingConnection conn, boolean shortsKnob, boolean advertisesCapabilities) {
+        PolypPlayer p = new PolypPlayer(conn, new GameProfile(UUID.randomUUID(), "AnimTest"));
         polyp.profiles().setPlayer(p, MechanicsProfile.builder()
                 .set(MechanicsKeys.COMPAT, Compat18.config().toBuilder().nativeShortVelocity(shortsKnob).build())
                 .build());
@@ -59,7 +59,7 @@ class AnimatiumShortsVelocityTest extends HeadlessServerTest {
         return out;
     }
 
-    private static PlayerPacketOutEvent dispatchVelocity(OptimizedPlayer p) {
+    private static PlayerPacketOutEvent dispatchVelocity(PolypPlayer p) {
         var event = new PlayerPacketOutEvent(p, new EntityVelocityPacket(p.getEntityId(), VELOCITY_BT));
         EventDispatcher.call(event);
         return event;
@@ -68,7 +68,7 @@ class AnimatiumShortsVelocityTest extends HeadlessServerTest {
     @Test
     void rewritesVelocityToExactShorts() {
         var conn = new CapturingConnection();
-        OptimizedPlayer p = animatiumPlayer(conn, true, true);
+        PolypPlayer p = animatiumPlayer(conn, true, true);
 
         assertTrue(p.compat().supports(AnimatiumFeature.SHORTS_VELOCITY));
         assertTrue(p.compat().handlesNatively(AnimatiumFeature.SHORTS_VELOCITY));
@@ -92,7 +92,7 @@ class AnimatiumShortsVelocityTest extends HeadlessServerTest {
     @Test
     void clientWithoutCapabilityFieldIsNeverSentShorts() {
         var conn = new CapturingConnection();
-        OptimizedPlayer p = animatiumPlayer(conn, true, false);
+        PolypPlayer p = animatiumPlayer(conn, true, false);
 
         assertTrue(p.compat().isAnimatiumClient());
         assertFalse(p.compat().supports(AnimatiumFeature.SHORTS_VELOCITY));
@@ -107,7 +107,7 @@ class AnimatiumShortsVelocityTest extends HeadlessServerTest {
     @Test
     void shortsRequireTheNativeShortVelocityKnob() {
         var conn = new CapturingConnection();
-        OptimizedPlayer p = animatiumPlayer(conn, false, true);
+        PolypPlayer p = animatiumPlayer(conn, false, true);
 
         assertTrue(p.compat().supports(AnimatiumFeature.SHORTS_VELOCITY));
         assertFalse(p.compat().handlesNatively(AnimatiumFeature.SHORTS_VELOCITY));

@@ -14,7 +14,7 @@ import io.github.term4.polyp.mechanics.consumable.ConsumableConfigResolver.Consu
 import io.github.term4.polyp.mechanics.consumable.ConsumableConfigResolver.ResolvedConsumable;
 import io.github.term4.polyp.platform.fixes.FixToggleConfig;
 import io.github.term4.polyp.platform.fixes.FixesConfig;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.util.tick.TickPhase;
 import io.github.term4.polyp.util.tick.TickSystem;
 import net.kyori.adventure.key.Key;
@@ -116,7 +116,7 @@ public final class ConsumableSystem extends ScopedSystem<ConsumableConfig> {
         // use under lag and double-eats; the hand frees on release / finish / slot-switch. A client re-arming after a
         // recount ended only its own use joins the server's, as every version does
         if (p.getItemUseHand() != null && (legacyConsumeEnabled(p)
-                || p instanceof OptimizedPlayer op && op.inventorySync().useCut())) {
+                || p instanceof PolypPlayer op && op.inventorySync().useCut())) {
             e.setItemUseTime(0);
             return;
         }

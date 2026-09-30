@@ -1,7 +1,7 @@
 package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.platform.compatibility.CompatConfig.SprintGate;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.coordinate.Pos;
@@ -42,7 +42,7 @@ class CompatSprintTest extends HeadlessServerTest {
         instance.loadChunk(0, 52).join();
         pool(832);
         FakePlayer fp = FakePlayer.connect(instance, DEEP, "SprintGate");
-        OptimizedPlayer op = (OptimizedPlayer) fp.player;
+        PolypPlayer op = (PolypPlayer) fp.player;
         try {
             op.compat().apply(FOOD, op);
 
@@ -117,7 +117,7 @@ class CompatSprintTest extends HeadlessServerTest {
         instance.loadChunk(0, 53).join();
         pool(848);
         FakePlayer fp = FakePlayer.connect(instance, new Pos(0.5, 64, 848.5), "SprintExempt");
-        OptimizedPlayer op = (OptimizedPlayer) fp.player;
+        PolypPlayer op = (PolypPlayer) fp.player;
         try {
             op.compat().apply(FOOD, op);
 
@@ -154,7 +154,7 @@ class CompatSprintTest extends HeadlessServerTest {
         pool(864);
         Block floor = instance.getBlock(4, 63, 864);
         FakePlayer fp = FakePlayer.connect(instance, new Pos(4.5, 64, 864.5), "SprintWade");
-        OptimizedPlayer op = (OptimizedPlayer) fp.player;
+        PolypPlayer op = (PolypPlayer) fp.player;
         try {
             op.compat().apply(FOOD, op);
             fp.sent.clear();
@@ -183,7 +183,7 @@ class CompatSprintTest extends HeadlessServerTest {
     void theAlwaysGateHoldsEverywhere() {
         instance.loadChunk(0, 55).join();
         FakePlayer fp = FakePlayer.connect(instance, new Pos(8.5, 64, 880.5), "SprintAlways");
-        OptimizedPlayer op = (OptimizedPlayer) fp.player;
+        PolypPlayer op = (PolypPlayer) fp.player;
         try {
             op.compat().apply(CompatConfig.builder().suppressSprint(SprintGate.FOOD).build(), op);
             fp.sent.clear();

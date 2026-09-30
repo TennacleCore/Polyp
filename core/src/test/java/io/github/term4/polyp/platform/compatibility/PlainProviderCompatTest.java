@@ -2,7 +2,7 @@ package io.github.term4.polyp.platform.compatibility;
 
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfile;
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.MinecraftServer;
@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The sprint strip is plain server API, so it must reach players a FOREIGN provider built - only the
- * packet-level compat (meta fix, pose interception) is {@code OptimizedPlayer}-bound.
+ * packet-level compat (meta fix, pose interception) is {@code PolypPlayer}-bound.
  */
 class PlainProviderCompatTest extends HeadlessServerTest {
 
@@ -32,7 +32,7 @@ class PlainProviderCompatTest extends HeadlessServerTest {
         FakePlayer fake = null;
         try {
             fake = FakePlayer.connect(instance, new Pos(30.5, 65, 30.5), "PlainSprint");
-            assertFalse(fake.player instanceof OptimizedPlayer, "the point: a plain player");
+            assertFalse(fake.player instanceof PolypPlayer, "the point: a plain player");
 
             polyp.profiles().setGlobal(baseProfile
                     .set(MechanicsKeys.COMPAT, CompatConfig.builder().restrictSprintSneak(true).build())

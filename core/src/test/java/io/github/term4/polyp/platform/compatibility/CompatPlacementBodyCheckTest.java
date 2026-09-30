@@ -1,6 +1,6 @@
 package io.github.term4.polyp.platform.compatibility;
 
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.util.BlockContact;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
@@ -22,14 +22,14 @@ class CompatPlacementBodyCheckTest extends HeadlessServerTest {
     private static final BoundingBox PLAYER = new BoundingBox(0.6, 1.8, 0.6);
     private static final Vec CENTERED = new Vec(0.5, 0, 0.5);
 
-    private static boolean blocks(OptimizedPlayer placer, Entity body, Block placing, Vec at) {
+    private static boolean blocks(PolypPlayer placer, Entity body, Block placing, Vec at) {
         return CompatPlacement.placementBodyCheck(placer, body, placing, at, PLAYER);
     }
 
     @Test
     void legacySelfLandsStairsOnly() {
         FakePlayer fp = FakePlayer.connect(instance, new Pos(0.5, 65, 864.5), "BodyGate");
-        OptimizedPlayer op = (OptimizedPlayer) fp.player;
+        PolypPlayer op = (PolypPlayer) fp.player;
         LivingEntity other = looseZombie();
         try {
             assertTrue(blocks(op, op, Block.OAK_STAIRS, CENTERED), "modern: even your own body blocks, like your client predicts");
@@ -60,7 +60,7 @@ class CompatPlacementBodyCheckTest extends HeadlessServerTest {
     @Test
     void aSlabBlocksItsPlacer() {
         FakePlayer fp = FakePlayer.connect(instance, new Pos(0.5, 64.5, 880.5), "SlabGate");
-        OptimizedPlayer op = (OptimizedPlayer) fp.player;
+        PolypPlayer op = (PolypPlayer) fp.player;
         Vec standing = new Vec(0.5, 0.5, 0.5); // feet on the top face of the half they clicked
         try {
             op.compat().setLegacyClient(true);
@@ -77,7 +77,7 @@ class CompatPlacementBodyCheckTest extends HeadlessServerTest {
     @Test
     void hypixelRefusal() {
         FakePlayer fp = FakePlayer.connect(instance, new Pos(0.5, 65, 872.5), "StrictGate");
-        OptimizedPlayer op = (OptimizedPlayer) fp.player;
+        PolypPlayer op = (PolypPlayer) fp.player;
         try {
             op.compat().setLegacyClient(true);
             op.compat().apply(CompatConfig.builder().legacySelfPlace(false).build(), op);

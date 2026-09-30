@@ -1,6 +1,6 @@
 package io.github.term4.polyp.platform.fixes.client;
 
-import io.github.term4.polyp.platform.player.OptimizedPlayer;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.platform.player.PlayListeners;
 import net.minestom.server.entity.Player;
 import net.minestom.server.listener.BlockPlacementListener;
@@ -13,7 +13,7 @@ import java.util.function.BiConsumer;
 /**
  * Paper 1.8.8's placer exclusion for a plain-Minestom app: the placer's own body never blocks their placement.
  * A vanilla 1.8 client gates on its own body before sending, so only an ungated client sees the difference;
- * an Archipelago app runs 1.8's own check through {@code Shard.placementBodyCheck} instead. Arms {@link OptimizedPlayer#setSelfPlacing} per placement for
+ * an Archipelago app runs 1.8's own check through {@code Shard.placementBodyCheck} instead. Arms {@link PolypPlayer#setSelfPlacing} per placement for
  * legacy placers (a modern client refuses these itself; server leniency would let it bury blocks in its own
  * body). An app refusing self-overlap as POLICY (Hypixel-style) cancels {@code PlayerBlockPlaceEvent} with
  * {@code BlockContact.overlapsBody} as the condition. Wraps the stock listener; shard worlds use
@@ -54,7 +54,7 @@ public final class LegacySelfPlacementFix {
 
     private static void wrapped(BiConsumer<ClientPlayerBlockPlacementPacket, Player> delegate,
                                 ClientPlayerBlockPlacementPacket packet, Player player) {
-        OptimizedPlayer op = player instanceof OptimizedPlayer o && excludesPlacer(packet, o) ? o : null;
+        PolypPlayer op = player instanceof PolypPlayer o && excludesPlacer(packet, o) ? o : null;
         if (op != null) op.setSelfPlacing(true);
         try {
             delegate.accept(packet, player);
@@ -64,7 +64,7 @@ public final class LegacySelfPlacementFix {
     }
 
     /** The null guard scopes the arming to actual block placements (a non-block item has a {@code null} {@code Material#block()}). */
-    private static boolean excludesPlacer(ClientPlayerBlockPlacementPacket packet, OptimizedPlayer player) {
+    private static boolean excludesPlacer(ClientPlayerBlockPlacementPacket packet, PolypPlayer player) {
         return player.compat().legacyClient() && player.getItemInHand(packet.hand()).material().block() != null;
     }
 }
