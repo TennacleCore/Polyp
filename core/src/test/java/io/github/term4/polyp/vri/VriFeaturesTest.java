@@ -61,6 +61,20 @@ class VriFeaturesTest extends HeadlessServerTest {
     }
 
     @Test
+    void tossingOffKeepsIt() {
+        try {
+            polyp.profiles().setPlayer(miner.player, io.github.term4.polyp.MechanicsProfile.builder()
+                    .set(io.github.term4.polyp.MechanicsKeys.VRI, VriConfig.builder().itemDrop(false).build()).build());
+            assertFalse(miner.player.dropItem(net.minestom.server.item.ItemStack.of(Material.STONE)), "stays in hand");
+        } finally {
+            polyp.profiles().setPlayer(miner.player, null);
+        }
+        assertTrue(miner.player.dropItem(net.minestom.server.item.ItemStack.of(Material.STONE)));
+        tickEnd();
+        dropOf(Material.STONE).remove();
+    }
+
+    @Test
     void dropSpawnsWithVanillaShape() {
         // the world is shared: another class's leftovers are no part of this drop
         var before = instance.getEntities().stream().filter(e -> e instanceof ItemEntity).toList();

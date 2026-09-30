@@ -64,6 +64,10 @@ public final class ItemDrop {
                 });
             });
         });
+        // tossing off keeps the item: Minestom takes it out of the hand for any drop nobody cancels
+        node.addListener(ItemDropEvent.class, e -> {
+            if (!VriConfig.on(vri.configFor(e.getPlayer()).itemDrop, e.getPlayer())) e.setCancelled(true);
+        });
         // end-of-tick: a reactor reads the FINAL cancelled state, whatever order the listeners ran in
         node.addListener(ItemDropEvent.class, e ->
                 MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> {
