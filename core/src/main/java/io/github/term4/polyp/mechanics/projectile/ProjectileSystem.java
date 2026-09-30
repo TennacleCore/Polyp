@@ -131,7 +131,8 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
         ProjectileEntity entity = working.type().createEntity(shooter, working, effectiveConfig);
         stampFlight(entity, flight, working);
 
-        ProjectileLaunchEvent event = new ProjectileLaunchEvent(working, entity, flight, spawnPos, velocity);
+        MechanicsWorld world = MechanicsWorld.of(shooter);
+        ProjectileLaunchEvent event = new ProjectileLaunchEvent(working, entity, flight, world, spawnPos, velocity);
         EventDispatcher.call(event);
         if (event.isCancelled()) return null;
         ProjectileBehavior behavior = event.behavior();
@@ -150,7 +151,7 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
         }
         entity.setVelocityBt(spawnVel);
         entity.setSpawnPosition(spawnAt);
-        MechanicsWorld.of(shooter).spawn(entity, spawnAt);
+        world.spawn(entity, spawnAt);
         return entity;
     }
 

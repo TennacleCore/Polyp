@@ -21,15 +21,18 @@ public class ProjectileLaunchEvent implements CancellableEvent {
     private final ProjectileSnapshot snapshot;
     private final ProjectileEntity projectile;
     private final ResolvedFlight resolvedFlight;
+    private final MechanicsWorld world;
     private Pos spawnPos;
     private Vec velocity;
     private @Nullable ProjectileBehavior behavior;
     private boolean cancelled;
 
-    public ProjectileLaunchEvent(ProjectileSnapshot snapshot, ProjectileEntity projectile, ResolvedFlight resolvedFlight, Pos spawnPos, Vec velocity) {
+    public ProjectileLaunchEvent(ProjectileSnapshot snapshot, ProjectileEntity projectile, ResolvedFlight resolvedFlight,
+                                 MechanicsWorld world, Pos spawnPos, Vec velocity) {
         this.snapshot = snapshot;
         this.projectile = projectile;
         this.resolvedFlight = resolvedFlight;
+        this.world = world;
         this.spawnPos = spawnPos;
         this.velocity = velocity;
     }
@@ -43,7 +46,7 @@ public class ProjectileLaunchEvent implements CancellableEvent {
     /** The built entity, not yet in the world. */
     public @NotNull ProjectileEntity projectile() { return projectile; }
     /** The shooter's world - the one the projectile launches into. */
-    public MechanicsWorld world() { return MechanicsWorld.of(projectile()); } // the shooter is nullable; the projectile is not
+    public MechanicsWorld world() { return world; }
 
     public @NotNull Pos spawnPos() { return spawnPos; }
     public void setSpawnPos(@NotNull Pos pos) { this.spawnPos = pos; }
