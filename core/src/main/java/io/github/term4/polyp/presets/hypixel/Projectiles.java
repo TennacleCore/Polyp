@@ -69,8 +69,8 @@ public final class Projectiles {
                 .spawnOffsetForward(0.0).spawnOffsetVertical(0.0).spawnOffsetSideways(0.0) // at the eye
                 .syncInterval(0).velocitySyncInterval(1) // no position teleports (Hypixel/minemen don't): pure velocity prediction, no spurious 0-velocity corrections
                 .removeOnEntityHit(true).removeOnBlockHit(true)
-                // pearl-catch capture 2026-09-30: safe through 32 ticks, hit at 58; 50 until a finer capture
-                .shooterImmunityTicks(50)
+                // the thrower window stays vanilla's 25 (the fireball type's): in the 2026-09-30 pearl-catch captures
+                // only falling-pearl catches exploded, so where you land decides, not a longer window
                 .shooterDeathDespawnTicks(-1) // outlives its thrower
                 .damage(0.0)
                 .explosionPower(BW_POWER)

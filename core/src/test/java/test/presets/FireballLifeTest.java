@@ -119,8 +119,8 @@ class FireballLifeTest extends HeadlessServerTest {
     void theThrowerWindow() {
         assertFalse(hitsItsThrower(Vanilla18.projectiles(), 10, 820.5, "FbV10"), "1.8: safe inside 25 ticks");
         assertTrue(hitsItsThrower(Vanilla18.projectiles(), 27, 830.5, "FbV27"), "1.8: hit after 25");
-        assertFalse(hitsItsThrower(HYPIXEL, 30, 840.5, "FbH30"), "hypixel: safe at 30");
-        assertTrue(hitsItsThrower(HYPIXEL, 52, 850.5, "FbH52"), "hypixel: hit after 50");
+        assertFalse(hitsItsThrower(HYPIXEL, 20, 840.5, "FbH20"), "hypixel: safe inside 25");
+        assertTrue(hitsItsThrower(HYPIXEL, 27, 850.5, "FbH27"), "hypixel: hit after 25");
         assertFalse(hitsItsThrower(MMC18, 60, 860.5, "FbM60"), "mmc18: never");
     }
 }
