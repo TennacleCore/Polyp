@@ -27,6 +27,7 @@ public final class FixesLegacy {
                 .legacyPlacementHalf(FixToggleConfig.on())
                 .legacyHealthRounding(FixToggleConfig.of(false)) // captured networks send fractions; a preset opts in
                 .legacyChunkReload(FixToggleConfig.on())
+                .legacyWorldSwap(FixToggleConfig.on())
                 .legacyTabSlots(LegacyTabGridFix.VANILLA_SLOTS)
                 .build();
     }

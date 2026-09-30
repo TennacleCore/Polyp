@@ -56,6 +56,9 @@ public final class FixCatalog {
         add("legacyChunkReload", ClientRange.THROUGH_1_13,
                 "a held chunk sent again is a new object to the client, and the entities filed in the old one can be "
                         + "seen but not hit until spawned afresh; 1.14 refills a held chunk in place");
+        add("legacyWorldSwap", ClientRange.THROUGH_1_15,
+                "an instance change within one dimension sends no respawn, and before 1.16 only a dimension change "
+                        + "clears the client's world: the new world's entities file into the old chunk objects");
         add("legacyTabSlots", ClientRange.ANY,
                 "ONLY 1.7 reads it - its whole tab grid is Join Game's max players - but it rides a join, which "
                         + "lands before the protocol is known, and 1.8+ ignores the field");

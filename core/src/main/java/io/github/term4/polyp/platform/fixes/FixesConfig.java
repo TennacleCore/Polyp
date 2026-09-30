@@ -66,6 +66,9 @@ public final class FixesConfig {
     /** A held chunk sent again strands the entities the client filed in it ({@code LegacyChunkReloadFix}); 1.13.2 and older. */
     public @Nullable FixToggleConfig legacyChunkReload() { return toggles.get("legacyChunkReload"); }
 
+    /** An instance change within one dimension leaves the client its old world ({@code LegacyWorldSwapFix}); 1.15.2 and older. */
+    public @Nullable FixToggleConfig legacyWorldSwap() { return toggles.get("legacyWorldSwap"); }
+
     /** 1.7's whole tab grid is Join Game's max players; {@code null} leaves Minestom's own. */
     public @Nullable Integer legacyTabSlots() { return legacyTabSlots; }
 
@@ -168,6 +171,7 @@ public final class FixesConfig {
         public Builder legacyPlacementHalf(@Nullable FixToggleConfig v) { return toggle("legacyPlacementHalf", v); }
         public Builder legacyHealthRounding(@Nullable FixToggleConfig v) { return toggle("legacyHealthRounding", v); }
         public Builder legacyChunkReload(@Nullable FixToggleConfig v) { return toggle("legacyChunkReload", v); }
+        public Builder legacyWorldSwap(@Nullable FixToggleConfig v) { return toggle("legacyWorldSwap", v); }
         public Builder legacyTabSlots(@Nullable Integer v) { this.legacyTabSlots = v; return this; }
 
         public FixesConfig build() { return new FixesConfig(this); }

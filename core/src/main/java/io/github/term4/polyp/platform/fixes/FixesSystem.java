@@ -5,6 +5,7 @@ import io.github.term4.polyp.ScopedSystem;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.platform.fixes.client.EquipmentSlotsFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyChunkReloadFix;
+import io.github.term4.polyp.platform.fixes.client.LegacyWorldSwapFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyFireDouseFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyUseResyncFix;
 import io.github.term4.polyp.platform.fixes.client.LegacyInventorySlotFix;
@@ -83,6 +84,7 @@ public final class FixesSystem extends ScopedSystem<FixesConfig> {
         LegacyFireDouseFix.install(system.node, system);
         LegacyUseResyncFix.install(system.node, system); // per scope, like the douse: the toggle is read per player
         LegacyChunkReloadFix.install(system.node, system);
+        LegacyWorldSwapFix.install(system.node, system);
         LegacyPlacementGhostFix.install(system.node);
         LegacyUseOnBlockFix.install(system.node);
         UseItemInterruptFix.install(system.node);

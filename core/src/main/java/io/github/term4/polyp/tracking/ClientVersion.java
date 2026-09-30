@@ -17,6 +17,8 @@ public final class ClientVersion {
     public static final int ITEM_MODEL_PROTOCOL = 768;
     /** 1.13.2, the last client that files an entity into the chunk object it stands in; 1.14 refills a held chunk in place. */
     public static final int CHUNK_OBJECT_PROTOCOL_MAX = 404;
+    /** 1.15.2, the last client that keeps its world through a respawn into the dimension it is in. */
+    public static final int WORLD_KEEPING_RESPAWN_PROTOCOL_MAX = 578;
 
     private ClientVersion() {}
 
