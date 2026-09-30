@@ -198,6 +198,7 @@ public final class Projectiles {
                 .wireLockstep(false)
                 .removeOnEntityHit(true).removeOnBlockHit(true)
                 .selfHit(ProjectileTypeConfig.HitResponse.PASS_THROUGH) // your own fireball never hits you; a deflect reassigns ownership
+                .shooterDeathDespawnTicks(-1) // outlives its thrower
                 .damage(CONTACT_DAMAGE)
                 .knockback(Knockback.explosionHurt())
                 .knockbackSource(ProjectileTypeConfig.KnockbackSource.PROJECTILE)

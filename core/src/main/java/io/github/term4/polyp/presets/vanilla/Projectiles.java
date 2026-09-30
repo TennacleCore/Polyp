@@ -100,6 +100,8 @@ public final class Projectiles {
                 .deflect(-0.5, 0, -10, 10)
                 .physicsOrder(PhysicsOrder.DRAG_BEFORE_MOVE)
                 .wireGrid(WireGrid.MODERN)
-                .leftOwnerImmunity(true);
+                .leftOwnerImmunity(true)
+                .despawnsOutsideHeight(false) // hasChunkAt reads the column only
+                .shooterDeathDespawnTicks(-1); // a removed owner resolves to nothing, which keeps it flying
     }
 }

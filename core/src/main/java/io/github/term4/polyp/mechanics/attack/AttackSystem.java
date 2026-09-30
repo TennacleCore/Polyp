@@ -1,5 +1,6 @@
 package io.github.term4.polyp.mechanics.attack;
 
+import io.github.term4.polyp.entity.Corpses;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.MechanicsProfiles;
 import io.github.term4.polyp.Polyp;
@@ -21,12 +22,9 @@ import net.minestom.server.event.Event;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.ListenerHandle;
-import net.minestom.server.event.entity.EntityDeathEvent;
-import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Attack pipeline: {@link HitDetection} turns raw input into snapshots, then the system fires the {@link AttackEvent}
@@ -46,8 +44,6 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
     private static final ListenerHandle<PreAttackEvent> PRE_ATTACK = EventDispatcher.getHandle(PreAttackEvent.class);
     private static final ListenerHandle<AttackAppliedEvent> ATTACK_APPLIED = EventDispatcher.getHandle(AttackAppliedEvent.class);
 
-    private static final Tag<Long> DIED_AT = Tag.Long("polyp:died-at");
-    private static final AtomicBoolean CLOCK_RESET = new AtomicBoolean();
 
     /**
      * @param detection how hits are detected; none given installs {@link HitDetection#PACKET}. Always live - {@code enabled}
@@ -61,8 +57,7 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
 
         if (detection.length == 0) detection = new HitDetection[]{HitDetection.PACKET};
         for (HitDetection d : detection) d.install(node, this::apply);
-        node.addListener(EntityDeathEvent.class, e -> e.getEntity().setTag(DIED_AT, TickSystem.tick(e.getEntity())));
-        if (CLOCK_RESET.compareAndSet(false, true)) TickSystem.onClockChange(e -> e.removeTag(DIED_AT));
+        Corpses.install();
     }
 
     /**
@@ -111,7 +106,7 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
     // the death unseen or on another clock: past the window
     private static boolean deadTooLong(@Nullable Entity attacker, @Nullable Integer ticks) {
         if (ticks == null || ticks < 0 || !(attacker instanceof LivingEntity living) || !living.isDead()) return false;
-        Long diedAt = living.getTag(DIED_AT);
+        Long diedAt = Corpses.diedAt(living);
         return diedAt == null || TickSystem.tick(living) - diedAt >= TickScaler.duration(living, ticks, KEY);
     }
 

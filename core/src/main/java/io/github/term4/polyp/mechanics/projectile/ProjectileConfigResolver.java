@@ -109,6 +109,8 @@ public final class ProjectileConfigResolver {
                 FieldValue.resolve(tc.wireGrid, ctx, ProjectileTypeConfig.WireGrid.LEGACY_1_8), // which client's decoded wire silent flight snaps to
                 FieldValue.resolve(tc.wireLockstep, ctx), // nullable: unset = lockstep only when there is no per-tick velocity sync
                 FieldValue.resolve(tc.leftOwnerImmunity, ctx, Boolean.FALSE), // 26.1 = true (immune until it leaves the shooter box)
+                FieldValue.resolve(tc.despawnsOutsideHeight, ctx, Boolean.FALSE),
+                FieldValue.resolve(tc.shooterDeathDespawnTicks, ctx, -1),
                 FieldValue.resolve(tc.stickPullback, ctx, 0.05), // vanilla 0.05 tip poke-out
                 FieldValue.resolve(tc.shakeTicks, ctx, 7), // vanilla arrow shake / pickup delay
                 FieldValue.resolve(tc.explosionPower, ctx, 1.0), // vanilla ghast fireball yield (Hypixel = 2.0); fireball-only
@@ -174,6 +176,8 @@ public final class ProjectileConfigResolver {
             ProjectileTypeConfig.WireGrid wireGrid,
             @Nullable Boolean wireLockstep,
             boolean leftOwnerImmunity,
+            boolean despawnsOutsideHeight,
+            int shooterDeathDespawnTicks,
             double stickPullback,
             int shakeTicks,
             double explosionPower,

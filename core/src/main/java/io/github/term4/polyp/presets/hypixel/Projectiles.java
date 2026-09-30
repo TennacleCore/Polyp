@@ -67,10 +67,11 @@ public final class Projectiles {
                 .speed(BW_LAUNCH).coastTicks(BW_LAUNCH_TICKS).cruiseSpeed(BW_CRUISE)
                 .spread(0.0)
                 .spawnOffsetForward(0.0).spawnOffsetVertical(0.0).spawnOffsetSideways(0.0) // at the eye
-                .leftOwnerImmunity(true)
                 .syncInterval(0).velocitySyncInterval(1) // no position teleports (Hypixel/minemen don't): pure velocity prediction, no spurious 0-velocity corrections
                 .removeOnEntityHit(true).removeOnBlockHit(true)
-                .selfHit(ProjectileTypeConfig.HitResponse.PASS_THROUGH) // your own fireball never hits you; a deflect reassigns ownership
+                // pearl-catch capture 2026-09-30: safe through 32 ticks, hit at 58; 50 until a finer capture
+                .shooterImmunityTicks(50)
+                .shooterDeathDespawnTicks(-1) // outlives its thrower
                 .damage(0.0)
                 .explosionPower(BW_POWER)
                 .invulnHit(ProjectileTypeConfig.HitResponse.DESTROY)

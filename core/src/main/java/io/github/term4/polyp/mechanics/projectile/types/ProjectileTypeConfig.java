@@ -170,6 +170,11 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
     public final @Nullable FieldValue<ProjectileContext, Boolean> wireLockstep;
     /** Shooter immunity model: {@code false} (1.8) = fixed {@link #shooterImmunityTicks}; {@code true} (26.1) = until the projectile leaves the shooter's box. */
     public final @Nullable FieldValue<ProjectileContext, Boolean> leftOwnerImmunity;
+    /** Gone once above or below the world's height: a 1.8 fireball must stand in a loaded block; 26.1 checks the column only. */
+    public final @Nullable FieldValue<ProjectileContext, Boolean> despawnsOutsideHeight;
+    /** Gone this many ticks after its shooter dies, at once if the shooter leaves: a 1.8 fireball goes with the
+     *  corpse at 20; below 0 outlives it, as 26.1 (a removed owner resolves to nothing). */
+    public final @Nullable FieldValue<ProjectileContext, Integer> shooterDeathDespawnTicks;
     /** Distance a stuck projectile is pulled back along its flight dir so the tip pokes out of the block face (vanilla {@code 0.05}). */
     public final @Nullable FieldValue<ProjectileContext, Double> stickPullback;
     /** Pickup cooldown (ticks) after a collectable projectile sticks (vanilla arrow {@code shake} = {@code 7}); arrow-only. */
@@ -282,6 +287,8 @@ public final class ProjectileTypeConfig extends TypeConfig<ProjectileContext, Pr
         wireGrid = b.wireGrid;
         wireLockstep = b.wireLockstep;
         leftOwnerImmunity = b.leftOwnerImmunity;
+        despawnsOutsideHeight = b.despawnsOutsideHeight;
+        shooterDeathDespawnTicks = b.shooterDeathDespawnTicks;
         stickPullback = b.stickPullback;
         shakeTicks = b.shakeTicks;
         explosionPower = b.explosionPower;

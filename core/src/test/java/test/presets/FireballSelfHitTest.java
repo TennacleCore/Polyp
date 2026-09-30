@@ -18,8 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Hypixel/MineMen: your own fireball NEVER hits you - it passes through (selfHit PASS_THROUGH). A deflect
- * reassigns ownership, so the deflector is protected instead and the original shooter becomes a normal target.
+ * Your own fireball passes through you: always on MineMen, for 50 ticks on Hypixel. A deflect reassigns ownership,
+ * so the deflector is protected instead and the original shooter becomes a normal target.
  */
 class FireballSelfHitTest extends HeadlessServerTest {
 

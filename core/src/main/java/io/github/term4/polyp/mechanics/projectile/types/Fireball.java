@@ -20,7 +20,9 @@ public final class Fireball extends ThrowableItemType {
     public static final Fireball INSTANCE = new Fireball();
 
     private Fireball() {
-        super(KEY, "Fireball", EntityType.FIREBALL, Material.FIRE_CHARGE, true); // blockAction: lights fire client-side
+        // blockAction: lights fire client-side. 1.8 EntityFireball: its shooter is safe 25 ticks in air
+        super(KEY, "Fireball", EntityType.FIREBALL, Material.FIRE_CHARGE, true, ProjectileTypeConfig.builder()
+                .shooterImmunityTicks(25).despawnsOutsideHeight(true).shooterDeathDespawnTicks(20).build());
     }
 
     @Override protected Key throwSound() { return Fx.THROW_FIREBALL; }

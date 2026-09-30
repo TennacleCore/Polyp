@@ -1,5 +1,6 @@
 package io.github.term4.polyp.mechanics.projectile;
 
+import io.github.term4.polyp.entity.Corpses;
 import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.ScopedSystem;
@@ -79,6 +80,7 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
 
     public ProjectileSystem(Polyp polyp, ProjectileConfig config) {
         super(polyp, MechanicsKeys.PROJECTILES, config);
+        Corpses.install();
         this.services = polyp.services();
         this.node = EventNode.all("polyp:projectile");
         node.addListener(EntityAttackEvent.class, e -> {
@@ -256,6 +258,9 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
         entity.setEntityHitGrowRamp(flight.entityHitGrowRamp());
         entity.setPhysicsOrder(flight.physicsOrder());
         entity.setLeftOwnerImmunity(flight.leftOwnerImmunity());
+        entity.setDespawnsOutsideHeight(flight.despawnsOutsideHeight());
+        entity.setShooterDeathDespawnTicks(flight.shooterDeathDespawnTicks() < 0 ? -1
+                : TickScaler.duration(scope, flight.shooterDeathDespawnTicks(), KEY));
         entity.setStickPullback(flight.stickPullback());
         if (entity instanceof ManagedProjectile mp) {
             mp.setBehavior(snap.behavior() != null ? snap.behavior() : flight.behavior());

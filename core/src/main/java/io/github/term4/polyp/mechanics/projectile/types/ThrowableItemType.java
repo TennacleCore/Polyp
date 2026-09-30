@@ -52,6 +52,14 @@ public abstract class ThrowableItemType extends ProjectileType {
         this.blockAction = blockAction;
     }
 
+    /** With intrinsic defaults a preset's defaults and per-type entry layer over. */
+    protected ThrowableItemType(Key key, String name, EntityType entityType, Material material, boolean blockAction,
+                                ProjectileTypeConfig defaults) {
+        super(key, name, entityType, defaults);
+        this.material = material;
+        this.blockAction = blockAction;
+    }
+
     @Override
     public Runnable enable(ProjectileSystem system, Polyp polyp) {
         EventNode<@NotNull PlayerEvent> n = EventNode.type("polyp:" + key().value(), EventFilter.PLAYER);

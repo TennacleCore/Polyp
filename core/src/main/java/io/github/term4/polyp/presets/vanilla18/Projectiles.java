@@ -49,7 +49,6 @@ public final class Projectiles {
                 .gravity(GRAVITY_003F).horizontalDrag(DRAG_099F).verticalDrag(DRAG_099F)
                 .speed(1.5).spread(0.0075) // momentum defaults 0: 1.8 folds no shooter momentum
                 .spawnOffsetVertical(-0.1).spawnOffsetSideways(0.16)
-                .shooterImmunityTicks(5)
                 .entityHitGrow(0.3)
                 .entityHitGrowRamp(false) // 1.8 applies the 0.3 margin whole from the first tick; 26.1 ramps it in
                 .legacyBlockRay(true) // 1.8 rayTraceBlocks: fences/walls ray as SELECTION boxes (envelope, 1.0 tall)

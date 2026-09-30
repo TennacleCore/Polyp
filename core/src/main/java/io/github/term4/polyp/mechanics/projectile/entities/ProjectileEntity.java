@@ -1,5 +1,7 @@
 package io.github.term4.polyp.mechanics.projectile.entities;
 
+import io.github.term4.polyp.util.tick.TickSystem;
+import io.github.term4.polyp.entity.Corpses;
 import java.util.List;
 import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.Polyp;
@@ -77,6 +79,8 @@ public abstract class ProjectileEntity extends PolypEntity.Base {
     private long shooterImmuneUntilAlive;
     private static final int UNLOADED_LIMIT = 100;
     private int unloadedTicks;
+    protected boolean despawnsOutsideHeight;
+    protected int shooterDeathDespawnTicks = -1;
     protected double entityHitGrow = DEFAULT_ENTITY_HIT_GROW;
     /** {@code <= 0} = never (vanilla arrow, the edge-slide fix). Gates {@link #sendPacketToViewers}. */
     protected int velocitySyncInterval;
@@ -339,6 +343,8 @@ public abstract class ProjectileEntity extends PolypEntity.Base {
     public void setPhysicsOrder(@NotNull ProjectileTypeConfig.PhysicsOrder order) { this.physicsOrder = order; }
 
     public void setLeftOwnerImmunity(boolean v) { this.leftOwnerImmunity = v; }
+    public void setDespawnsOutsideHeight(boolean v) { this.despawnsOutsideHeight = v; }
+    public void setShooterDeathDespawnTicks(int ticks) { this.shooterDeathDespawnTicks = ticks; }
 
     public void setStickPullback(double v) { this.stickPullback = v; }
 
@@ -487,13 +493,24 @@ public abstract class ProjectileEntity extends PolypEntity.Base {
         }
     }
 
+    // 1.8 shootingEntity.isDead: the corpse is removed 20 ticks after the death, a player who leaves at once
+    private boolean outlivedShooter() {
+        if (shooterDeathDespawnTicks < 0 || shooter == null) return false;
+        if (shooter.isRemoved()) return true;
+        Long diedAt = Corpses.diedAt(shooter);
+        if (diedAt == null) return false;
+        long since = TickSystem.tick(shooter) - diedAt;
+        return since <= getAliveTicks() && since >= shooterDeathDespawnTicks; // a death since the launch
+    }
+
     /** One step. {@code nativeStep} = a real vanilla-rate tick (sub-stepping); else the coarse scaled step. */
     private void movementStep(boolean nativeStep) {
         this.gravityTickCount = isStuck() ? 0 : gravityTickCount + 1;
         if (vehicle != null || isStuck()) return;
 
         final MechanicsWorld world = MechanicsWorld.of(this);
-        if (world.isInVoid(position)) {
+        // 1.8 EntityFireball checks before it moves: a loaded block (never outside y 0..255), a live shooter
+        if (world.isInVoid(position) || despawnsOutsideHeight && world.outsideHeight(position) || outlivedShooter()) {
             pendingRemove = true;
             return;
         }

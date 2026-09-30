@@ -223,6 +223,12 @@ public interface MechanicsWorld extends Block.Getter, ForwardingAudience, Taggab
 
     @NotNull DimensionType dimension();
 
+    /** Whether {@code pos} is above or below the world's height: 1.8's {@code World.isValid} y range. */
+    default boolean outsideHeight(@NotNull Point pos) {
+        DimensionType dimension = dimension();
+        return pos.blockY() < dimension.minY() || pos.blockY() >= dimension.minY() + dimension.height();
+    }
+
     /** Stored block light (0-15) - a virtual world reads its own computed light where it differs from base. */
     default int getBlockLight(int x, int y, int z) {
         return instance().getBlockLight(x, y, z);

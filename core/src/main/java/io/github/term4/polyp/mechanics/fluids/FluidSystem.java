@@ -28,7 +28,6 @@ import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockManager;
 import net.minestom.server.instance.block.rule.BlockPlacementRule;
 import net.minestom.server.item.ItemStack;
-import net.minestom.server.world.DimensionType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -177,7 +176,7 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
 
     /** Ticks the fluid at {@code pos} in {@code delay} ticks, unless it already waits. */
     public void schedule(@NotNull MechanicsWorld world, @NotNull Point pos, int delay) {
-        if (world.destroyed() || outside(world, pos)) return;
+        if (world.destroyed() || world.outsideHeight(pos)) return;
         schedules.computeIfAbsent(world, w -> new Schedule()).add(pos.asBlockVec(), delay);
     }
 
@@ -214,14 +213,9 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
 
     // 1.8 setBlockState refuses a cell outside the world's height, so a fall off the map ends at the floor
     void set(MechanicsWorld world, BlockVec pos, Block block) {
-        if (outside(world, pos)) return;
+        if (world.outsideHeight(pos)) return;
         world.setBlock(pos, block);
         world.applyPhysics(pos);
-    }
-
-    private static boolean outside(MechanicsWorld world, Point pos) {
-        DimensionType dimension = world.dimension();
-        return pos.blockY() < dimension.minY() || pos.blockY() >= dimension.minY() + dimension.height();
     }
 
     /** 1.8 triggerMixEffects at {@code pos}. */
