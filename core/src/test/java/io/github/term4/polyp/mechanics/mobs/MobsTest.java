@@ -305,4 +305,18 @@ class MobsTest extends HeadlessServerTest {
         assertNull(cfg.kinds.get(EntityType.ZOMBIE.key()));
         assertNotNull(cfg.kind(EntityType.ZOMBIE), "the defaults serve any type");
     }
+
+    /** 64 under the floor a mob dies, as both eras have it: a bedbug thrown off the map is gone. */
+    @Test
+    void aMobDiesUnderTheWorld() {
+        SilverfishEntity fish = SilverfishEntity.spawn(mobs, world,
+                new Pos(2.5, instance.getCachedDimensionType().minY() - 70, Z + 0.5));
+        try {
+            awaitSpawn(fish);
+            tick(fish, 1);
+            assertTrue(fish.isDead());
+        } finally {
+            fish.remove();
+        }
+    }
 }

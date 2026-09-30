@@ -32,8 +32,6 @@ public final class ItemDamageConfig {
     public final @Nullable FieldValue<ItemDamageContext, Boolean> enabled;
     /** Starting health of a dropped item (vanilla 5, both eras). */
     public final @Nullable FieldValue<ItemDamageContext, Integer> health;
-    /** Below the world floor an item is removed outright, never damaged (vanilla {@code outOfWorld}); unset = on. */
-    public final @Nullable FieldValue<ItemDamageContext, Boolean> voidDestroys;
     /** Honour the stack's own {@code damage_resistant} component (26.1's rule: netherite shrugs off fire); unset = on. */
     public final @Nullable FieldValue<ItemDamageContext, Boolean> itemResistance;
     /** Fire-ticks an item standing in flame is lit for (vanilla {@code setOnFire(8)} = 160). */
@@ -56,7 +54,6 @@ public final class ItemDamageConfig {
     private ItemDamageConfig(Builder b) {
         this.enabled = b.enabled;
         this.health = b.health;
-        this.voidDestroys = b.voidDestroys;
         this.itemResistance = b.itemResistance;
         this.fireIgniteTicks = b.fireIgniteTicks;
         this.lavaIgniteTicks = b.lavaIgniteTicks;

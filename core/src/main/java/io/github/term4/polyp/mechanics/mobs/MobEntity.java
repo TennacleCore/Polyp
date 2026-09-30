@@ -20,7 +20,7 @@ import io.github.term4.polyp.mechanics.mobs.ai.Senses;
 import io.github.term4.polyp.mechanics.mobs.path.Blocks;
 import io.github.term4.polyp.mechanics.mobs.path.Navigation;
 import io.github.term4.polyp.mechanics.mobs.path.Pathing;
-import io.github.term4.polyp.world.ExternallyTickable;
+import io.github.term4.polyp.entity.PolypEntity;
 import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.world.WorldPolicy;
 import net.kyori.adventure.key.Key;
@@ -54,7 +54,7 @@ import java.util.function.Predicate;
  * A mob running 1.8's EntityLiving loop on its own motion: goals pick, controls steer, {@link #travel} moves it
  * against its own world. Nothing here reads a version; the knobs in {@link MobKindConfig} do.
  */
-public abstract class MobEntity extends LivingEntity implements ExternallyTickable {
+public abstract class MobEntity extends LivingEntity implements PolypEntity {
 
     protected static final double TPS = ServerFlag.SERVER_TICKS_PER_SECOND;
     private static final Aerodynamics COLLISION_ONLY = new Aerodynamics(0, 1, 1);
@@ -344,6 +344,8 @@ public abstract class MobEntity extends LivingEntity implements ExternallyTickab
     @Override
     public void tick(long time) {
         if (!MechanicsWorld.ownsCurrentTick(this)) return;
+        // 1.8 kills outright; 26.2 hurts 4 a tick, which nobody sees that far down
+        if (!isDead() && PolypEntity.outOfWorld(this)) kill();
         super.tick(time);
     }
 

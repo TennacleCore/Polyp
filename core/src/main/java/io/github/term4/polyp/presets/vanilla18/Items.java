@@ -17,6 +17,6 @@ public final class Items {
     /** Dropped-item destruction. Health 5 and every source at its vanilla amount, identical in 1.8 and 26.1 -
      *  a blast's own curve is always well past 5, so one explosion clears the ground. */
     public static ItemDamageConfig damage() {
-        return ItemDamageConfig.builder().health(5).voidDestroys(true).build();
+        return ItemDamageConfig.builder().health(5).build();
     }
 }

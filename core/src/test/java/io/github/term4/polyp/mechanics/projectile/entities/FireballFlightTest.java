@@ -1,5 +1,6 @@
 package io.github.term4.polyp.mechanics.projectile.entities;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.github.term4.polyp.mechanics.projectile.ProjectileSnapshot;
 import io.github.term4.polyp.mechanics.projectile.types.Fireball;
 import io.github.term4.polyp.mechanics.projectile.types.ProjectileTypeConfig;
@@ -62,5 +63,18 @@ class FireballFlightTest extends HeadlessServerTest {
         assertEquals(LAUNCH, m[0], 1e-9, "tick 1 flies the launch velocity");
         assertEquals((LAUNCH + PROP) * DRAG, m[1], 1e-9, "tick 2 already propelled (no hold, vanilla)");
         assertEquals(((LAUNCH + PROP) * DRAG + PROP) * DRAG, m[2], 1e-9, "tick 3 keeps ramping");
+    }
+
+    /** Both eras: a fireball in a chunk nobody loaded is gone at once; other projectiles keep a grace. */
+    @Test
+    void anUnloadedChunkEndsIt() {
+        instance.loadChunk(100, 100).join();
+        ProjectileSnapshot snap = new ProjectileSnapshot(null, Fireball.INSTANCE, null, 1.0, null, null, null, null);
+        FireballEntity fb = new FireballEntity(null, EntityType.FIREBALL, snap, ProjectileTypeConfig.builder(Fireball.KEY).build());
+        fb.setAerodynamics(new Aerodynamics(0.0, DRAG, DRAG));
+        fb.setInstance(instance, new Pos(1615.5, 100, 1608.5)).join();
+        fb.setVelocityBt(new Vec(1.5, 0, 0));
+        fb.tick(0);
+        assertTrue(fb.isRemoved(), "past the loaded edge after one tick");
     }
 }

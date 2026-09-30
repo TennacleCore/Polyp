@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * motY×-0.5 bounce). {@link Config} carries the preset knobs; the wire is hand-sent per {@link Wire}; a TNT source's
  * push on other TNT rescales per {@code tntVictimScale} ({@link #retuneTntVictims}).
  */
-public final class PrimedTnt extends MechanicsEntity {
+public final class PrimedTnt extends PolypEntity.Base {
 
     /**
      * {@code detonateAtFeet}: MineMen/Hypixel at the feet, vanilla at {@code +height/16}. {@code bounce}: the motY×-0.5

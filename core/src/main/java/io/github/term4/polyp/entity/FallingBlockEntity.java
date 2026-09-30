@@ -23,7 +23,7 @@ import org.jetbrains.annotations.NotNull;
  * block. Landing places into a fallable-into cell (air/fire/liquid) unless the cell below is one too, else
  * drops the item (sand landing on a torch). Steps against ITS world's blocks, so shard towers carry it.
  */
-public final class FallingBlockEntity extends MechanicsEntity {
+public final class FallingBlockEntity extends PolypEntity.Base {
 
     private static final int MAX_FALL_TICKS = 600;
 

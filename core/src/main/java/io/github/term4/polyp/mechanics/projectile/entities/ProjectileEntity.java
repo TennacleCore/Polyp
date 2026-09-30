@@ -4,7 +4,7 @@ import java.util.List;
 import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.tracking.motion.VelocityContext;
-import io.github.term4.polyp.entity.MechanicsEntity;
+import io.github.term4.polyp.entity.PolypEntity;
 import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.world.WorldPolicy;
 import io.github.term4.polyp.mechanics.projectile.types.ProjectileTypeConfig;
@@ -56,7 +56,7 @@ import java.util.Collection;
  * self-heals; modern clients hold via {@code inGround} metadata. Velocity is b/t internally ({@code super.velocity}
  * mirrors b/s); {@link Aerodynamics} constants are read live.
  */
-public abstract class ProjectileEntity extends MechanicsEntity {
+public abstract class ProjectileEntity extends PolypEntity.Base {
 
     public static final int DEFAULT_SHOOTER_IMMUNITY_TICKS = 5;
 
@@ -407,6 +407,11 @@ public abstract class ProjectileEntity extends MechanicsEntity {
         if (!isStuck()) broadcastWireVelocity();
     }
 
+    /** Ticks it may spend in a chunk nobody loaded before it is gone. */
+    protected int unloadedLimit() {
+        return UNLOADED_LIMIT;
+    }
+
     @Override
     public void tick(long time) {
         if (!MechanicsWorld.ownsCurrentTick(this)) return;
@@ -577,7 +582,7 @@ public abstract class ProjectileEntity extends MechanicsEntity {
 
         if (!world.isChunkLoaded(newPosition)) {
             // nothing can collide out there and the void check is Y-only: a throw past the built area would fly forever
-            if (++unloadedTicks > UNLOADED_LIMIT) pendingRemove = true;
+            if (++unloadedTicks > unloadedLimit()) pendingRemove = true;
             return;
         }
         unloadedTicks = 0;

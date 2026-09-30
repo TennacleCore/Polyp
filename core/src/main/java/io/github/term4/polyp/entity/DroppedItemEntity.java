@@ -4,7 +4,6 @@ import io.github.term4.polyp.util.tick.TickScaler;
 import io.github.term4.polyp.tracking.motion.VelocityRule;
 import io.github.term4.polyp.config.FieldFns;
 import io.github.term4.polyp.item.ItemNbt;
-import io.github.term4.polyp.world.ExternallyTickable;
 import io.github.term4.polyp.api.event.item.ItemSpawnEvent;
 import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.MechanicsKeys;
@@ -47,7 +46,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * {@link Model#MODERN} = 26.1 (items float). Stock physics stay in charge; {@link #update} nudges velocity
  * post-move, where both vanillas apply their fluid steps.
  */
-public class DroppedItemEntity extends ItemEntity implements ExternallyTickable {
+public class DroppedItemEntity extends ItemEntity implements PolypEntity {
 
     // TODO: Simplify, a lot of this has already been handled either in minestom, or in movement tracker.
     public static final Key KEY = Key.key("polyp:item");
@@ -64,6 +63,10 @@ public class DroppedItemEntity extends ItemEntity implements ExternallyTickable 
 
     @Override public void tick(long time) {
         if (!MechanicsWorld.ownsCurrentTick(this)) return;
+        if (PolypEntity.outOfWorld(this)) {
+            remove();
+            return;
+        }
         if (despawnTicks < 0) despawnTicks = resolveDespawnTicks();
         if (despawnTicks > 0 && ++age >= despawnTicks) {
             remove();

@@ -116,4 +116,10 @@ public class FireballEntity extends ManagedProjectile {
         ExplosionSystem explosion = s != null ? s.explosion() : null;
         if (explosion != null) explosion.explode(MechanicsWorld.of(this, instance), center, explosionPower, this, hitEntity);
     }
+
+    // both eras: a fireball in a chunk nobody loaded is gone at once (1.8 EntityFireball, 26.2 AbstractHurtingProjectile)
+    @Override
+    protected int unloadedLimit() {
+        return 0;
+    }
 }

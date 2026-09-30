@@ -216,10 +216,6 @@ public final class ItemDamageSystem implements MechanicsModule {
             if (!(entity instanceof ItemEntity item) || item.isRemoved() || !ctx.owns(item)) continue;
             ItemDamageConfig cfg = configFor(item);
             if (!on(cfg, item)) continue;
-            if (!Boolean.FALSE.equals(FieldValue.resolve(cfg.voidDestroys, ctx(item))) && world.isInVoid(item.getPosition())) {
-                item.remove(); // vanilla removes outright below the floor - never a damage source
-                continue;
-            }
             if (!burnDown(item, cfg)) continue;
             contact(item, cfg, world);
         }
