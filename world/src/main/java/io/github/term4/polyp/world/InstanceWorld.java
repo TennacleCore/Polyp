@@ -106,6 +106,8 @@ public class InstanceWorld implements MechanicsWorld {
 
     @Override public boolean isInVoid(@NotNull Point pos) { return instance.isInVoid(pos); }
 
+    @Override public boolean destroyed() { return !instance.isRegistered(); }
+
     @Override public @NotNull Collection<@NotNull Entity> entities() { return instance.getEntities(); }
 
     @Override public @NotNull Collection<@NotNull Entity> nearbyEntities(@NotNull Point point, double range) {

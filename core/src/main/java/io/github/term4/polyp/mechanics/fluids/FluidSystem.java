@@ -28,6 +28,7 @@ import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockManager;
 import net.minestom.server.instance.block.rule.BlockPlacementRule;
 import net.minestom.server.item.ItemStack;
+import net.minestom.server.world.DimensionType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -154,12 +155,15 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
 
     // a world on its own clock ticks itself; the instance's pass carries every other world riding that instance
     // (a game's shard on the server clock schedules under itself and would otherwise never advance)
+    // a destroyed world never ticks again, so the instance pass is where its state goes
     private void tick(MechanicsWorld world, boolean external) {
         if (external) ownClock.add(world);
         tick(world);
         if (external) return;
+        ownClock.removeIf(MechanicsWorld::destroyed);
         for (MechanicsWorld other : schedules.keySet()) {
-            if (other != world && other.instance() == world.instance() && !ownClock.contains(other)) tick(other);
+            if (other.destroyed()) schedules.remove(other);
+            else if (other != world && other.instance() == world.instance() && !ownClock.contains(other)) tick(other);
         }
     }
 
@@ -173,7 +177,13 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
 
     /** Ticks the fluid at {@code pos} in {@code delay} ticks, unless it already waits. */
     public void schedule(@NotNull MechanicsWorld world, @NotNull Point pos, int delay) {
+        if (world.destroyed() || outside(world, pos)) return;
         schedules.computeIfAbsent(world, w -> new Schedule()).add(pos.asBlockVec(), delay);
+    }
+
+    /** Whether anything is kept for {@code world}: a waiting tick, or its own clock. */
+    public boolean tracks(@NotNull MechanicsWorld world) {
+        return schedules.containsKey(world) || ownClock.contains(world);
     }
 
     /** A fluid a caller set itself (1.8 onBlockAdded): it reacts, or gets its first tick. */
@@ -202,9 +212,16 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
 
     // ---- the world
 
+    // 1.8 setBlockState refuses a cell outside the world's height, so a fall off the map ends at the floor
     void set(MechanicsWorld world, BlockVec pos, Block block) {
+        if (outside(world, pos)) return;
         world.setBlock(pos, block);
         world.applyPhysics(pos);
+    }
+
+    private static boolean outside(MechanicsWorld world, Point pos) {
+        DimensionType dimension = world.dimension();
+        return pos.blockY() < dimension.minY() || pos.blockY() >= dimension.minY() + dimension.height();
     }
 
     /** 1.8 triggerMixEffects at {@code pos}. */

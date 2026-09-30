@@ -269,6 +269,9 @@ public interface MechanicsWorld extends Block.Getter, ForwardingAudience, Taggab
      */
     default @Nullable MechanicsWorld parent() { return null; }
 
+    /** Gone for good: whatever a system keeps for this world can be dropped. */
+    default boolean destroyed() { return false; }
+
     /** Worlds layered directly on this one. */
     default @NotNull Collection<? extends MechanicsWorld> children() { return java.util.List.of(); }
 
