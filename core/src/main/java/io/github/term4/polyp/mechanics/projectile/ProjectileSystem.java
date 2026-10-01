@@ -104,11 +104,24 @@ public final class ProjectileSystem extends ScopedSystem<ProjectileConfig> {
         return launch(ctx.snap(), effectiveConfig, flight);
     }
 
-    /** First flight step, run by click handlers in the click's own tick (1.8 drains use-item before the entity
-     *  update, so a point-blank pearl impacts on the throw tick). Call after any post-launch stamps; no-op while
-     *  the spawn is still resolving (unloaded chunk) or when the type's {@code launchTickStep} is off. */
+    /** First flight step, run by click handlers: in the click's own tick (1.8 drains use-item before the entity
+     *  update, so a point-blank pearl impacts on the throw tick), after every entity already there has moved, as
+     *  1.8 updates a new entity last. Call after any post-launch stamps; no-op while the spawn is still resolving
+     *  (unloaded chunk) or when the type's {@code launchTickStep} is off. */
     public void firstStep(@Nullable ProjectileEntity entity) {
-        if (entity == null || entity.isRemoved() || entity.getInstance() == null || !entity.launchTickStep()) return;
+        if (entity == null || !entity.launchTickStep()) return;
+        Entity shooter = entity.getShooter();
+        // an own clock has no hook after its entity pass: those step at once
+        if (MechanicsWorld.externallyTicked(entity) || shooter != null && MechanicsWorld.externallyTicked(shooter)) {
+            stepNow(entity);
+            return;
+        }
+        // a fireball stepping inside the click caught a pearl thrown the tick before (the instant catch)
+        MinecraftServer.getSchedulerManager().scheduleEndOfTick(() -> stepNow(entity));
+    }
+
+    private static void stepNow(ProjectileEntity entity) {
+        if (entity.isRemoved() || entity.getInstance() == null) return;
         entity.tick(System.nanoTime()); // nanos: the unit every other tick of this entity gets from the server dispatcher
     }
 

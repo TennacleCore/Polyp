@@ -10,6 +10,7 @@ import io.github.term4.polyp.mechanics.projectile.types.Pearl;
 import io.github.term4.polyp.presets.mmc18.Projectiles;
 import io.github.term4.polyp.testsupport.FakePlayer;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.instance.block.Block;
@@ -77,6 +78,7 @@ class Mmc18FireballWireTest extends HeadlessServerTest {
 
         ProjectileEntity pearl = pointBlank(system, config, Pearl.INSTANCE, 240);
         system.firstStep(pearl);
+        MinecraftServer.getSchedulerManager().processTickEnd();
         assertTrue(pearl.isRemoved(), "a vanilla item impacts in the use tick");
     }
 
