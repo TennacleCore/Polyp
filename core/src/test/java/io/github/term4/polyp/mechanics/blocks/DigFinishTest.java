@@ -63,8 +63,8 @@ class DigFinishTest extends HeadlessServerTest {
             int whole = BlockBreakCalculation.breakTicks(Block.DIRT, fp.player);
             assertFalse(dig(inst, fp.player, 2), "3 ticks of " + whole + ": refused");
             assertTrue(inst.getBlock(AT).compare(Block.DIRT), "still there");
-            for (int i = 0; i < whole && !inst.getBlock(AT).isAir(); i++) MinecraftServer.getSchedulerManager().processTick();
-            assertTrue(inst.getBlock(AT).isAir(), "the server breaks it at the whole dig");
+            for (int i = 0; i < whole && !inst.getBlock(AT).compare(Block.AIR); i++) MinecraftServer.getSchedulerManager().processTick();
+            assertTrue(inst.getBlock(AT).compare(Block.AIR), "the server breaks it at the whole dig");
         } finally {
             fp.player.remove();
         }

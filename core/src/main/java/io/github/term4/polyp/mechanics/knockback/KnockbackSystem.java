@@ -141,8 +141,16 @@ public final class KnockbackSystem extends ScopedSystem<KnockbackConfig> {
         Vec applied = quantize ? LegacyVelocity.snap(velocity, cap) : velocity;
         // non-melee stays in server mot and folds into later hits; melee restores (measured, see foldDelivered)
         if (!snap.melee()) MotionTracker.foldDelivered(target, velocity.div(tps));
-        // exact 1.8 wire for a knocked legacy client above the LP-exact band (via ViaBridge); else the normal LP broadcast
-        if (!(quantize && LegacyVelocityBridge.applyExact(target, velocity, applied, cap))) target.setVelocity(applied);
+        Vec raw = velocity;
+        Runnable send = () -> {
+            // exact 1.8 wire for a knocked legacy client above the LP-exact band (via ViaBridge); else the normal LP broadcast
+            if (!(quantize && LegacyVelocityBridge.applyExact(target, raw, applied, cap))) target.setVelocity(applied);
+        };
+        if (snap.melee() && !resolved.meleeVelocityToViewers() && target instanceof PolypPlayer player) {
+            player.velocityToSelfOnly(send);
+        } else {
+            send.run();
+        }
         if (KNOCKBACK_APPLIED.hasListener()) EventDispatcher.call(new KnockbackAppliedEvent(snap, applied, services));
     }
 

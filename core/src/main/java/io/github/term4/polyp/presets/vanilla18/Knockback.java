@@ -33,6 +33,7 @@ public final class Knockback {
                 .frictionModeH(KnockbackConfig.FrictionMode.DIVISOR)
                 .frictionModeV(KnockbackConfig.FrictionMode.DIVISOR)
                 .quantizeVelocity(true)
+                .meleeVelocityToViewers(false)
                 .build();
     }
 

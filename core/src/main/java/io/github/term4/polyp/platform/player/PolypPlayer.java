@@ -54,6 +54,7 @@ import io.github.term4.polyp.mechanics.fluids.FluidsConfig;
 import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.network.packet.server.play.EntityEquipmentPacket;
 import net.minestom.server.network.packet.server.play.EntityAttributesPacket;
+import net.minestom.server.network.packet.server.play.EntityVelocityPacket;
 import net.minestom.server.network.packet.server.play.EntityMetaDataPacket;
 import net.kyori.adventure.key.Key;
 import net.minestom.server.entity.attribute.AttributeModifier;
@@ -91,6 +92,7 @@ public class PolypPlayer extends Player implements ExternallyTickable {
 
     private @Nullable SelfMetaFilter selfMetaFilter = SelfMetaFilter.defaultPlayerFilter();
     private boolean processingClientInput = false;
+    private boolean velocityToSelfOnly;
     private static final Key SPRINTING = Key.key("sprinting"); // LivingEntity's, private there
     /** What this client holds per attribute, keyed by the attribute's key. */
     private final Map<Key, EntityAttributesPacket.Property> attributesKnown = new ConcurrentHashMap<>();
@@ -210,8 +212,22 @@ public class PolypPlayer extends Player implements ExternallyTickable {
         }
     }
 
+    /** Runs {@code action} with this player's own velocity packets kept from its viewers. */
+    public void velocityToSelfOnly(@NotNull Runnable action) {
+        velocityToSelfOnly = true;
+        try {
+            action.run();
+        } finally {
+            velocityToSelfOnly = false;
+        }
+    }
+
     @Override
     public void sendPacketToViewersAndSelf(@NotNull SendablePacket packet) {
+        if (velocityToSelfOnly && packet instanceof EntityVelocityPacket velocity && velocity.entityId() == getEntityId()) {
+            sendPacket(packet);
+            return;
+        }
         // vanilla 1.8 sends status 9 to the eater alone; Minestom sends it to the viewers too, whose clients then
         // predict the vanilla remainder (a potion's glass bottle) over the hand they were sent inside the finish.
         // The hand goes out again behind it, so the prediction never outlives the tick

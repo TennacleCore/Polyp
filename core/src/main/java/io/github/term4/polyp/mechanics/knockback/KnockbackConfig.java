@@ -203,6 +203,8 @@ public final class KnockbackConfig extends Config<KnockbackContext, KnockbackCon
     public final FieldValue<KnockbackContext, Double> velocityCap;
     /** Transform on the final wire velocity ({@link WireRule}); unset = none. */
     public final FieldValue<KnockbackContext, WireRule> wireRule;
+    /** Whether viewers are sent a melee hit's velocity too; vanilla sends it to the victim alone. Unset: viewers too. */
+    public final FieldValue<KnockbackContext, Boolean> meleeVelocityToViewers;
     /**
      * Whether an airborne victim gets vertical knockback. {@code true} (1.8): always lifts. {@code false} (26.1): an
      * off-ground victim keeps its {@code motY} (the anti-juggle rule), gated on the reconstructed onGround; horizontal is unaffected.
@@ -261,6 +263,7 @@ public final class KnockbackConfig extends Config<KnockbackContext, KnockbackCon
         velocityCap = b.velocityCap;
         wireRule = b.wireRule;
         airborneVertical = b.airborneVertical;
+        meleeVelocityToViewers = b.meleeVelocityToViewers;
         customComponents = b.customComponents;
         frictionRule = b.frictionRule;
         combineRule = b.combineRule;
