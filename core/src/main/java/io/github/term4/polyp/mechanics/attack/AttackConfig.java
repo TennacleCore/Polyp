@@ -54,6 +54,8 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
     public final @Nullable FieldValue<AttackContext, Double> reachPadding;
     /** How long a dead attacker's hits still land, in ticks after its death; {@code null}/negative = always, as vanilla 1.8.8. */
     public final @Nullable FieldValue<AttackContext, Integer> deadHitTicks;
+    /** 1.8's use-entity gate on top of reach: feet within 6 blocks with the eyes in sight, else 3. 26.1 dropped it. */
+    public final FieldValue<AttackContext, Boolean> legacySightGate;
 
     private AttackConfig(Builder b) {
         super(b.subConfig);
@@ -65,6 +67,7 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
         suppressSprintResetEcho = b.suppressSprintResetEcho;
         reachPadding = b.reachPadding;
         deadHitTicks = b.deadHitTicks;
+        legacySightGate = b.legacySightGate;
     }
 
     /** Merges this config over base. */
@@ -100,6 +103,7 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
             suppressSprintResetEcho = FieldValue.constant(false);
             reachPadding = FieldValue.constant(VANILLA_REACH_PADDING);
             deadHitTicks = FieldValue.constant(PAPER_DEAD_HIT_TICKS);
+            legacySightGate = FieldValue.constant(false);
         }
 
         Builder(AttackConfig c) {

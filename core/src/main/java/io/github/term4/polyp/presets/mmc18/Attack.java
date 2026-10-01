@@ -34,6 +34,7 @@ public final class Attack {
                 .ruleset(ruleset())
                 .reachPadding(AttackConfig.MINEMEN_REACH_PADDING) // half a block over vanilla, where hypixel sits
                 .deadHitTicks(AttackConfig.MODERN_DEAD_HIT_TICKS)
+                .legacySightGate(false)
                 .suppressSprintResetEcho(true)
                 .fullHitScale(1.0) // a landed hit does NOT slow the attacker's tracked velocity
                 .fakeHits(FakeHitConfig.ofReach(SWING_REACH))

@@ -16,6 +16,7 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.instance.InstanceTickEvent;
 import net.minestom.server.instance.Instance;
+import net.minestom.server.instance.block.Block;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -52,8 +53,28 @@ class AttackGatesTest extends HeadlessServerTest {
 
     @Test
     void aNegativePaddingDisablesTheGate() {
-        AttackConfig off = Vanilla18.attack().toBuilder().reachPadding(-1.0).build();
+        AttackConfig off = Vanilla18.attack().toBuilder().reachPadding(-1.0).legacySightGate(false).build();
         assertEquals(1, swing(off, 16.5, "Off"));
+    }
+
+    /** A swing across {@code victimZ - 8.5} blocks feet to feet, a stone block between the eyes when {@code walled}. */
+    private static int sightSwing(AttackConfig config, double victimZ, boolean walled, String tag) {
+        Instance inst = flatInstance(MechanicsProfile.builder().set(MechanicsKeys.ATTACK, config).build());
+        if (walled) inst.setBlock(8, 65, 10, Block.STONE);
+        FakePlayer attacker = FakePlayer.connect(inst, new Pos(8.5, 64, 8.5, 0f, 0f), "Sight" + tag);
+        Player victim = FakePlayer.connect(inst, new Pos(8.5, 64, victimZ), "Seen" + tag).player;
+        int before = PASSED.get();
+        polyp.module(AttackSystem.class).apply(new AttackSnapshot(attacker.player, victim, null));
+        return PASSED.get() - before;
+    }
+
+    /** 1.8 PlayerConnection: six blocks feet to feet in sight, three behind a block. */
+    @Test
+    void aBlockBetweenTheEyesShortensIt() {
+        assertEquals(1, sightSwing(Vanilla18.attack(), 12.0, false, "Open"), "3.5 in sight: under 6");
+        assertEquals(0, sightSwing(Vanilla18.attack(), 12.0, true, "Wall"), "3.5 behind a block: past 3");
+        assertEquals(1, sightSwing(Vanilla18.attack(), 11.4, true, "Close"), "2.9 behind a block: under 3");
+        assertEquals(1, sightSwing(Hypixel.profile().get(MechanicsKeys.ATTACK), 12.0, true, "Net"), "the networks don't");
     }
 
     /** A swing by an attacker killed {@code ticksDead} ticks before it; 1 when it gets through. */

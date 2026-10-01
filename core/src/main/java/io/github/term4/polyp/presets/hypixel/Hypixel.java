@@ -26,6 +26,7 @@ public final class Hypixel {
                 .mutate(MechanicsKeys.ATTACK, attack -> AttackConfig.builder(attack)
                         .suppressSprintResetEcho(true)
                         .deadHitTicks(AttackConfig.MODERN_DEAD_HIT_TICKS) // the user, 2026-09-29: every network, not vanilla18
+                        .legacySightGate(false) // no capture shows the networks refusing a hit past a block
                         .build())
                 // an invisible player shows no swirl at all (Bed Wars, the user 2026-09-28); vanilla shows a rare one
                 .mutate(MechanicsKeys.ATTRIBUTES, a -> a.toBuilder().swirlWhileInvisible(false).build())

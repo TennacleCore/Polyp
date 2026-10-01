@@ -14,6 +14,9 @@ import io.github.term4.polyp.util.tick.TickSystem;
 import net.kyori.adventure.key.Key;
 import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.coordinate.Pos;
+import io.github.term4.polyp.util.geometry.Sightline;
+import io.github.term4.polyp.world.MechanicsWorld;
+import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
@@ -82,6 +85,7 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
 
         AttackEvent api = new AttackEvent(snap, services);
         if (!withinReach(snap, api.resolvedConfig().reachPadding())) return;
+        if (api.resolvedConfig().legacySightGate() && !withinSight(snap)) return;
         if (deadTooLong(snap.attacker(), api.resolvedConfig().deadHitTicks())) return;
         EventDispatcher.call(api);
         // enabled read live: a listener can swap in an enabled config to let the hit through
@@ -101,6 +105,16 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
         if (padding == null || padding < 0 || snap.target() == null || !(snap.attacker() instanceof Player p)) return true;
         double max = p.getAttributeValue(Attribute.ENTITY_INTERACTION_RANGE) + padding;
         return eyeToBoxSquared(p, snap.target()) < max * max;
+    }
+
+    // 1.8 EntityLiving.hasLineOfSight: a block ray between the two eyes; Entity.h is the squared feet distance
+    private static boolean withinSight(AttackSnapshot snap) {
+        if (snap.target() == null || !(snap.attacker() instanceof Player p)) return true;
+        Entity target = snap.target();
+        Point eye = p.getPosition().add(0, p.getEyeHeight(), 0);
+        Point theirs = target.getPosition().add(0, target.getEyeHeight(), 0);
+        double max = Sightline.blocked(MechanicsWorld.of(p), eye, theirs) ? 9.0 : 36.0;
+        return p.getPosition().distanceSquared(target.getPosition()) < max;
     }
 
     // the death unseen or on another clock: past the window

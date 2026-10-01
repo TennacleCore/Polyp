@@ -38,8 +38,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * (1.8's 0.1 / a modern client's {@code attack_range}) rather than a flat buffer, and the eye takes the min over
  * client-perceived candidates. Keep {@code maxReach} generous (only kill clearly-impossible hits).
  *
- * <p><b>Obstruction.</b> {@link #obstructed} is a query only - nothing enforces it. Vanilla melee does NOT line-of-sight
- * server-side (the client's entity-pick clips against blocks); this mirrors that clip. The precise lag-compensated reach
+ * <p><b>Obstruction.</b> {@link #obstructed} is a query only - nothing enforces it. 26.1 melee does NOT line-of-sight
+ * server-side (the client's entity-pick clips against blocks); this mirrors that clip. 1.8 does, coarsely: 6 blocks
+ * with the eyes in sight, 3 without ({@link AttackConfig#legacySightGate}). The precise lag-compensated reach
  * analysis lives on the {@code anticheat} branch.
  */
 public final class AttackLog {

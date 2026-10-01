@@ -29,6 +29,7 @@ public final class Attack {
                 .enabled(true)
                 .ruleset(ruleset())
                 .criticalRule(AttackEvent.CriticalRule.vanilla())
+                .legacySightGate(true)
                 .build();
     }
 
