@@ -89,6 +89,19 @@ class PresetCompatTest extends HeadlessServerTest { // profile() boots Fx, which
         return attack.suppressSprintResetEcho.constantOrNull();
     }
 
+    @Test
+    void theNetworksPourWhereTheyClick() {
+        for (Preset network : new Preset[]{Preset.HYPIXEL, Preset.HYPIXEL_BEDWARS, Preset.MMC18, Preset.SCRIMS18}) {
+            assertEquals(Boolean.TRUE, bucketAimSync(network), network + " aims a bucket at the click");
+        }
+        assertEquals(Boolean.FALSE, bucketAimSync(Preset.VANILLA18), "vanilla 1.8 aims along the tick before's look");
+    }
+
+    private static Boolean bucketAimSync(Preset preset) {
+        var fluids = preset.profile().get(io.github.term4.polyp.MechanicsKeys.FLUIDS);
+        return fluids == null || fluids.bucketAimSync == null ? null : fluids.bucketAimSync.constantOrNull();
+    }
+
     /** Every preset hands back a complete layer - callers set it, they never assemble one. */
     @Test
     void everyPresetCarriesAWholeLayer() {
