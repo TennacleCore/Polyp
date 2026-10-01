@@ -17,6 +17,8 @@ import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import net.minestom.server.network.packet.client.play.ClientPlayerRotationPacket;
+import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
 import net.minestom.server.utils.Direction;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -245,6 +247,31 @@ class FluidsTest extends HeadlessServerTest {
             EventDispatcher.call(new PlayerUseItemEvent(fp.player, PlayerHand.MAIN, fp.player.getItemInMainHand(), 0));
             assertTrue(instanceOf(w).getBlock(0, Y, 0).compare(Block.WATER), "poured at the feet");
             assertTrue(fp.player.getItemInMainHand().isAir(), "nothing left in the hand");
+        } finally {
+            fp.player.remove();
+        }
+    }
+
+    /** A 1.8 flick-and-pour: the click arrives with the old look, the same tick's look right behind it. */
+    @Test
+    void aFlickPourAimsAtTheClick() {
+        assertTrue(pourAfterFlick(true).compare(Block.WATER), "synced: two ahead, where the click looked");
+        assertTrue(pourAfterFlick(false).air(), "vanilla 1.8: not there");
+    }
+
+    private static Block pourAfterFlick(boolean sync) {
+        MechanicsWorld w = worldOf(Fluids.config().toBuilder().bucketAimSync(sync).build());
+        InstanceContainer inst = instanceOf(w);
+        FakePlayer fp = FakePlayer.connect(inst, new Pos(0.5, Y, 0.5, 0, 90), sync ? "FlickOn" : "FlickOff");
+        try {
+            polyp.clientInfo().setProtocol(fp.player, 47);
+            fp.player.refreshReceivedTeleportId(fp.player.getLastSentTeleportId()); // a client confirms its spawn before it moves
+            fp.player.setItemInMainHand(ItemStack.of(Material.WATER_BUCKET));
+            fp.player.addPacketToQueue(new ClientUseItemPacket(PlayerHand.MAIN, 0, 0, 90)); // Via fills the old look
+            fp.player.addPacketToQueue(new ClientPlayerRotationPacket(0, 45, (byte) 1));
+            fp.player.interpretPacketQueue();
+            if (!sync) assertTrue(inst.getBlock(0, Y, 0).compare(Block.WATER), "vanilla 1.8 pours along the old look");
+            return inst.getBlock(0, Y, 2);
         } finally {
             fp.player.remove();
         }

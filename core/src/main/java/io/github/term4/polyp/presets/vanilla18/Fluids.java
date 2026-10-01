@@ -17,6 +17,7 @@ public final class Fluids {
         return FluidsConfig.builder()
                 .buckets(true)
                 .bucketReach(5.0) // Item.getMovingObjectPositionFromPlayer, either mode
+                .bucketAimSync(false) // the server reads the look the tick before's flying packet left it
                 .waterlogging(false)
                 .defaults(FluidConfig.builder()
                         .slopeDistance(4)

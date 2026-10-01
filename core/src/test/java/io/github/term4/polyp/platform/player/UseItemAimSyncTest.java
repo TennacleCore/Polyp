@@ -34,7 +34,7 @@ class UseItemAimSyncTest {
     private final List<ClientPacket> out = new ArrayList<>();
 
     private void feed(boolean gate, ClientPacket... packets) {
-        for (ClientPacket p : packets) sync.intercept(p, () -> gate, out::add);
+        for (ClientPacket p : packets) sync.intercept(p, click -> gate, out::add);
     }
 
     @Test

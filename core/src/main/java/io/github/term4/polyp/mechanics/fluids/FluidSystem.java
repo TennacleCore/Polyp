@@ -21,6 +21,7 @@ import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
+import net.minestom.server.entity.Player;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.PlayerUseItemEvent;
@@ -130,6 +131,15 @@ public final class FluidSystem extends ScopedSystem<FluidsConfig> {
         FluidsConfig cfg = configFor(ctx.world()).withOverlay(ctx);
         FluidConfig fluid = cfg.fluid(ctx.block());
         return fluid != null ? fluid.withOverlay(ctx) : null;
+    }
+
+    /** Whether {@code player}'s bucket use waits for the same tick's look ({@link FluidsConfig#bucketAimSync}). */
+    public boolean bucketAimSync(Player player) {
+        if (player.getInstance() == null) return false;
+        MechanicsWorld world = MechanicsWorld.viewed(player);
+        FluidContext ctx = context(world, null, null, player);
+        FluidsConfig cfg = configFor(world).withOverlay(ctx);
+        return FieldValue.resolve(cfg.buckets, ctx, true) && FieldValue.resolve(cfg.bucketAimSync, ctx, false);
     }
 
     boolean waterlogging(MechanicsWorld world, @Nullable BlockVec pos, @Nullable Entity actor) {

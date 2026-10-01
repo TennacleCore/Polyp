@@ -24,6 +24,12 @@ public final class FluidsConfig extends Config<FluidContext, FluidsConfig> {
     public final @Nullable FieldValue<FluidContext, Boolean> bucketKept;
     /** Blocks with a {@code waterlogged} property hold water (26.1); off, they are plain blocks whatever the property says. */
     public final @Nullable FieldValue<FluidContext, Boolean> waterlogging;
+    /**
+     * A legacy client's bucket aims where it clicked, the look of the same tick ({@code UseItemAimSync}); off (vanilla
+     * 1.8), it aims along the tick before's look, which a flick-and-pour misses. Read on the connection's thread at the
+     * click, so keep it a constant or a cheap read.
+     */
+    public final @Nullable FieldValue<FluidContext, Boolean> bucketAimSync;
     public final @Nullable FluidConfig defaults;
     public final Map<Key, FluidConfig> fluids;
 
@@ -33,6 +39,7 @@ public final class FluidsConfig extends Config<FluidContext, FluidsConfig> {
         this.bucketReach = b.bucketReach;
         this.bucketKept = b.bucketKept;
         this.waterlogging = b.waterlogging;
+        this.bucketAimSync = b.bucketAimSync;
         this.defaults = b.defaults;
         this.fluids = Map.copyOf(b.fluids);
     }

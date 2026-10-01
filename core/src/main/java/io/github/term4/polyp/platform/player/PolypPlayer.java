@@ -38,6 +38,11 @@ import net.minestom.server.network.packet.server.SendablePacket;
 import net.minestom.server.network.packet.server.play.EntityStatusPacket;
 import net.minestom.server.entity.EntityStatuses;
 import net.minestom.server.entity.PlayerHand;
+import net.minestom.server.item.Material;
+import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
+import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
+import io.github.term4.polyp.mechanics.fluids.FluidSystem;
+import io.github.term4.polyp.mechanics.fluids.FluidsConfig;
 import net.minestom.server.entity.EquipmentSlot;
 import net.minestom.server.network.packet.server.play.EntityEquipmentPacket;
 import net.minestom.server.network.packet.server.play.EntityAttributesPacket;
@@ -64,6 +69,7 @@ import net.minestom.server.utils.time.Cooldown;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * The library's custom {@link Player}: self-echo suppression ({@link SelfMetaFilter}), a position-broadcast
@@ -91,7 +97,7 @@ public class PolypPlayer extends Player implements ExternallyTickable {
     // addPacketToQueue runs on the read thread for every inbound packet: the gates and the tail are built once
     private final BooleanSupplier placementHalfGate = () -> compat.legacyClient() && fixEnabled(FixesConfig::legacyPlacementHalf);
     private final BooleanSupplier attackSyncGate = this::attackAimSyncEnabled;
-    private final BooleanSupplier aimSyncGate = this::useItemAimSyncEnabled;
+    private final Predicate<ClientPacket> aimSyncGate = this::useItemAimSyncEnabled;
     private final Consumer<ClientPacket> queueTail = super::addPacketToQueue;
     private final Consumer<ClientPacket> aimSyncStage = p -> aimSync.intercept(p, aimSyncGate, queueTail);
     private final InventorySync inventorySync = new InventorySync(this);
@@ -409,10 +415,23 @@ public class PolypPlayer extends Player implements ExternallyTickable {
         return toggle != null && toggle.enabled(this);
     }
 
-    /** {@link ProjectileConfig#useItemAimSync} + a legacy client (a modern use packet already carries the click aim). */
-    private boolean useItemAimSyncEnabled() {
+    /**
+     * A legacy client only (a modern use packet already carries the click aim): a bucket in the clicking hand reads
+     * {@link FluidsConfig#bucketAimSync}, anything else {@link ProjectileConfig#useItemAimSync}.
+     */
+    private boolean useItemAimSyncEnabled(ClientPacket click) {
         Polyp polyp = Polyp.getInstance();
         if (!polyp.isInitialized() || !polyp.clientInfo().isLegacy(this)) return false;
+        PlayerHand hand = switch (click) {
+            case ClientUseItemPacket use -> use.hand();
+            case ClientPlayerBlockPlacementPacket place -> place.hand();
+            default -> PlayerHand.MAIN;
+        };
+        Material held = getItemInHand(hand).material();
+        if (held == Material.BUCKET || held == Material.WATER_BUCKET || held == Material.LAVA_BUCKET) {
+            FluidSystem fluids = polyp.services().fluids();
+            return fluids != null && fluids.bucketAimSync(this);
+        }
         ProjectileConfig cfg = polyp.profiles().resolve(this, MechanicsKeys.PROJECTILES);
         return cfg != null && Boolean.TRUE.equals(cfg.useItemAimSync);
     }

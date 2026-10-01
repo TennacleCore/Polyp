@@ -10,8 +10,8 @@ import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * Syncs a legacy client's use-item aim to the click (the MineMen behavior). The 1.8 use packet carries no rotation;
@@ -44,7 +44,7 @@ final class UseItemAimSync {
     }
 
     /** Routes one arriving packet to {@code out}, possibly holding/patching a click. {@code gate} = the knob + legacy check, read at click arrival. */
-    synchronized void intercept(ClientPacket packet, BooleanSupplier gate, Consumer<ClientPacket> out) {
+    synchronized void intercept(ClientPacket packet, Predicate<ClientPacket> gate, Consumer<ClientPacket> out) {
         if (isClick(packet) && wasEmitted(packet)) {
             out.accept(packet);
             return;
@@ -53,7 +53,7 @@ final class UseItemAimSync {
         if (isClick(packet)) {
             // a vanilla 1.8 client can't send the same click twice in a tick; a repeat means a new tick, don't stack
             if (held.stream().anyMatch(h -> h.getClass() == packet.getClass())) releaseUnpatched(out);
-            if (gate.getAsBoolean()) {
+            if (gate.test(packet)) {
                 if (held.isEmpty()) heldAt = System.nanoTime();
                 held.add(packet);
             } else {

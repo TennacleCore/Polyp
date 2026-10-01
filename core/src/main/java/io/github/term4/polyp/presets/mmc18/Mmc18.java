@@ -27,6 +27,7 @@ public final class Mmc18 {
                 .set(MechanicsKeys.EXPLOSION, Explosion.fireballFight())
                 .set(MechanicsKeys.TNT, Tnt.config())
                 .set(MechanicsKeys.PROJECTILES, Projectiles.config())
+                .mutate(MechanicsKeys.FLUIDS, f -> f.toBuilder().bucketAimSync(true).build()) // its use items aim at the click
                 // arrow hit-marker ding to the shooter; vanilla presets don't
                 .set(MechanicsKeys.FX, Fx.vanilla18().register(Fx.ARROW_HIT_PLAYER, Fx.arrowHitMarker()))
                 .build();
