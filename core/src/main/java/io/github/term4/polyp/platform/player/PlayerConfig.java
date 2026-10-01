@@ -40,6 +40,10 @@ public final class PlayerConfig {
         public static final PositionRelay LEGACY = new PositionRelay(true, 4 / 32.0, 360 * 4 / 256.0, 60, true, 800);
         /** Minestom's own. */
         public static final PositionRelay EVERY_MOVE = new PositionRelay(false, 0, 0, 0, false, 20);
+
+        public PositionRelay withGroundSync(boolean groundSync) {
+            return new PositionRelay(impulse, move, turn, keepAlive, groundSync, fullSync);
+        }
     }
 
     public enum CursorOnClose {

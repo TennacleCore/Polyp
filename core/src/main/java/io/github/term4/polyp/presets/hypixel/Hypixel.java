@@ -5,6 +5,7 @@ import io.github.term4.polyp.mechanics.damage.types.burning.InFireDamage;
 import io.github.term4.polyp.mechanics.damage.types.burning.BurningConfig;
 import io.github.term4.polyp.mechanics.damage.DamageConfig;
 import io.github.term4.polyp.mechanics.attack.AttackConfig;
+import io.github.term4.polyp.platform.player.PlayerConfig;
 import io.github.term4.polyp.fx.FxRegistry;
 import io.github.term4.polyp.MechanicsProfile;
 import io.github.term4.polyp.fx.Fx;
@@ -28,6 +29,9 @@ public final class Hypixel {
                         .deadHitTicks(AttackConfig.MODERN_DEAD_HIT_TICKS) // the user, 2026-09-29: every network, not vanilla18
                         .legacySightGate(false) // no capture shows the networks refusing a hit past a block
                         .build())
+                // captured 2026-10-01: jumps and landings go out relative, not as vanilla's teleport
+                .mutate(MechanicsKeys.PLAYER, p -> PlayerConfig.builder(p)
+                        .positionRelay(PlayerConfig.PositionRelay.LEGACY.withGroundSync(false)).build())
                 // an invisible player shows no swirl at all (Bed Wars, the user 2026-09-28); vanilla shows a rare one
                 .mutate(MechanicsKeys.ATTRIBUTES, a -> a.toBuilder().swirlWhileInvisible(false).build())
                 .set(MechanicsKeys.DAMAGE, Damage.config())

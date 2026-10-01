@@ -113,8 +113,10 @@ class PresetCompatTest extends HeadlessServerTest { // profile() boots Fx, which
 
     @Test
     void theTrackerGatesHoldButOnMineMen() {
-        for (Preset preset : new Preset[]{Preset.VANILLA18, Preset.HYPIXEL, Preset.HYPIXEL_BEDWARS, Preset.SCRIMS18}) {
-            assertEquals(io.github.term4.polyp.platform.player.PlayerConfig.PositionRelay.LEGACY, relay(preset), preset + "'s relay");
+        var legacy = io.github.term4.polyp.platform.player.PlayerConfig.PositionRelay.LEGACY;
+        assertEquals(legacy, relay(Preset.VANILLA18));
+        for (Preset preset : new Preset[]{Preset.HYPIXEL, Preset.HYPIXEL_BEDWARS, Preset.SCRIMS18}) {
+            assertEquals(legacy.withGroundSync(false), relay(preset), preset + "'s relay: jumps and landings relative");
         }
         assertEquals(io.github.term4.polyp.platform.player.PlayerConfig.PositionRelay.EVERY_MOVE, relay(Preset.MMC18));
     }

@@ -123,6 +123,21 @@ class PositionRelayTest extends HeadlessServerTest {
     }
 
     @Test
+    void hypixelJumpsGoOutRelative() {
+        with(PlayerConfig.PositionRelay.LEGACY.withGroundSync(false), 2, "Hop", pair -> {
+            pair.mover().player.refreshOnGround(true);
+            throughBeat(pair.mover());
+            pair.watcher().sent.clear();
+            move(pair.mover(), 0, 0.42, 0);
+            pair.mover().player.refreshOnGround(false);
+            tick(pair.mover());
+            List<ServerPacket> sent = moves(pair.watcher(), pair.mover());
+            assertEquals(1, sent.size(), "still looked at off the beat: " + sent);
+            assertInstanceOf(EntityPositionPacket.class, sent.getFirst(), "relative");
+        });
+    }
+
+    @Test
     void aTurnAloneSendsTheLook() {
         with(PlayerConfig.PositionRelay.LEGACY, 2, "Turn", pair -> {
             Pos at = pair.mover().player.getPosition();
