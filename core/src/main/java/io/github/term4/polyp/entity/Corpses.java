@@ -20,9 +20,13 @@ public final class Corpses {
 
     public static void install() {
         if (!INSTALLED.compareAndSet(false, true)) return;
-        MinecraftServer.getGlobalEventHandler().addListener(EntityDeathEvent.class,
-                e -> e.getEntity().setTag(DIED_AT, TickSystem.tick(e.getEntity())));
+        MinecraftServer.getGlobalEventHandler().addListener(EntityDeathEvent.class, e -> died(e.getEntity()));
         TickSystem.onClockChange(e -> e.removeTag(DIED_AT));
+    }
+
+    /** For a death a game decides itself, its fatal hit cancelled: {@link #diedAt} reads it like any other. */
+    public static void died(@NotNull Entity body) {
+        body.setTag(DIED_AT, TickSystem.tick(body));
     }
 
     /** Null until it dies, and again after its world's clock changes. */

@@ -102,6 +102,15 @@ class PresetCompatTest extends HeadlessServerTest { // profile() boots Fx, which
         return fluids == null || fluids.bucketAimSync == null ? null : fluids.bucketAimSync.constantOrNull();
     }
 
+    @Test
+    void every18PearlDiesWithItsThrower() {
+        for (Preset preset : new Preset[]{Preset.VANILLA18, Preset.HYPIXEL, Preset.HYPIXEL_BEDWARS, Preset.MMC18, Preset.SCRIMS18}) {
+            var pearl = preset.profile().get(io.github.term4.polyp.MechanicsKeys.PROJECTILES)
+                    .typeConfig(io.github.term4.polyp.mechanics.projectile.types.Pearl.KEY);
+            assertEquals(0, pearl.shooterDeathDespawnTicks.constantOrNull(), preset + "'s pearl");
+        }
+    }
+
     /** Every preset hands back a complete layer - callers set it, they never assemble one. */
     @Test
     void everyPresetCarriesAWholeLayer() {

@@ -72,6 +72,9 @@ public final class Projectiles {
                 // 1.8 bills the arrival as plain fall damage and throws the rider off first; 26.1 does neither
                 .teleportDamageType(io.github.term4.polyp.mechanics.damage.types.fall.FallDamage.INSTANCE)
                 .teleportDismounts(true)
+                // EntityEnderPearl.t_: a dead thrower kills it before its next move, and a respawn is a new
+                // player in 1.8, so any death since the throw does
+                .shooterDeathDespawnTicks(0)
                 .build();
     }
 
