@@ -111,6 +111,18 @@ class PresetCompatTest extends HeadlessServerTest { // profile() boots Fx, which
         }
     }
 
+    @Test
+    void theTrackerGatesHoldButOnMineMen() {
+        for (Preset preset : new Preset[]{Preset.VANILLA18, Preset.HYPIXEL, Preset.HYPIXEL_BEDWARS, Preset.SCRIMS18}) {
+            assertEquals(io.github.term4.polyp.platform.player.PlayerConfig.PositionRelay.LEGACY, relay(preset), preset + "'s relay");
+        }
+        assertEquals(io.github.term4.polyp.platform.player.PlayerConfig.PositionRelay.EVERY_MOVE, relay(Preset.MMC18));
+    }
+
+    private static io.github.term4.polyp.platform.player.PlayerConfig.PositionRelay relay(Preset preset) {
+        return preset.profile().get(io.github.term4.polyp.MechanicsKeys.PLAYER).positionRelay.constantOrNull();
+    }
+
     /** Every preset hands back a complete layer - callers set it, they never assemble one. */
     @Test
     void everyPresetCarriesAWholeLayer() {

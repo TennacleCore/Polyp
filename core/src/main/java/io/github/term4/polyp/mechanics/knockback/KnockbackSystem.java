@@ -1,5 +1,6 @@
 package io.github.term4.polyp.mechanics.knockback;
 
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.MechanicsProfiles;
 import io.github.term4.polyp.tracking.motion.VelocityContext;
 import io.github.term4.polyp.MechanicsKeys;
@@ -108,6 +109,8 @@ public final class KnockbackSystem extends ScopedSystem<KnockbackConfig> {
         if (velocity != null) {
             if (resolved == null) resolved = calc.resolveConfig(cfgSnap);
             broadcast(target, velocity, resolved, finalSnap);
+            // EntityLiving.a, the knockback a hit with a source gets, sets isAirBorne: tracked this tick
+            if (finalSnap.source() != null && target instanceof PolypPlayer player) player.relayImpulse();
         }
     }
 

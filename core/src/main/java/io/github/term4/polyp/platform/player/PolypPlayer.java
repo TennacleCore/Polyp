@@ -21,6 +21,7 @@ import io.github.term4.polyp.platform.fixes.client.UseItemInterruptFix;
 import io.github.term4.polyp.platform.fixes.client.EquipmentSlotsFix;
 import io.github.term4.polyp.platform.fixes.client.SelfMetaFilter;
 import io.github.term4.polyp.util.tick.TickScaler;
+import io.github.term4.polyp.util.tick.TickSystem;
 import io.github.term4.polyp.world.ExternallyTickable;
 import io.github.term4.polyp.world.MechanicsWorld;
 import io.github.term4.polyp.platform.fixes.EffectResyncFix;
@@ -35,6 +36,13 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.network.packet.client.ClientPacket;
 import net.minestom.server.network.packet.server.SendablePacket;
+import net.minestom.server.network.packet.server.ServerPacket;
+import net.minestom.server.network.packet.server.play.EntityHeadLookPacket;
+import net.minestom.server.network.packet.server.play.EntityPositionAndRotationPacket;
+import net.minestom.server.network.packet.server.play.EntityPositionPacket;
+import net.minestom.server.network.packet.server.play.EntityRotationPacket;
+import net.minestom.server.network.packet.server.play.SpawnEntityPacket;
+import net.minestom.server.utils.PacketViewableUtils;
 import net.minestom.server.network.packet.server.play.EntityStatusPacket;
 import net.minestom.server.entity.EntityStatuses;
 import net.minestom.server.entity.PlayerHand;
@@ -67,6 +75,7 @@ import java.util.concurrent.TimeUnit;
 import net.minestom.server.ServerFlag;
 import net.minestom.server.utils.time.Cooldown;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -86,6 +95,14 @@ public class PolypPlayer extends Player implements ExternallyTickable {
     /** What this client holds per attribute, keyed by the attribute's key. */
     private final Map<Key, EntityAttributesPacket.Property> attributesKnown = new ConcurrentHashMap<>();
     private int positionBroadcastInterval = 1;
+    private PlayerConfig.@Nullable PositionRelay positionRelay;
+    private final long serverSyncTicks = getSynchronizationTicks();
+    // EntityTrackerEntry's memory beside lastSyncedPosition: on-ground at the last absolute send, head, metadata
+    private boolean relayedGround;
+    private float relayedHead;
+    private int relayedMeta;
+    private boolean impulse;
+    private long trackedTick = -1;
     private boolean selfPlacing = false;
     // vanilla's swing gate (EntityLivingBase.swingItem, LivingEntity.swing): the arm restarts only once half done,
     // so a relay at most every four ticks, plus a second click inside the same tick
@@ -131,6 +148,7 @@ public class PolypPlayer extends Player implements ExternallyTickable {
         if (!MechanicsWorld.ownsCurrentTick(this)) return;
         super.tick(time);
         tickSwing();
+        track();
     }
 
     @Override public void swingMainHand(boolean fromClient) {
@@ -377,16 +395,116 @@ public class PolypPlayer extends Player implements ExternallyTickable {
         return positionBroadcastInterval;
     }
 
+    /** The tracker's gates on what of this player's movement goes out; null relays every move at the interval. */
+    public void setPositionRelay(PlayerConfig.@Nullable PositionRelay relay) {
+        if (Objects.equals(relay, positionRelay)) return;
+        this.positionRelay = relay;
+        setSynchronizationTicks(relay != null ? relay.fullSync() : serverSyncTicks);
+        relayedGround = isOnGround();
+        relayedHead = headRotation;
+        relayedMeta = metadata();
+    }
+
+    public PlayerConfig.@Nullable PositionRelay getPositionRelay() {
+        return positionRelay;
+    }
+
     @Override
     public void refreshPosition(Pos newPosition, boolean ignoreView, boolean sendPackets) {
-        if (sendPackets) {
-            // identity at 20 TPS, throttled toward ~client Hz as server TPS rises
-            int cadence = TickScaler.clientCadence(positionBroadcastInterval);
-            if (cadence > 1 && getAliveTicks() % cadence != 0) sendPackets = false;
-        }
-        super.refreshPosition(newPosition, ignoreView, sendPackets); // api-internal override
+        // gated players relay from track(), once a tick
+        boolean send = sendPackets && positionRelay == null && onBeat();
+        super.refreshPosition(newPosition, ignoreView, send); // api-internal override
         Pos retry = RefreshPositionFix.swallowedRetry(this, newPosition);
-        if (retry != null) super.refreshPosition(retry, ignoreView, sendPackets);
+        if (retry != null) super.refreshPosition(retry, ignoreView, send);
+    }
+
+    private boolean onBeat() {
+        // identity at 20 TPS, throttled toward ~client Hz as server TPS rises
+        int cadence = TickScaler.clientCadence(positionBroadcastInterval);
+        return cadence <= 1 || getAliveTicks() % cadence == 0;
+    }
+
+    // EntityTrackerEntry.track, after the tick's packets: on the beat, or off it for an impulse or a metadata change
+    private void track() {
+        PlayerConfig.PositionRelay gates = positionRelay;
+        if (gates == null) return;
+        trackedTick = TickSystem.tick(this);
+        int meta = metadata();
+        boolean dirty = meta != relayedMeta;
+        relayedMeta = meta;
+        boolean forced = impulse || gates.impulse() && dirty;
+        impulse = false;
+        if (onBeat() || forced) relay(gates);
+    }
+
+    /** A knockback landed: the tracker looks at this body this tick, off the beat ({@code EntityLiving} sets isAirBorne). */
+    public void relayImpulse() {
+        PlayerConfig.PositionRelay gates = positionRelay;
+        if (gates == null || !gates.impulse()) return;
+        if (trackedTick == TickSystem.tick(this)) relay(gates);
+        else impulse = true;
+    }
+
+    private void relay(PlayerConfig.PositionRelay gates) {
+        if (getInstance() == null || isRemoved()) return;
+        Pos at = getPosition();
+        Pos last = lastSyncedPosition;
+        double dx = Math.abs(at.x() - last.x()), dy = Math.abs(at.y() - last.y()), dz = Math.abs(at.z() - last.z());
+        // a relative move is a byte of 1/32s; an on-ground change goes out absolute too
+        if (dx >= 4 || dy >= 4 || dz >= 4 || gates.groundSync() && isOnGround() != relayedGround) {
+            synchronizePosition();
+        } else {
+            boolean moved = !at.samePoint(last) && (dx >= gates.move() || dy >= gates.move() || dz >= gates.move()
+                    || gates.keepAlive() > 0 && getAliveTicks() % gates.keepAlive() == 0);
+            boolean turned = !at.sameView(last)
+                    && (turn(at.yaw(), last.yaw()) >= gates.turn() || Math.abs(at.pitch() - last.pitch()) >= gates.turn());
+            ServerPacket packet = moved && turned ? EntityPositionAndRotationPacket.getPacket(getEntityId(), at, last, isOnGround())
+                    : moved ? EntityPositionPacket.getPacket(getEntityId(), at, last, isOnGround())
+                    : turned ? new EntityRotationPacket(getEntityId(), at.yaw(), at.pitch(), isOnGround()) : null;
+            if (packet != null) {
+                PacketViewableUtils.prepareViewablePacket(currentChunk, packet, this);
+                lastSyncedPosition = (moved ? at : last).withView(turned ? at.yaw() : last.yaw(), turned ? at.pitch() : last.pitch());
+            }
+        }
+        float head = headRotation;
+        if (head != relayedHead && turn(head, relayedHead) >= gates.turn()) {
+            PacketViewableUtils.prepareViewablePacket(currentChunk, new EntityHeadLookPacket(getEntityId(), head), this);
+            relayedHead = head;
+        }
+    }
+
+    private static float turn(float to, float from) {
+        float d = (to - from) % 360f;
+        return Math.abs(d > 180f ? d - 360f : d < -180f ? d + 360f : d);
+    }
+
+    // 1.8 PlayerConnection: leaving the ground going up calls EntityLiving.bF, which sets isAirBorne
+    @Override
+    public void refreshOnGround(boolean onGround) {
+        boolean was = isOnGround();
+        super.refreshOnGround(onGround);
+        if (was && !onGround && getPosition().y() > getPreviousPosition().y()) relayImpulse();
+    }
+
+    // a late viewer starts where the others were last sent: the relative moves build on it
+    @Override
+    protected SpawnEntityPacket getSpawnPacket() {
+        SpawnEntityPacket spawn = super.getSpawnPacket();
+        return positionRelay == null ? spawn : new SpawnEntityPacket(spawn.entityId(), spawn.uuid(), spawn.type(),
+                lastSyncedPosition, spawn.headRot(), spawn.data(), spawn.velocity());
+    }
+
+    // Player's teleport sync calls super.synchronizePosition() directly: a teleport skips this
+    @Override
+    protected void synchronizePosition() {
+        super.synchronizePosition();
+        relayedGround = isOnGround();
+    }
+
+    // the DataWatcher fields a fight dirties
+    private int metadata() {
+        return (isSprinting() ? 1 : 0) | (isSneaking() ? 2 : 0) | (isOnFire() ? 4 : 0) | (isInvisible() ? 8 : 0)
+                | (isUsingItem() ? 16 : 0) | Float.floatToIntBits(getHealth()) << 5;
     }
 
     // aim sync (see UseItemAimSync / AttackAimSync); runs on the connection's read thread. Independent packet types

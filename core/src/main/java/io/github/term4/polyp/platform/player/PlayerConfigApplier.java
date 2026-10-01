@@ -57,6 +57,7 @@ public final class PlayerConfigApplier {
         PlayerConfig.PlayerContext ctx = new PlayerConfig.PlayerContext(player);
         Integer interval = cfg != null ? FieldValue.resolve(cfg.positionBroadcastInterval, ctx) : null;
         if (interval != null) op.setPositionBroadcastInterval(Math.max(1, interval));
+        op.setPositionRelay(cfg != null ? FieldValue.resolve(cfg.positionRelay, ctx) : null);
         op.inventorySync().countChangeEndsUse(cfg != null ? FieldValue.resolve(cfg.countChangeEndsUse, ctx) : null);
         op.inventorySync().cursorOnClose(cfg != null ? FieldValue.resolve(cfg.cursorOnClose, ctx) : null);
         // one pass from the resolved config (all-off when no scope sets it), so a profile swap is a clean mode SWITCH -
