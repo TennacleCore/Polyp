@@ -22,6 +22,7 @@ import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
 import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
 import net.minestom.server.network.packet.server.play.SetSlotPacket;
 import net.minestom.server.network.packet.server.play.WindowItemsPacket;
+import net.minestom.server.utils.inventory.PlayerInventoryUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +31,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** A 1.8 client spends its own arrow on a bow release: its arrows are re-sent, never its bow. */
+/** A client before 1.21 spends its own arrow on a bow release: its arrows are re-sent, never its bow. */
 class LegacyUseResyncFixTest extends HeadlessServerTest {
 
     @BeforeAll
@@ -56,6 +57,27 @@ class LegacyUseResyncFixTest extends HeadlessServerTest {
     }
 
     @Test
+    void a120ClientGetsItsArrows() {
+        FakePlayer drawer = FakePlayer.connect(instance, new Pos(40.5, 64, 40.5), "Draw120");
+        try {
+            Polyp.getInstance().clientInfo().setProtocol(drawer.player, 763); // 1.20.1
+            drawer.player.getInventory().setItemStack(0, ItemStack.of(Material.BOW));
+            drawer.player.getInventory().setItemStack(9, ItemStack.of(Material.ARROW, 16));
+            drawer.player.getInventory().setItemStack(PlayerInventoryUtils.OFFHAND_SLOT, ItemStack.of(Material.ARROW, 8));
+            InventorySync sync = ((PolypPlayer) drawer.player).inventorySync();
+            sync.broadcast();
+            drawer.sent.clear();
+            EventDispatcher.call(new PlayerCancelItemUseEvent(drawer.player, PlayerHand.MAIN, ItemStack.of(Material.BOW), 3));
+            sync.broadcast();
+            List<SetSlotPacket> slots = drawer.sent(SetSlotPacket.class);
+            assertEquals(2, slots.size(), "the inventory's arrows and the offhand's: " + slots);
+            assertTrue(slots.stream().allMatch(s -> s.itemStack().material() == Material.ARROW));
+        } finally {
+            drawer.player.remove();
+        }
+    }
+
+    @Test
     void tapThenHoldKeepsTheUse() {
         FakePlayer p = FakePlayer.connect(instance, new Pos(40.5, 64, 40.5), "TapHold");
         try {
@@ -74,6 +96,7 @@ class LegacyUseResyncFixTest extends HeadlessServerTest {
             assertTrue(p.player.isUsingItem(), "the second use runs on");
             assertTrue(p.sent(WindowItemsPacket.class).isEmpty());
             assertTrue(p.sent(SetSlotPacket.class).stream().noneMatch(s -> s.slot() == 36), "the bow is left alone");
+            assertTrue(p.sent(SetSlotPacket.class).stream().anyMatch(s -> s.slot() == 9), "the tap's arrow goes back");
         } finally {
             p.player.remove();
         }

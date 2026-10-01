@@ -18,6 +18,8 @@ public record ClientRange(int min, int max) {
     public static final ClientRange THROUGH_1_13 = new ClientRange(0, ClientVersion.CHUNK_OBJECT_PROTOCOL_MAX);
     /** 1.15.2 and older: the clients that clear their world only on a dimension change. */
     public static final ClientRange THROUGH_1_15 = new ClientRange(0, ClientVersion.WORLD_KEEPING_RESPAWN_PROTOCOL_MAX);
+    /** 1.20.6 and older: the clients that spend their own arrow on a bow release. */
+    public static final ClientRange THROUGH_1_20 = new ClientRange(0, ClientVersion.CLIENT_AMMO_PROTOCOL_MAX);
     /** 1.9 and newer. */
     public static final ClientRange MODERN = new ClientRange(ClientVersion.LEGACY_PROTOCOL_MAX + 1, Integer.MAX_VALUE);
 
@@ -30,7 +32,7 @@ public record ClientRange(int min, int max) {
         return protocol >= min && protocol <= max;
     }
 
-    /** {@code "any"}, {@code "1.8 and older"}, {@code "1.7"}, {@code "1.13.2 and older"}, {@code "1.15.2 and older"}, {@code "1.9+"} or the raw bounds - for a listing. */
+    /** {@code "any"}, {@code "1.8 and older"}, {@code "1.7"}, {@code "1.13.2 and older"}, {@code "1.15.2 and older"}, {@code "1.20.6 and older"}, {@code "1.9+"} or the raw bounds - for a listing. */
     @Override
     public String toString() {
         if (equals(ANY)) return "any";
@@ -38,6 +40,7 @@ public record ClientRange(int min, int max) {
         if (equals(V1_7)) return "1.7";
         if (equals(THROUGH_1_13)) return "1.13.2 and older";
         if (equals(THROUGH_1_15)) return "1.15.2 and older";
+        if (equals(THROUGH_1_20)) return "1.20.6 and older";
         if (equals(MODERN)) return "1.9+";
         return max == Integer.MAX_VALUE ? min + "+" : min + ".." + max;
     }

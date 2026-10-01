@@ -9,7 +9,10 @@ import io.github.term4.polyp.api.event.projectile.ProjectileLaunchEvent;
 import io.github.term4.polyp.mechanics.projectile.types.Fireball;
 import io.github.term4.polyp.mechanics.projectile.types.Snowball;
 import io.github.term4.polyp.presets.vanilla18.Vanilla18;
+import io.github.term4.polyp.platform.inventory.InventorySync;
+import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.testsupport.FakePlayer;
+import net.minestom.server.network.packet.server.play.SetSlotPacket;
 import io.github.term4.polyp.testsupport.HeadlessServerTest;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
@@ -30,6 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * One click = one throw: a block-aimed click arrives as use_item_on_block FOLLOWED by use_item (a plain throwable has
@@ -76,7 +80,8 @@ class ThrowableItemTypeTest extends HeadlessServerTest {
         system.enable(Snowball.KEY);
         var handler = MinecraftServer.getGlobalEventHandler();
         handler.addChild(system.node());
-        var p = FakePlayer.connect(inst, new Pos(8.5, 65, 8.5), "RefusedThrower").player;
+        FakePlayer thrower = FakePlayer.connect(inst, new Pos(8.5, 65, 8.5), "RefusedThrower");
+        var p = thrower.player;
         // only this thrower: a node on the global handler outlives nothing, but a blanket refusal would be
         // every other test's launch too
         EventNode<Event> refuse = EventNode.all("test:refuse-launch");
@@ -87,9 +92,15 @@ class ThrowableItemTypeTest extends HeadlessServerTest {
         try {
             ItemStack snowballs = ItemStack.of(Material.SNOWBALL, 16);
             p.setItemInMainHand(snowballs);
+            InventorySync sync = ((PolypPlayer) p).inventorySync();
+            sync.broadcast();
+            thrower.sent.clear();
             EventDispatcher.call(new PlayerUseItemEvent(p, PlayerHand.MAIN, snowballs, 0));
             assertEquals(16, p.getItemInMainHand().amount(), "the snowball stays in hand");
             assertFalse(cooldowns.isOnCooldown(p, Material.SNOWBALL), "and the cooldown is never armed");
+            sync.broadcast();
+            assertTrue(thrower.sent(SetSlotPacket.class).stream().anyMatch(s -> s.slot() == 36 && s.itemStack().amount() == 16),
+                    "and goes back to the client, which threw one itself");
         } finally {
             p.remove();
             handler.removeChild(refuse);

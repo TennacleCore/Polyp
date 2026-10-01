@@ -19,6 +19,8 @@ public final class ClientVersion {
     public static final int CHUNK_OBJECT_PROTOCOL_MAX = 404;
     /** 1.15.2, the last client that keeps its world through a respawn into the dimension it is in. */
     public static final int WORLD_KEEPING_RESPAWN_PROTOCOL_MAX = 578;
+    /** 1.20.6, the last client that spends its own ammo on a release; 1.21's ProjectileWeaponItem.useAmmo leaves it to the server. */
+    public static final int CLIENT_AMMO_PROTOCOL_MAX = 766;
 
     private ClientVersion() {}
 

@@ -47,8 +47,8 @@ public final class FixCatalog {
                 "the player window arrives as -2 through ViaRewind");
         add("effectResync", ClientRange.ANY,
                 "a new viewer is owed the effects an entity already carries, on any client");
-        add("legacyUseResync", ClientRange.LEGACY,
-                "a 1.8 client spends its own arrow on a bow release the server may not have fired");
+        add("legacyUseResync", ClientRange.THROUGH_1_20,
+                "a client before 1.21 spends its own arrow on a bow release the server may not have fired");
         add("legacyPlacementHalf", ClientRange.LEGACY,
                 "a byte cursor cannot say 9/16, so a hit just above a side face's middle arrives as 0.5");
         add("legacyHealthRounding", ClientRange.LEGACY,
