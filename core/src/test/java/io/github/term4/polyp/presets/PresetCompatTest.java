@@ -112,6 +112,20 @@ class PresetCompatTest extends HeadlessServerTest { // profile() boots Fx, which
     }
 
     @Test
+    void onlyHypixelHoldsTheHit() {
+        for (Preset preset : new Preset[]{Preset.HYPIXEL, Preset.HYPIXEL_BEDWARS, Preset.SCRIMS18}) {
+            assertEquals(true, holds(preset), preset + " holds a hit for the victim's next move");
+        }
+        for (Preset preset : new Preset[]{Preset.VANILLA18, Preset.MMC18}) {
+            assertEquals(false, holds(preset), preset + " lands it at once");
+        }
+    }
+
+    private static Boolean holds(Preset preset) {
+        return preset.profile().get(io.github.term4.polyp.MechanicsKeys.ATTACK).hitWaitsForVictimMove.constantOrNull();
+    }
+
+    @Test
     void theTrackerGatesHoldButOnMineMen() {
         var legacy = io.github.term4.polyp.platform.player.PlayerConfig.PositionRelay.LEGACY;
         assertEquals(legacy, relay(Preset.VANILLA18));

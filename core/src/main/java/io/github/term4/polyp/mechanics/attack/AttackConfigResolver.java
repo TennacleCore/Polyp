@@ -38,7 +38,8 @@ public final class AttackConfigResolver {
                 FieldValue.resolve(cfg.suppressSprintResetEcho, ctx, false),
                 FieldValue.resolve(cfg.reachPadding, ctx),
                 FieldValue.resolve(cfg.deadHitTicks, ctx),
-                FieldValue.resolve(cfg.legacySightGate, ctx, false)
+                FieldValue.resolve(cfg.legacySightGate, ctx, false),
+                FieldValue.resolve(cfg.hitWaitsForVictimMove, ctx, false)
         );
     }
 
@@ -50,7 +51,8 @@ public final class AttackConfigResolver {
             boolean suppressSprintResetEcho,
             @Nullable Double reachPadding,
             @Nullable Integer deadHitTicks,
-            boolean legacySightGate
+            boolean legacySightGate,
+            boolean hitWaitsForVictimMove
     ) {
         public static ResolvedAttackConfig defaults() {
             return new ResolvedAttackConfig(
@@ -61,6 +63,7 @@ public final class AttackConfigResolver {
                     false,
                     AttackConfig.VANILLA_REACH_PADDING,
                     AttackConfig.PAPER_DEAD_HIT_TICKS,
+                    false,
                     false
             );
         }

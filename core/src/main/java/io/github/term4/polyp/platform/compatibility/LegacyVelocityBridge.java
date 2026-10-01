@@ -1,5 +1,6 @@
 package io.github.term4.polyp.platform.compatibility;
 
+import io.github.term4.polyp.platform.player.HitHold;
 import io.github.term4.polyp.platform.compatibility.via.ViaBridgeRpc;
 import io.github.term4.polyp.Polyp;
 import io.github.term4.polyp.platform.player.PolypPlayer;
@@ -106,10 +107,7 @@ public final class LegacyVelocityBridge {
         if (!polyp.clientInfo().isLegacy(player) || !LegacyVelocity.exceedsLpExactBand(rawBps)) return false;
 
         short[] s = LegacyVelocity.wireShorts(rawBps, capBt);
-        Runnable disarm = arm(); // the echo to suppress is this tick's; nothing listens outside the window
-        player.setTag(SUPPRESS_SELF_VELOCITY, true);
-        target.setVelocity(snappedBps); // viewers get the (imperceptible) LP value; the self echo is suppressed above
-        ViaBridgeRpc.get()
+        Runnable exact = () -> ViaBridgeRpc.get()
                 .sendEntityMotion(player, ViaBridgeRpc.PROTOCOL_1_21_6, player.getEntityId(), s[0], s[1], s[2])
                 .whenComplete((ignored, err) -> {
                     // bridge failed: resend the LpVec3 value we suppressed (next tick, on the entity thread)
@@ -117,6 +115,16 @@ public final class LegacyVelocityBridge {
                         player.scheduleNextTick(en -> { en.removeTag(SUPPRESS_SELF_VELOCITY); en.setVelocity(snappedBps); });
                     }
                 });
+        if (HitHold.holding(player)) {
+            HitHold.dropOwnVelocity(player);
+            target.setVelocity(snappedBps);
+            HitHold.defer(player, exact);
+            return true;
+        }
+        Runnable disarm = arm(); // the echo to suppress is this tick's; nothing listens outside the window
+        player.setTag(SUPPRESS_SELF_VELOCITY, true);
+        target.setVelocity(snappedBps); // viewers get the (imperceptible) LP value; the self echo is suppressed above
+        exact.run();
         player.scheduleNextTick(en -> disarm.run());
         return true;
     }

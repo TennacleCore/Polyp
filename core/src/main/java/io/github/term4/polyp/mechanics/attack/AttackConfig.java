@@ -56,6 +56,11 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
     public final @Nullable FieldValue<AttackContext, Integer> deadHitTicks;
     /** 1.8's use-entity gate on top of reach: feet within 6 blocks with the eyes in sight, else 3. 26.1 dropped it. */
     public final FieldValue<AttackContext, Boolean> legacySightGate;
+    /**
+     * Hypixel: a hit on a player reaches them with their next movement packet. Viewers see the hurt flash and crits at
+     * once; the rest (the victim's hurt, velocity and health, the hurt sound, the health shown) waits.
+     */
+    public final FieldValue<AttackContext, Boolean> hitWaitsForVictimMove;
 
     private AttackConfig(Builder b) {
         super(b.subConfig);
@@ -68,6 +73,7 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
         reachPadding = b.reachPadding;
         deadHitTicks = b.deadHitTicks;
         legacySightGate = b.legacySightGate;
+        hitWaitsForVictimMove = b.hitWaitsForVictimMove;
     }
 
     /** Merges this config over base. */
@@ -104,6 +110,7 @@ public final class AttackConfig extends Config<AttackContext, AttackConfig> {
             reachPadding = FieldValue.constant(VANILLA_REACH_PADDING);
             deadHitTicks = FieldValue.constant(PAPER_DEAD_HIT_TICKS);
             legacySightGate = FieldValue.constant(false);
+            hitWaitsForVictimMove = FieldValue.constant(false);
         }
 
         Builder(AttackConfig c) {

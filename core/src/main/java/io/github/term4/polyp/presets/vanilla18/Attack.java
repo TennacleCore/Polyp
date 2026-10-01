@@ -12,6 +12,7 @@ import io.github.term4.polyp.mechanics.damage.DamageSystem;
 import io.github.term4.polyp.mechanics.damage.types.melee.MeleeDamage;
 import io.github.term4.polyp.mechanics.knockback.KnockbackSnapshot;
 import io.github.term4.polyp.mechanics.knockback.KnockbackSystem;
+import io.github.term4.polyp.platform.player.HitHold;
 import io.github.term4.polyp.platform.player.PolypPlayer;
 import io.github.term4.polyp.tracking.SprintTracker;
 import io.github.term4.polyp.tracking.motion.MotionTracker;
@@ -42,6 +43,14 @@ public final class Attack {
             // crit runs a collision probe and item reads the hand: freeze both, the hit reads them twice
             event.overrideCritical(event.critical());
             event.overrideItem(event.item());
+            if (event.resolvedConfig().hitWaitsForVictimMove() && event.target() instanceof PolypPlayer victim) {
+                HitHold.hold(victim, () -> land(event));
+            } else {
+                land(event);
+            }
+        }
+
+        private void land(AttackEvent event) {
             DamageSystem.DamageOutcome result = DamageSystem.DamageOutcome.FRESH_DAMAGE; // no damage system -> nothing absorbs the hit
             DamageSystem dmg = services.damage();
             if (dmg != null && event.target() != null) {

@@ -28,6 +28,7 @@ public final class Hypixel {
                         .suppressSprintResetEcho(true)
                         .deadHitTicks(AttackConfig.MODERN_DEAD_HIT_TICKS) // the user, 2026-09-29: every network, not vanilla18
                         .legacySightGate(false) // no capture shows the networks refusing a hit past a block
+                        .hitWaitsForVictimMove(true) // captured 2026-10-01: the knockback rides the victim's next move
                         .build())
                 // captured 2026-10-01: jumps and landings go out relative, not as vanilla's teleport
                 .mutate(MechanicsKeys.PLAYER, p -> PlayerConfig.builder(p)

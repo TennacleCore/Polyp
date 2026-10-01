@@ -49,6 +49,10 @@ import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.item.Material;
 import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
 import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
+import net.minestom.server.network.packet.client.play.ClientPlayerPositionAndRotationPacket;
+import net.minestom.server.network.packet.client.play.ClientPlayerPositionPacket;
+import net.minestom.server.network.packet.client.play.ClientPlayerPositionStatusPacket;
+import net.minestom.server.network.packet.client.play.ClientPlayerRotationPacket;
 import io.github.term4.polyp.mechanics.fluids.FluidSystem;
 import io.github.term4.polyp.mechanics.fluids.FluidsConfig;
 import net.minestom.server.entity.EquipmentSlot;
@@ -93,6 +97,7 @@ public class PolypPlayer extends Player implements ExternallyTickable {
     private @Nullable SelfMetaFilter selfMetaFilter = SelfMetaFilter.defaultPlayerFilter();
     private boolean processingClientInput = false;
     private boolean velocityToSelfOnly;
+    private final HitHold hitHold = new HitHold(this);
     private static final Key SPRINTING = Key.key("sprinting"); // LivingEntity's, private there
     /** What this client holds per attribute, keyed by the attribute's key. */
     private final Map<Key, EntityAttributesPacket.Property> attributesKnown = new ConcurrentHashMap<>();
@@ -212,6 +217,10 @@ public class PolypPlayer extends Player implements ExternallyTickable {
         }
     }
 
+    HitHold hitHold() {
+        return hitHold;
+    }
+
     /** Runs {@code action} with this player's own velocity packets kept from its viewers. */
     public void velocityToSelfOnly(@NotNull Runnable action) {
         velocityToSelfOnly = true;
@@ -315,6 +324,7 @@ public class PolypPlayer extends Player implements ExternallyTickable {
         // not gated on the client: join lands before the protocol is known, and 1.8+ ignores the field
         if (p instanceof JoinGamePacket) p = LegacyTabGridFix.rewrite(p, tabSlots());
         UseItemInterruptFix.onOutgoing(this, p); // a slot rewrite under the using hand ends the use, as vanilla does
+        if (HitHold.capture(this, p)) return;
         super.sendPacket(p);
         EffectResyncFix.afterSpawn(this, p); // a spawn owes this viewer the effects that entity already carries
         // a respawn or join carries the real game mode; the spoof follows it
@@ -527,6 +537,10 @@ public class PolypPlayer extends Player implements ExternallyTickable {
     // (a client can't use-item and attack in one tick), so chaining is order-free.
     @Override
     public void addPacketToQueue(ClientPacket packet) {
+        if (packet instanceof ClientPlayerPositionPacket || packet instanceof ClientPlayerPositionAndRotationPacket
+                || packet instanceof ClientPlayerRotationPacket || packet instanceof ClientPlayerPositionStatusPacket) {
+            hitHold.moved();
+        }
         packet = LegacyPlacementHalfFix.rewrite(packet, this, placementHalfGate);
         attackSync.intercept(packet, attackSyncGate, aimSyncStage);
     }
