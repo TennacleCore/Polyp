@@ -4,9 +4,11 @@ import io.github.term4.polyp.platform.fixes.FixToggleConfig;
 import io.github.term4.polyp.platform.fixes.FixesSystem;
 import io.github.term4.polyp.platform.player.PolypPlayer;
 import net.minestom.server.entity.Player;
+import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.item.PlayerCancelItemUseEvent;
+import net.minestom.server.event.player.PlayerChangeHeldSlotEvent;
 import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.Material;
 import net.minestom.server.utils.inventory.PlayerInventoryUtils;
@@ -25,20 +27,30 @@ public final class LegacyUseResyncFix {
 
     public static void install(EventNode<@NotNull Event> node, FixesSystem fixes) {
         node.addListener(PlayerCancelItemUseEvent.class, e -> {
-            if (e.getItemStack().material() != Material.BOW) return;
+            if (e.getItemStack().material() == Material.BOW) resendArrows(e.getPlayer(), fixes);
+        });
+        // a swap in the release's tick: the client sends the slot first and still releases the bow it drew, while
+        // Minestom ends the draw on the slot change and the release finds nothing to fire
+        node.addListener(PlayerChangeHeldSlotEvent.class, e -> {
             Player player = e.getPlayer();
-            if (!(player instanceof PolypPlayer op)) return;
-            FixToggleConfig cfg = fixes.forClient(player).legacyUseResync();
-            if (cfg == null || !cfg.enabled(player)) return;
-            PlayerInventory inventory = player.getInventory();
-            for (int slot = 0; slot < PlayerInventory.INNER_INVENTORY_SIZE; slot++) {
-                if (arrow(inventory.getItemStack(slot).material())) op.inventorySync().resend(slot);
-            }
-            // a 1.9 client draws from its offhand first
-            if (!op.compat().legacyClient() && arrow(inventory.getItemStack(PlayerInventoryUtils.OFFHAND_SLOT).material())) {
-                op.inventorySync().resend(PlayerInventoryUtils.OFFHAND_SLOT);
+            if (player.getItemUseHand() == PlayerHand.MAIN && player.getItemInMainHand().material() == Material.BOW) {
+                resendArrows(player, fixes);
             }
         });
+    }
+
+    private static void resendArrows(Player player, FixesSystem fixes) {
+        if (!(player instanceof PolypPlayer op)) return;
+        FixToggleConfig cfg = fixes.forClient(player).legacyUseResync();
+        if (cfg == null || !cfg.enabled(player)) return;
+        PlayerInventory inventory = player.getInventory();
+        for (int slot = 0; slot < PlayerInventory.INNER_INVENTORY_SIZE; slot++) {
+            if (arrow(inventory.getItemStack(slot).material())) op.inventorySync().resend(slot);
+        }
+        // a 1.9 client draws from its offhand first
+        if (!op.compat().legacyClient() && arrow(inventory.getItemStack(PlayerInventoryUtils.OFFHAND_SLOT).material())) {
+            op.inventorySync().resend(PlayerInventoryUtils.OFFHAND_SLOT);
+        }
     }
 
     private static boolean arrow(Material material) {

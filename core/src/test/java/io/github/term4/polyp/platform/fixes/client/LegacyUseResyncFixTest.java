@@ -18,6 +18,7 @@ import net.minestom.server.instance.block.BlockFace;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.network.packet.client.ClientPacket;
+import net.minestom.server.network.packet.client.play.ClientHeldItemChangePacket;
 import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
 import net.minestom.server.network.packet.client.play.ClientUseItemPacket;
 import net.minestom.server.network.packet.server.play.SetSlotPacket;
@@ -97,6 +98,28 @@ class LegacyUseResyncFixTest extends HeadlessServerTest {
             assertTrue(p.sent(WindowItemsPacket.class).isEmpty());
             assertTrue(p.sent(SetSlotPacket.class).stream().noneMatch(s -> s.slot() == 36), "the bow is left alone");
             assertTrue(p.sent(SetSlotPacket.class).stream().anyMatch(s -> s.slot() == 9), "the tap's arrow goes back");
+        } finally {
+            p.player.remove();
+        }
+    }
+
+    /** 1.8 sends the swap ahead of the release when both land in one tick, and still releases the drawn bow. */
+    @Test
+    void aSwapThenReleaseGetsItsArrow() {
+        FakePlayer p = FakePlayer.connect(instance, new Pos(40.5, 64, 40.5), "SwapDraw");
+        try {
+            Polyp.getInstance().clientInfo().setProtocol(p.player, 47);
+            p.player.getInventory().setItemStack(0, ItemStack.of(Material.BOW));
+            p.player.getInventory().setItemStack(1, ItemStack.of(Material.STONE_SWORD));
+            p.player.getInventory().setItemStack(9, ItemStack.of(Material.ARROW, 16));
+            InventorySync sync = ((PolypPlayer) p.player).inventorySync();
+            sync.broadcast();
+            feed(p, new ClientUseItemPacket(PlayerHand.MAIN, 1, 0f, 0f));
+            p.sent.clear();
+            feed(p, new ClientHeldItemChangePacket((short) 1));
+            feed(p, new ClientPlayerActionPacket(ClientPlayerActionPacket.Status.UPDATE_ITEM_STATE, Vec.ZERO, BlockFace.BOTTOM, 0));
+            sync.broadcast();
+            assertTrue(p.sent(SetSlotPacket.class).stream().anyMatch(s -> s.slot() == 9), "the arrow goes back");
         } finally {
             p.player.remove();
         }
