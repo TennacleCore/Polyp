@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
 
-/** Block placement per scope; unset knobs resolve modern. */
+/** Block placement and digging per scope; unset knobs resolve modern. */
 @GenerateBuilder
 public final class BlocksConfig extends Config<BlocksContext, BlocksConfig> {
 
@@ -21,10 +21,19 @@ public final class BlocksConfig extends Config<BlocksContext, BlocksConfig> {
     }
 
     public final @Nullable FieldValue<BlocksContext, ChestPlacement> chestPlacement;
+    /**
+     * How much of a dig the server must have counted for a finish to break the block ({@code PlayerInteractManager}:
+     * 0.7 in both eras); unset, any finish breaks it.
+     */
+    public final @Nullable FieldValue<BlocksContext, Double> digFinishShare;
+    /** A finish short of the share still breaks the block once the server's own count reaches a whole dig (vanilla). */
+    public final @Nullable FieldValue<BlocksContext, Boolean> digFinishLate;
 
     private BlocksConfig(Builder b) {
         super(b.subConfig);
         this.chestPlacement = b.chestPlacement;
+        this.digFinishShare = b.digFinishShare;
+        this.digFinishLate = b.digFinishLate;
     }
 
     @Override

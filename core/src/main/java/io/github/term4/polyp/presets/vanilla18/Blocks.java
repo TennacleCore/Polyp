@@ -2,7 +2,10 @@ package io.github.term4.polyp.presets.vanilla18;
 
 import io.github.term4.polyp.mechanics.blocks.BlocksConfig;
 
-/** 1.8 block placement: {@code BlockChest} pairs by adjacency, and a chest beside two never lands. */
+/**
+ * 1.8 blocks: {@code BlockChest} pairs by adjacency and a chest beside two never lands; a dig finished short of 70% waits
+ * for the server's own count.
+ */
 public final class Blocks {
 
     private Blocks() {}
@@ -10,6 +13,8 @@ public final class Blocks {
     public static BlocksConfig config() {
         return BlocksConfig.builder()
                 .chestPlacement(BlocksConfig.ChestPlacement.LEGACY)
+                .digFinishShare(0.7)
+                .digFinishLate(true)
                 .build();
     }
 }

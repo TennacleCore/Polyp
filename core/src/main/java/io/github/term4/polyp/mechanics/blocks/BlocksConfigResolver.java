@@ -18,12 +18,15 @@ public final class BlocksConfigResolver {
         @Override public @Nullable Entity subject() { return null; }
     }
 
-    public record ResolvedBlocksConfig(BlocksConfig.ChestPlacement chestPlacement) {}
+    public record ResolvedBlocksConfig(BlocksConfig.ChestPlacement chestPlacement, @Nullable Double digFinishShare,
+                                       boolean digFinishLate) {}
 
     /** Plain values; {@code null} config = modern. */
     public static ResolvedBlocksConfig resolve(@Nullable BlocksConfig config, BlocksContext ctx) {
         BlocksConfig cfg = config != null ? config.withOverlay(ctx) : null;
         return new ResolvedBlocksConfig(
-                FieldValue.resolve(cfg != null ? cfg.chestPlacement : null, ctx, BlocksConfig.ChestPlacement.MODERN));
+                FieldValue.resolve(cfg != null ? cfg.chestPlacement : null, ctx, BlocksConfig.ChestPlacement.MODERN),
+                FieldValue.resolve(cfg != null ? cfg.digFinishShare : null, ctx),
+                FieldValue.resolve(cfg != null ? cfg.digFinishLate : null, ctx, true));
     }
 }
