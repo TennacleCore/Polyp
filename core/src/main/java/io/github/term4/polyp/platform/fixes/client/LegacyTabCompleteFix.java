@@ -30,6 +30,10 @@ import java.util.TreeSet;
  * modern client as literal nodes; anything it has no answer for goes to the stock listener, so an explicit
  * callback still wins. Replaces the {@link ClientTabCompletePacket} listener server-wide.
  *
+ * <p>A command or subcommand whose {@link CommandCondition} the sender fails answers nothing, as an unknown one does:
+ * the stock listener never reads conditions, so a hidden command would otherwise still complete its arguments. A
+ * syntax's condition only hides its own literals here.
+ *
  * <p>The approach - literal nodes suggesting themselves at every depth, as Brigadier's do - follows
  * KohanMathers/BrigadierStom, applied to Minestom's own graph rather than a second dispatcher. Upstream Minestom
  * PR #3252 carries the command-name half.
@@ -55,6 +59,7 @@ public final class LegacyTabCompleteFix {
             final int lastSpace = line.lastIndexOf(' ');
             final String cursor = line.substring(lastSpace + 1);
             final List<String> typed = lastSpace < 0 ? List.of() : List.of(line.substring(0, lastSpace).split(" "));
+            if (hidden(player, typed)) return;
             final List<TabCompletePacket.Match> matches = candidates(player, typed).stream()
                     .filter(name -> name.regionMatches(true, 0, cursor, 0, cursor.length()))
                     .map(name -> new TabCompletePacket.Match(name, null))
@@ -82,6 +87,24 @@ public final class LegacyTabCompleteFix {
         return out;
     }
 
+    /** Whether the command, or a subcommand on the way to the cursor, is one {@code sender} may not see. */
+    private static boolean hidden(CommandSender sender, List<String> typed) {
+        if (typed.isEmpty()) return false;
+        Command at = MinecraftServer.getCommandManager().getCommand(typed.getFirst());
+        if (at == null) return false;
+        if (!usable(at, sender)) return true;
+        for (String word : typed.subList(1, typed.size())) {
+            Command sub = null;
+            for (Command candidate : at.getSubcommands()) {
+                if (Arrays.asList(candidate.getNames()).contains(word)) sub = candidate;
+            }
+            if (sub == null) return false;
+            if (!usable(sub, sender)) return true;
+            at = sub;
+        }
+        return false;
+    }
+
     private static boolean usable(Command command, CommandSender sender) {
         CommandCondition condition = command.getCondition();
         return condition == null || condition.canUse(sender, null);
@@ -95,6 +118,8 @@ public final class LegacyTabCompleteFix {
             else if (Arrays.asList(sub.getNames()).contains(typed.getFirst())) literalsAt(sub, sender, typed.subList(1, typed.size()), out);
         }
         for (CommandSyntax syntax : command.getSyntaxes()) {
+            CommandCondition condition = syntax.getCommandCondition();
+            if (condition != null && !condition.canUse(sender, null)) continue;
             Argument<?>[] args = syntax.getArguments();
             int i = 0;
             // one word per argument up to the cursor; a space-taking argument before it owns the rest of the line

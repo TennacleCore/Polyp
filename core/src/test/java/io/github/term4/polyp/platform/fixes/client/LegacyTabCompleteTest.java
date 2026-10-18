@@ -41,6 +41,14 @@ class LegacyTabCompleteTest extends HeadlessServerTest {
         child.addSyntax((s, c) -> {}, ArgumentType.Literal("deep"));
         PROBE.addSubcommand(child);
         HIDDEN.setCondition((sender, commandString) -> false);
+        var secret = ArgumentType.Word("secret");
+        secret.setSuggestionCallback((sender, ctx, suggestion) -> suggestion.addEntry(new SuggestionEntry("leaked")));
+        HIDDEN.addSyntax((s, c) -> {}, secret);
+        Command vault = new Command("vault");
+        vault.setCondition((sender, commandString) -> false);
+        vault.addSyntax((s, c) -> {}, secret);
+        PROBE.addSubcommand(vault);
+        PROBE.addConditionalSyntax((sender, commandString) -> false, (s, c) -> {}, ArgumentType.Literal("staffonly"));
         MinecraftServer.getCommandManager().register(PROBE);
         MinecraftServer.getCommandManager().register(HIDDEN);
     }
@@ -95,6 +103,10 @@ class LegacyTabCompleteTest extends HeadlessServerTest {
             assertTrue(ask(p, "/tabprobe x y z").isEmpty(), "past a space-taking argument the line is its own");
             assertEquals(List.of("handmade"), names(ask(p, "/tabprobe cb h")), "an author's own callback still answers");
             assertTrue(ask(p, "/tabhid").isEmpty(), "a condition the sender fails hides the name");
+            assertTrue(ask(p, "/tabhidden l").isEmpty(), "and its arguments' own callbacks: it answers as an unknown command");
+            assertTrue(ask(p, "/tabprobe vault l").isEmpty(), "a hidden subcommand too");
+            List<String> first = names(ask(p, "/tabprobe "));
+            assertTrue(!first.contains("vault") && !first.contains("staffonly"), "neither the subcommand nor a hidden syntax's literal: " + first);
         } finally {
             p.player.remove();
         }
