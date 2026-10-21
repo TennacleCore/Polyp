@@ -346,7 +346,7 @@ public final class MotionTracker implements Tracker {
     }
 
     /** The supporting block under {@code pos}. */
-    private static Block blockBelow(Player p, Point pos) {
+    private static Block blockBelow(Entity p, Point pos) {
         return MechanicsWorld.viewed(p).getBlock(pos.sub(0, 0.5000001, 0));
     }
 
@@ -534,7 +534,7 @@ public final class MotionTracker implements Tracker {
      * unless the player sneaks - slime at factor {@code 1.0}, and with {@code modernBlocks} a bed at {@code 0.66}
      * (26-only, {@code BedBlock:150}; 1.8 beds do not bounce).
      */
-    private static double landMotY(Player p, Point landedAt, double motY, boolean modernBlocks) {
+    private static double landMotY(Entity p, Point landedAt, double motY, boolean modernBlocks) {
         if (!p.isSneaking()) {
             Instance inst = p.getInstance();
             if (inst != null) {
@@ -654,6 +654,22 @@ public final class MotionTracker implements Tracker {
             VertSim sim = p.getTag(VERT_SIM);
             return sim != null && sim.collided;
         }
+    }
+
+    /**
+     * One end-of-tick step of the server-tracked motY for a body standing in for a player ({@link TrackedVelocity}),
+     * in open air: the player sim's collision reset, which lands a descent off the probe before the body itself does.
+     */
+    public static double bodyMotY(LivingEntity body, double motY, boolean grounded) {
+        double c = Math.abs(motY) < VelocityConfig.ZERO_BELOW ? 0 : motY;
+        if (c < 0) {
+            PhysicsResult down = grounded ? null : probe(body, new Vec(0, c, 0));
+            if (grounded || down.isOnGround()) c = landMotY(body, down != null ? down.newPosition() : body.getPosition(), c, false);
+        } else if (c > 0 && probe(body, new Vec(0, c, 0)).collisionY()) {
+            c = 0;
+        }
+        Aerodynamics aero = body.getAerodynamics();
+        return (c - aero.gravity()) * aero.verticalAirResistance();
     }
 
     /** {@code lookback} reads that many end-of-tick values back; {@code zeroed} picks the apex-reseed variant. */
