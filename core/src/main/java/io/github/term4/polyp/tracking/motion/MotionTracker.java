@@ -310,7 +310,11 @@ public final class MotionTracker implements Tracker {
 
     // CollisionUtils collides against the BACKING instance: in a shard a placed block is not there at all
     private static PhysicsResult probe(Entity entity, Vec velocity) {
-        return MechanicsWorld.viewed(entity).sweep(entity.getBoundingBox(), entity.getPosition(), velocity, null, false);
+        return probe(entity, entity.getPosition(), velocity);
+    }
+
+    private static PhysicsResult probe(Entity entity, Pos at, Vec velocity) {
+        return MechanicsWorld.viewed(entity).sweep(entity.getBoundingBox(), at, velocity, null, false);
     }
 
     /** Both the {@code MOT_H} and entity-push residuals bleed by this. */
@@ -659,13 +663,14 @@ public final class MotionTracker implements Tracker {
     /**
      * One end-of-tick step of the server-tracked motY for a body standing in for a player ({@link TrackedVelocity}),
      * in open air: the player sim's collision reset, which lands a descent off the probe before the body itself does.
+     * {@code at} and {@code grounded} are what the server last heard, as a player's last move packet.
      */
-    public static double bodyMotY(LivingEntity body, double motY, boolean grounded) {
+    public static double bodyMotY(LivingEntity body, Pos at, double motY, boolean grounded) {
         double c = Math.abs(motY) < VelocityConfig.ZERO_BELOW ? 0 : motY;
         if (c < 0) {
-            PhysicsResult down = grounded ? null : probe(body, new Vec(0, c, 0));
-            if (grounded || down.isOnGround()) c = landMotY(body, down != null ? down.newPosition() : body.getPosition(), c, false);
-        } else if (c > 0 && probe(body, new Vec(0, c, 0)).collisionY()) {
+            PhysicsResult down = grounded ? null : probe(body, at, new Vec(0, c, 0));
+            if (grounded || down.isOnGround()) c = landMotY(body, down != null ? down.newPosition() : at, c, false);
+        } else if (c > 0 && probe(body, at, new Vec(0, c, 0)).collisionY()) {
             c = 0;
         }
         Aerodynamics aero = body.getAerodynamics();
