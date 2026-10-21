@@ -435,6 +435,11 @@ public class PolypPlayer extends Player implements ExternallyTickable {
         return positionRelay;
     }
 
+    /** Where viewers were last told this player is: what a client's relative moves build on. */
+    public @NotNull Pos relayedPosition() {
+        return lastSyncedPosition;
+    }
+
     @Override
     public void refreshPosition(Pos newPosition, boolean ignoreView, boolean sendPackets) {
         // gated players relay from track(), once a tick
