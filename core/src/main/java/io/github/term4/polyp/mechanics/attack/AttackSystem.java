@@ -19,7 +19,6 @@ import io.github.term4.polyp.world.MechanicsWorld;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
-import net.minestom.server.entity.Player;
 import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventDispatcher;
@@ -102,14 +101,14 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
     /** Installs inert (no install-level config): a detected hit with no scoped or snapshot config is dropped. Pass an empty config to process at the vanilla floor. */
     // vanilla's server gate: 1.8 takes 6 blocks center to center, modern range + 3 from the eye to the box
     private static boolean withinReach(AttackSnapshot snap, @Nullable Double padding) {
-        if (padding == null || padding < 0 || snap.target() == null || !(snap.attacker() instanceof Player p)) return true;
+        if (padding == null || padding < 0 || snap.target() == null || !(snap.attacker() instanceof LivingEntity p)) return true;
         double max = p.getAttributeValue(Attribute.ENTITY_INTERACTION_RANGE) + padding;
         return eyeToBoxSquared(p, snap.target()) < max * max;
     }
 
     // 1.8 EntityLiving.hasLineOfSight: a block ray between the two eyes; Entity.h is the squared feet distance
     private static boolean withinSight(AttackSnapshot snap) {
-        if (snap.target() == null || !(snap.attacker() instanceof Player p)) return true;
+        if (snap.target() == null || !(snap.attacker() instanceof LivingEntity p)) return true;
         Entity target = snap.target();
         Point eye = p.getPosition().add(0, p.getEyeHeight(), 0);
         Point theirs = target.getPosition().add(0, target.getEyeHeight(), 0);
@@ -124,7 +123,7 @@ public final class AttackSystem extends ScopedSystem<AttackConfig> {
         return diedAt == null || TickSystem.tick(living) - diedAt >= TickScaler.duration(living, ticks, KEY);
     }
 
-    private static double eyeToBoxSquared(Player from, Entity to) {
+    private static double eyeToBoxSquared(LivingEntity from, Entity to) {
         Pos eye = from.getPosition().add(0, from.getEyeHeight(), 0);
         Pos at = to.getPosition();
         BoundingBox box = to.getBoundingBox();

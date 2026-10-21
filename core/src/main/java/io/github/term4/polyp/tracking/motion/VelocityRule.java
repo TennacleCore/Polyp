@@ -193,6 +193,7 @@ public interface VelocityRule {
     private static Vec arc(VelocityContext ctx, VelocityConfig cfg) {
         double zeroX = cfg.zeroBelowX(ctx), zeroY = cfg.zeroBelowY(ctx), zeroZ = cfg.zeroBelowZ(ctx);
         // non-players are server-simulated already
+        if (ctx.entity() instanceof TrackedVelocity body) return zeroBelow(body.trackedVelocity(), zeroX, zeroY, zeroZ);
         if (!(ctx.entity() instanceof Player)) return zeroBelow(ctx.positionDelta(), zeroX, zeroY, zeroZ);
         int launchOffset = cfg.launchOffset(ctx);
         Vec hMot = MotionTracker.horizontalMot(ctx.entity(), launchOffset);

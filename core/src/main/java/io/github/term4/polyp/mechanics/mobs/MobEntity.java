@@ -335,7 +335,7 @@ public abstract class MobEntity extends LivingEntity implements PolypEntity {
         return Blocks.climbable(Blocks.at(world(), getPosition()));
     }
 
-    private float frictionBelow() {
+    protected float frictionBelow() {
         Pos pos = getPosition();
         return Blocks.at(world(), pos.blockX(), (int) Math.floor(pos.y()) - 1, pos.blockZ()).friction();
     }
