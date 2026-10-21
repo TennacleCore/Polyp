@@ -10,7 +10,7 @@ import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.player.PlayerMoveEvent;
-import net.minestom.server.event.player.PlayerStartSprintingEvent;
+import net.minestom.server.network.packet.client.play.ClientEntityActionPacket;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -37,8 +37,9 @@ class PlainProviderCompatTest extends HeadlessServerTest {
             polyp.profiles().setGlobal(baseProfile
                     .set(MechanicsKeys.COMPAT, CompatConfig.builder().restrictSprintSneak(true).build())
                     .build());
-            EventDispatcher.call(new PlayerStartSprintingEvent(fake.player)); // tracked client sprint
-            fake.player.setSprinting(true);
+            fake.player.addPacketToQueue(new ClientEntityActionPacket(fake.player.getEntityId(),
+                    ClientEntityActionPacket.Action.START_SPRINTING, 0));
+            fake.player.interpretPacketQueue();
 
             fake.player.setSneaking(true);
             EventDispatcher.call(new PlayerMoveEvent(fake.player, new Pos(30.6, 65, 30.5), true));

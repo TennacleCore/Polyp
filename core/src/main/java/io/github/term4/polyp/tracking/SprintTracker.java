@@ -3,6 +3,7 @@ package io.github.term4.polyp.tracking;
 import io.github.term4.polyp.platform.compatibility.CompatConfig;
 import io.github.term4.polyp.MechanicsKeys;
 import io.github.term4.polyp.Polyp;
+import io.github.term4.polyp.platform.player.PlayListeners;
 import io.github.term4.polyp.util.tick.TickSystem;
 import io.github.term4.polyp.util.tick.TickState;
 import net.minestom.server.entity.Entity;
@@ -10,9 +11,10 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.player.PlayerSpawnEvent;
-import net.minestom.server.event.player.PlayerStartSprintingEvent;
 import net.minestom.server.event.player.PlayerStopSprintingEvent;
 import net.minestom.server.event.trait.PlayerEvent;
+import net.minestom.server.listener.EntityActionListener;
+import net.minestom.server.network.packet.client.play.ClientEntityActionPacket;
 import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -24,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class SprintTracker implements Tracker {
 
     private static final Tag<TickState> LAST_SPRINT_STATE = Tag.Transient("polyp:last-sprint-state");
-    private static final Tag<TickState> LAST_CLIENT_START_SPRINT = Tag.Transient("polyp:client-sprint-start");
+    private static final Tag<Boolean> CLIENT_SPRINTING = Tag.Transient("polyp:client-sprinting");
     private static final Tag<TickState> LAST_CLIENT_STOP_SPRINT  = Tag.Transient("polyp:client-sprint-stop");
     private static final AtomicBoolean CLOCK_RESET = new AtomicBoolean();
 
@@ -32,6 +34,18 @@ public final class SprintTracker implements Tracker {
         if (CLOCK_RESET.compareAndSet(false, true)) {
             TickSystem.onClockChange(e -> {
                 if (e instanceof Player p) clearTransient(p);
+            });
+            // the packet, not the events: a stop after a landed hit already cleared the server's sprint fires none
+            PlayListeners.wrap(ClientEntityActionPacket.class, EntityActionListener::listener, (packet, player, next) -> {
+                switch (packet.action()) {
+                    case START_SPRINTING -> player.setTag(CLIENT_SPRINTING, true);
+                    case STOP_SPRINTING -> {
+                        player.setTag(CLIENT_SPRINTING, false);
+                        player.setTag(LAST_CLIENT_STOP_SPRINT, new TickState(TickSystem.tick(player), 0));
+                    }
+                    default -> {}
+                }
+                next.accept(packet, player);
             });
         }
     }
@@ -44,16 +58,7 @@ public final class SprintTracker implements Tracker {
     public EventNode<@NotNull PlayerEvent> node() {
         EventNode<@NotNull PlayerEvent> node = EventNode.type("polyp:sprint-tracker", EventFilter.PLAYER);
 
-        node.addListener(PlayerStartSprintingEvent.class, e -> {
-            Player p = e.getPlayer();
-            p.setTag(LAST_CLIENT_START_SPRINT, new TickState(TickSystem.tick(p), 0));
-        });
-
-        node.addListener(PlayerStopSprintingEvent.class, e -> {
-            Player p = e.getPlayer();
-            markStopSprint(p);
-            p.setTag(LAST_CLIENT_STOP_SPRINT, new TickState(TickSystem.tick(p), 0));
-        });
+        node.addListener(PlayerStopSprintingEvent.class, e -> markStopSprint(e.getPlayer()));
 
         // instance change reseeds the clock these stamps use, and isClientSprinting compares raw eventTicks (no
         // TickState future-guard), so drop them or it misreads across instances. The flag itself follows the
@@ -74,7 +79,7 @@ public final class SprintTracker implements Tracker {
 
     public static void clearTransient(Player p) {
         p.removeTag(LAST_SPRINT_STATE);
-        p.removeTag(LAST_CLIENT_START_SPRINT);
+        p.removeTag(CLIENT_SPRINTING);
         p.removeTag(LAST_CLIENT_STOP_SPRINT);
     }
 
@@ -90,11 +95,8 @@ public final class SprintTracker implements Tracker {
     /** Whether the client believes it is sprinting, even when the server does not. */
     public static boolean isClientSprinting(@Nullable SprintTracker t, Entity e) {
         if (t == null) return e.isSprinting();
-        TickState start = e.getTag(LAST_CLIENT_START_SPRINT);
-        TickState stop  = e.getTag(LAST_CLIENT_STOP_SPRINT);
-        if (start == null) return e.isSprinting();
-        if (stop == null) return true;
-        return start.eventTick() > stop.eventTick();
+        Boolean sprinting = e.getTag(CLIENT_SPRINTING);
+        return sprinting != null ? sprinting : e.isSprinting();
     }
 
     public static boolean wasClientRecentlySprinting(@Nullable SprintTracker t, Entity e, int ticks) {
