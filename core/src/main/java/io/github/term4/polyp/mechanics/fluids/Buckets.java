@@ -5,6 +5,7 @@ import io.github.term4.polyp.fx.Fx;
 import io.github.term4.polyp.fx.FxContext;
 import io.github.term4.polyp.mechanics.fluids.FluidsConfigResolver.FluidContext;
 import io.github.term4.polyp.world.MechanicsWorld;
+import net.minestom.server.network.packet.server.play.BlockChangePacket;
 import net.minestom.server.collision.Shape;
 import net.minestom.server.coordinate.BlockVec;
 import net.minestom.server.coordinate.Point;
@@ -79,7 +80,11 @@ final class Buckets {
         var event = new PlayerBlockPlaceEvent(player, player.getInstance(), landing, hit.face(), at,
                 new Pos(0.5, 0.5, 0.5), hand);
         EventDispatcher.call(event);
-        if (event.isCancelled()) return;
+        if (event.isCancelled()) {
+            // the client poured already, beyond its own block reach too, where no placement packet would fix it
+            player.sendPacket(new BlockChangePacket(at, there));
+            return;
+        }
         if (!container && !there.air() && !there.liquid()) {
             Spread.Rules r = system.rulesOf(world, at, fluid, waterlogging, player);
             system.wash(world, at, there, r != null ? r.washes() : null);
